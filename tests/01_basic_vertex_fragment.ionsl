@@ -1,0 +1,45 @@
+// Basic smoke test: structs, semantics, a vertex + fragment entry point,
+// vector construction, field access, plain arithmetic.
+
+struct VertexInput
+{
+    [[semantic("POSITION")]] position : vec3f,
+    [[semantic("NORMAL")]]   normal   : vec3f,
+    [[semantic("TEXCOORD", 0)]] uv    : vec2f,
+}
+
+struct VertexOutput
+{
+    [[semantic("SV_Position")]] position : vec4f,
+    [[semantic("TEXCOORD", 1)]] normal   : vec3f,
+    [[semantic("TEXCOORD", 2)]] uv       : vec2f,
+}
+
+[[ion::mutable]]
+var camera : ConstantBuffer<CameraData>;
+
+struct CameraData
+{
+    viewProj : mat4x4<f32>,
+}
+
+[[shader("vertex")]]
+fn vertexMain(input : VertexInput) -> VertexOutput
+{
+    var mut output : VertexOutput;
+
+    output.position = mul(camera.viewProj, vec4f(input.position, 1.0));
+    output.normal = input.normal;
+    output.uv = input.uv;
+
+    return output;
+}
+
+[[shader("pixel")]]
+fn fragmentMain(input : VertexOutput) -> vec4f
+{
+    var lightDir : vec3f = normalize(vec3f(0.3, -1.0, 0.2));
+    var nDotL : f32 = max(0.0, dot(input.normal, lightDir));
+
+    return vec4f(nDotL, nDotL, nDotL, 1.0);
+}

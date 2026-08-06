@@ -34,10 +34,15 @@ namespace ionsl
         { "+=", TokenKind::PlusEqual }, { "-=", TokenKind::MinusEqual },
         { "*=", TokenKind::StarEqual }, { "/=", TokenKind::SlashEqual },
         { "[[", TokenKind::LBracketLBracket }, { "]]", TokenKind::RBracketRBracket },
+        { "&=", TokenKind::AmpEqual }, { "|=", TokenKind::PipeEqual },
+        { "<<", TokenKind::LAngleLAngle }, { ">>", TokenKind::RAngleRAngle },
+        { "<<=", TokenKind::LAngleLAngleEqual }, { ">>=", TokenKind::RAngleRAngleEqual },
+        { "^=", TokenKind::CaretEqual }, { "%=", TokenKind::PercentEqual },
+        { "%", TokenKind::Percent },
     };
 
 
-    static constexpr uint32_t kMaxSymbolLength = 2;
+    static constexpr uint32_t kMaxSymbolLength = 3;
 
     Lexer::Lexer(const std::string_view source)
         : m_source(source)  { }
@@ -116,12 +121,37 @@ namespace ionsl
             }
         }
 
+        if (peek() == '0' && (peek(1) == 'x' || peek(1) == 'X'))
+        {
+            advance(); advance(); // consume "0x"
+            while (std::isxdigit(peek())) advance();
+
+            // consume suffix eg 'u'
+            while (std::isalpha(peek())) advance();
+
+            return makeToken(TokenKind::NumberLiteral, startLoc);
+        }
+
         if(std::isdigit(peek()) || peek() == '-')
         {
-            advance();
+            while (std::isdigit(peek())) advance();
 
-            while(!done() && (std::isdigit(peek()) || peek() == '.'))
+            if (peek() == '.' && std::isdigit(peek(1)))
+            {
                 advance();
+                while (std::isdigit(peek())) advance();
+            }
+
+            // consume exponent
+            if (peek() == 'e' || peek() == 'E')
+            {
+                advance();
+                if (peek() == '+' || peek() == '-') advance();
+                while (std::isdigit(peek())) advance();
+            }
+
+            // consume suffix eg 'u'
+            while (std::isalpha(peek())) advance();
 
             return makeToken(TokenKind::NumberLiteral, startLoc);
         }

@@ -3,7 +3,7 @@
 namespace ionsl
 {
     Reflector::Reflector(const Module &module)
-        : m_ast(module.ast())
+        : m_ast(module.decls)
     {
     }
 
@@ -52,20 +52,20 @@ namespace ionsl
         {
             if(attrib.name.fullName() != "numthreads" || attrib.args.empty()) continue;
 
-            if(const int64_t* num = std::get_if<int64_t>(&attrib.args[0]))
-                ep.threadsX = *num;
+            if(const IntegerLiteral* num = std::get_if<IntegerLiteral>(&attrib.args[0]))
+                ep.threadsX = num->value;
             else
                 continue;
 
             if(attrib.args.size() < 2)
                 ep.threadsY = 1;
-            else if(const int64_t* num = std::get_if<int64_t>(&attrib.args[1]))
-                ep.threadsY = *num;
+            else if(const IntegerLiteral* num = std::get_if<IntegerLiteral>(&attrib.args[1]))
+                ep.threadsY = num->value;
 
             if(attrib.args.size() < 3)
                 ep.threadsZ = 1;
-            else if(const int64_t* num = std::get_if<int64_t>(&attrib.args[2]))
-                ep.threadsZ = *num;
+            else if(const IntegerLiteral* num = std::get_if<IntegerLiteral>(&attrib.args[2]))
+                ep.threadsZ = num->value;
         }
 
         if(ep.stage == refl::ShaderStage::Vertex)
@@ -464,8 +464,8 @@ namespace ionsl
     {
         // TODO try and evaluate const expressions
         if(const auto literalExpr = std::get_if<Literal>(&expr.expr))
-            if(const auto val = std::get_if<int64_t>(literalExpr))
-                return static_cast<uint32_t>(*val);
+            if(const auto val = std::get_if<IntegerLiteral>(literalExpr))
+                return static_cast<uint32_t>(val->value);
 
         return std::nullopt;
     }

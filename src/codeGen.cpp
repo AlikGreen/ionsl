@@ -6,26 +6,29 @@ namespace ionsl
     static const std::unordered_map<std::string_view, std::string> kBuiltinAttribMap
     {
             { "sv_position", "SV_Position" }, { "position", "POSITION" },
-            { "texcoord0",  "TEXCOORD0" }, { "texcoord1",  "TEXCOORD1" },
-            { "texcoord2",  "TEXCOORD2" }, { "texcoord3",  "TEXCOORD3" },
-            { "texcoord4",  "TEXCOORD4" }, { "texcoord5",  "TEXCOORD5" },
             { "normal",  "NORMAL" }, { "shader",  "shader" },
             { "sv_start_instance_loc",  "SV_StartInstanceLocation" },
 
         };
 
     CodeGen::CodeGen(const Module &module)
-        : m_declNodes(module.ast())
+        : m_declNodes(module.decls)
     {
     }
 
     std::string CodeGen::generate()
     {
+        m_source.clear();
+        m_indent = 0;
+
         for(const auto& decl : m_declNodes)
         {
             genForwardDecl(decl);
             newLine();
         }
+
+        newLine();
+        newLine();
 
         for(const auto& decl : m_declNodes)
         {
@@ -651,6 +654,13 @@ namespace ionsl
             case BinaryOp::SubAssign:    return "-=";
             case BinaryOp::MulAssign:    return "*=";
             case BinaryOp::DivAssign:    return "/=";
+
+            case BinaryOp::ModuloAssign:  return "%=";
+            case BinaryOp::BitwiseAndAssign:  return "&=";
+            case BinaryOp::BitwiseOrAssign:   return "|=";
+            case BinaryOp::BitwiseXorAssign:  return "^=";
+            case BinaryOp::ShiftLeftAssign:   return "<<=";
+            case BinaryOp::ShiftRightAssign:  return ">>=";
 
             default:                     return "";
         }

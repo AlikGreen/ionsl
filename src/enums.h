@@ -31,10 +31,16 @@ enum class BinaryOp : uint8_t
     ShiftRight,
 
     Assign,
+    ModuloAssign,
     AddAssign,
     SubAssign,
     MulAssign,
-    DivAssign
+    DivAssign,
+    BitwiseAndAssign,
+    BitwiseOrAssign,
+    BitwiseXorAssign,
+    ShiftLeftAssign,
+    ShiftRightAssign,
 };
 
 inline std::optional<BinaryOp> tokenToBinaryOp(const TokenKind type)
@@ -54,18 +60,23 @@ inline std::optional<BinaryOp> tokenToBinaryOp(const TokenKind type)
         case TokenKind::AmpAmp:           return BinaryOp::LogicalAnd;
         case TokenKind::PipePipe:         return BinaryOp::LogicalOr;
 
-        // case TokenKind::Percent:          return BinaryOp::Modulo;
-        // case TokenKind::Amp:              return BinaryOp::BitwiseAnd;
-        // case TokenKind::Pipe:             return BinaryOp::BitwiseOr;
-        // case TokenKind::Caret:            return BinaryOp::BitwiseXor;
-        // case TokenKind::LessLess:         return BinaryOp::ShiftLeft;
-        // case TokenKind::GreaterGreater:   return BinaryOp::ShiftRight;
+        case TokenKind::Percent:          return BinaryOp::Modulo;
+        case TokenKind::PercentEqual:         return BinaryOp::ModuloAssign;
 
         case TokenKind::Equal:            return BinaryOp::Assign;
         case TokenKind::PlusEqual:        return BinaryOp::AddAssign;
         case TokenKind::MinusEqual:       return BinaryOp::SubAssign;
         case TokenKind::StarEqual:        return BinaryOp::MulAssign;
         case TokenKind::SlashEqual:       return BinaryOp::DivAssign;
+
+        case TokenKind::AmpEqual:         return BinaryOp::BitwiseAndAssign;
+        case TokenKind::PipeEqual:        return BinaryOp::BitwiseOrAssign;
+        case TokenKind::CaretEqual:       return BinaryOp::BitwiseXorAssign;
+        case TokenKind::LAngleLAngle:     return BinaryOp::ShiftLeft;
+        case TokenKind::RAngleRAngle:     return BinaryOp::ShiftRight;
+        case TokenKind::LAngleLAngleEqual: return BinaryOp::ShiftLeftAssign;
+        case TokenKind::RAngleRAngleEqual: return BinaryOp::ShiftRightAssign;
+
         default:                          return std::nullopt;
     }
 }

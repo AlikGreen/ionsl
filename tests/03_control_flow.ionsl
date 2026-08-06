@@ -1,0 +1,60 @@
+// Exercises: for/while loops, nested blocks, break/continue,
+// comparison/logical operators, unary ops, generic-arg parsing
+// disambiguation (vecN<T> inside expressions and comparisons).
+
+fn classify(value : f32) -> i32
+{
+    if(value < 0.0)
+    {
+        return -1;
+    }
+    else
+    {
+        if(value == 0.0)
+        {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+[[shader("compute")]]
+[[numthreads(1, 1, 1)]]
+fn computeMain()
+{
+    var mut total : f32 = 0.0;
+    var mut skipped : i32 = 0;
+
+    for(var mut i : i32 = 0; i < 32; i += 1)
+    {
+        if(i % 2 == 0)
+        {
+            skipped += 1;
+            continue;
+        }
+
+        if(i > 20 && i < 25)
+        {
+            break;
+        }
+
+        var contribution : f32 = f32(i) * 0.5 - 1.0;
+        total += contribution;
+    }
+
+    var mut j : i32 = 0;
+    while(j < 4 || total < 100.0)
+    {
+        total *= 1.01;
+        j += 1;
+
+        if(j >= 8)
+        {
+            break;
+        }
+    }
+
+    var flag : bool = !(total > 0.0) && (skipped != 0);
+    var doubled : vec3f = vec3f(total, total, total) * 2.0;
+}
