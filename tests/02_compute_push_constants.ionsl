@@ -1,0 +1,42 @@
+// Exercises: compute entry point, [[numthreads]], PushConstant sugar,
+// RWByteAddressBuffer-style resource, all compound-assign operators,
+// bitwise/shift operators, early return.
+
+struct PushConstants
+{
+    offset : u32,
+    count : u32,
+    fillValue : u32,
+}
+
+[[ion::push_constant]]
+var pc : PushConstant<PushConstants>;
+
+[[ion::mutable]]
+var gBuffer : RWByteAddressBuffer;
+
+[[shader("compute")]]
+[[numthreads(64, 1, 1)]]
+fn computeMain(dispatchThreadID : vec3<u32> [[semantic("SV_DispatchThreadID")]])
+{
+    if(dispatchThreadID.x >= pc.count)
+    {
+        return;
+    }
+
+    var mut index : u32 = dispatchThreadID.x + pc.offset;
+
+    var mut mask : u32 = 0xFFu;
+    mask &= 0x0Fu;
+    mask |= 0x30u;
+    mask ^= 0x03u;
+    mask <<= 2;
+    mask >>= 1;
+
+    index += mask % 16u;
+    index -= 1u;
+    index *= 4u;
+    index /= 1u;
+
+    gBuffer.Store(index, pc.fillValue);
+}

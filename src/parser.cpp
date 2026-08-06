@@ -13,12 +13,13 @@ namespace ionsl
         { BinaryOp::SubAssign,     { 2, 1 } },
         { BinaryOp::MulAssign,     { 2, 1 } },
         { BinaryOp::DivAssign,     { 2, 1 } },
-        // { BinaryOp::ModAssign,     { 2, 1 } },
-        // { BinaryOp::BitAndAssign,  { 2, 1 } },
-        // { BinaryOp::BitOrAssign,   { 2, 1 } },
-        // { BinaryOp::BitXorAssign,  { 2, 1 } },
-        // { BinaryOp::ShlAssign,     { 2, 1 } },
-        // { BinaryOp::ShrAssign,     { 2, 1 } },
+
+        { BinaryOp::ModuloAssign,     { 2, 1 } },
+        { BinaryOp::BitwiseAndAssign,  { 2, 1 } },
+        { BinaryOp::BitwiseOrAssign,   { 2, 1 } },
+        { BinaryOp::BitwiseXorAssign,  { 2, 1 } },
+        { BinaryOp::ShiftLeftAssign,     { 2, 1 } },
+        { BinaryOp::ShiftRightAssign,     { 2, 1 } },
 
         { BinaryOp::LogicalOr,     { 3, 4 } },
         { BinaryOp::LogicalAnd,    { 5, 6 } },
@@ -159,8 +160,8 @@ namespace ionsl
     {
         consume(TokenKind::KwFunction);
         FunctionDecl func{};
-        func.name = advance().text;
         func.attributes = takePendingAttributes();
+        func.name = advance().text;
 
         // TODO make able to parse multiple types
         if(match(TokenKind::LAngle))
@@ -179,12 +180,13 @@ namespace ionsl
 
         match(TokenKind::LParen);
 
+        if(!check(TokenKind::RParen))
         do
         {
             ParamDecl param{};
             param.attributes = takePendingAttributes();
-            param.name = advance().text;
             param.trivia = takePendingTrivia();
+            param.name = advance().text;
 
             consume(TokenKind::Colon);
 
@@ -607,17 +609,32 @@ namespace ionsl
                 return std::string(token.text.substr(1, token.text.size()-2));
             case TokenKind::NumberLiteral:
             {
-                const auto str = token.text;
+                std::string_view text = token.text;
+                const bool isHex = text.starts_with("0x") || text.starts_with("0X");
+                if (isHex) text.remove_prefix(2);
 
-                int64_t intVal;
-                auto result = std::from_chars(str.data(), str.data() + str.size(), intVal);
-                if (result.ec == std::errc{} && result.ptr == str.data() + str.size())
-                    return intVal;
+                size_t suffixStart = text.size();
+                while (suffixStart > 0 && std::isalpha(text[suffixStart - 1]) && !(isHex && std::isxdigit(text[suffixStart - 1])))
+                    suffixStart--;
 
-                double floatVal;
-                result = std::from_chars(str.data(), str.data() + str.size(), floatVal);
-                if (result.ec == std::errc{} && result.ptr == str.data() + str.size())
-                    return floatVal;
+                const std::string_view digits = text.substr(0, suffixStart);
+                const std::string_view suffixText = text.substr(suffixStart);
+
+                if (!isHex && (digits.find('.') != std::string_view::npos || digits.find_first_of("eE") != std::string_view::npos))
+                {
+                    const double value = std::strtod(std::string(digits).c_str(), nullptr);
+                    auto suffix = FloatSuffix::None;
+                    if (suffixText == "f" || suffixText == "F") suffix = FloatSuffix::Explicit;
+                    else if (suffixText == "h" || suffixText == "H") suffix = FloatSuffix::Half;
+                    return FloatLiteral{ value, suffix };
+                }
+
+                const int64_t value = std::strtoll(std::string(digits).c_str(), nullptr, isHex ? 16 : 10);
+                auto suffix = IntegerSuffix::None;
+                if (suffixText == "u" || suffixText == "U") suffix = IntegerSuffix::Unsigned;
+                else if (suffixText == "l" || suffixText == "L") suffix = IntegerSuffix::Long;
+
+                return IntegerLiteral{ value, suffix, isHex };
             }
             case TokenKind::KwTrue:
                 return true;
@@ -902,7 +919,7 @@ namespace ionsl
         }
     }
 
-    bool Parser::isLookaheadGenericArgs()
+    bool Parser::isLookaheadGenericArgs() const
     {
         uint32_t offset = 1;
 
@@ -920,10 +937,8 @@ namespace ionsl
             {
                 angleDepth--;
 
-                // We reached the matching closing '>'
                 if (angleDepth == 0)
                 {
-                    // Peek at the token immediately following '>'
                     if (peek(offset+1).kind != TokenKind::EndOfFile)
                     {
                         TokenKind afterGT = peek(offset+1).kind;

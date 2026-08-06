@@ -1,0 +1,71 @@
+// Exercises: interface declarations (bodyless methods), generic function
+// parameters constrained by an interface, a resource-typed generic param
+// on the entry point itself, struct-implements-interface syntax, and
+// calling a method through the generic parameter.
+
+struct SurfaceInput
+{
+    normalWS : vec3f,
+    positionWS : vec3f,
+    viewDirWS : vec3f,
+    uv : vec2f,
+}
+
+struct SurfaceOutput
+{
+    baseColor : vec3f,
+    roughness : f32 = 0.5,
+    metallic : f32 = 0.0,
+}
+
+struct VertexOutput
+{
+    [[semantic("SV_Position")]] position : vec4f,
+    [[semantic("TEXCOORD", 0)]] normal   : vec3f,
+    [[semantic("TEXCOORD", 1)]] fragPos  : vec3f,
+    [[semantic("TEXCOORD", 2)]] uv       : vec2f,
+}
+
+interface Material
+{
+    fn evaluate(params : ConstantBuffer<Self>, input : SurfaceInput) -> SurfaceOutput;
+}
+
+struct RustyMetal : Material
+{
+    tint : vec3f,
+    roughnessScale : f32,
+
+    fn evaluate(input : SurfaceInput) -> SurfaceOutput
+    {
+        var mut so : SurfaceOutput;
+        so.baseColor = tint;
+        so.roughness = roughnessScale;
+        so.metallic = 1.0;
+        return so;
+    }
+}
+
+fn buildSurfaceInput(input : VertexOutput) -> SurfaceInput
+{
+    var mut si : SurfaceInput;
+    si.normalWS = normalize(input.normal);
+    si.positionWS = input.fragPos;
+    si.uv = input.uv;
+    return si;
+}
+
+[[shader("pixel")]]
+fn fragmentMain<M : Material>(
+    input : VertexOutput,
+    materialParams : ConstantBuffer<M>
+) -> vec4f
+{
+    var si : SurfaceInput = buildSurfaceInput(input);
+    var so : SurfaceOutput = materialParams.evaluate(materialParams, si);
+
+    var ambient : vec3f = so.baseColor * 0.1;
+    var finalColour : vec3f = so.baseColor * (1.0 - so.metallic) + ambient;
+
+    return vec4f(finalColour, 1.0);
+}

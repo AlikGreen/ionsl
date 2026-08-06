@@ -1,0 +1,56 @@
+// Exercises: struct methods, nested struct types, array fields with a
+// named-constant size, field initializers, matrix types, indexing.
+
+var MAX_POINT_LIGHTS : u32 = 4;
+
+struct PointLight
+{
+    position : vec3f,
+    power : f32 = 1.0,
+    colour : vec3f = vec3f(1.0, 1.0, 1.0),
+    radius : f32 = 10.0,
+
+    fn attenuation(distSquared : f32) -> f32
+    {
+        return power / (distSquared + 0.0001);
+    }
+}
+
+struct PointLights
+{
+    count : i32,
+    lights : PointLight[MAX_POINT_LIGHTS],
+}
+
+struct ModelInfo
+{
+    modelMatrix : mat4x4<f32>,
+    normalMatrix : mat3x3<f32>,
+}
+
+[[ion::mutable]]
+var pointLights : ConstantBuffer<PointLights>;
+
+[[ion::mutable]]
+var modelData : StructuredBuffer<ModelInfo>;
+
+fn accumulateLighting(fragPos : vec3f, normal : vec3f) -> vec3f
+{
+    var mut result : vec3f = vec3f(0.0, 0.0, 0.0);
+
+    for(var mut i : i32 = 0; i < pointLights.count; i += 1)
+    {
+        var light : PointLight = pointLights.lights[i];
+
+        var toLight : vec3f = light.position - fragPos;
+        var distSquared : f32 = dot(toLight, toLight);
+        var lightDir : vec3f = normalize(toLight);
+
+        var nDotL : f32 = max(0.0, dot(normal, lightDir));
+        var atten : f32 = light.attenuation(distSquared);
+
+        result += light.colour * nDotL * atten;
+    }
+
+    return result;
+}

@@ -11,11 +11,11 @@ namespace ionsl
 
     Module Resolver::resolve()
     {
-        m_ast = m_desc.modules.at(0).ast();
+        m_ast = m_desc.modules.at(0).decls;
 
         for(size_t i = 1; i < m_desc.modules.size(); i++)
         {
-            for(const auto& decl : m_desc.modules.at(i).ast())
+            for(const auto& decl : m_desc.modules.at(i).decls)
             {
                 m_ast.push_back(decl);
             }
@@ -35,7 +35,7 @@ namespace ionsl
         }
 
 
-        return {m_desc.modules.at(0).path(), std::move(m_ast), {}};
+        return {m_desc.modules.at(0).path, std::move(m_ast), {}};
     }
 
     Module Resolver::resolve(ResolveDesc desc)
@@ -66,7 +66,7 @@ namespace ionsl
 
     void Resolver::resolveFunctionDecl(FunctionDecl &decl)
     {
-
+        m_currentTypeBindings.clear();
         for(const auto& spec : m_desc.specializations)
         {
             // TODO match whole signature

@@ -4,7 +4,7 @@ namespace ionsl
 {
     const FunctionDecl* Module::findFunctionByName(std::string_view name) const
     {
-        for(auto& decl : m_decls)
+        for(auto& decl : decls)
         {
             if(const auto funcDecl = std::get_if<FunctionDecl>(&decl.decl))
             {
@@ -20,7 +20,7 @@ namespace ionsl
 
     const StructDecl* Module::findStructByName(const std::string_view name) const
     {
-        for(auto& decl : m_decls)
+        for(auto& decl : decls)
         {
             if(const auto structDecl = std::get_if<StructDecl>(&decl.decl))
             {

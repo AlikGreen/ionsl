@@ -5,7 +5,7 @@
 namespace ionsl
 {
     Checker::Checker(const Module &module)
-        : m_declNodes(module.ast())
+        : m_declNodes(module.decls)
     {
 
     }

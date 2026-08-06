@@ -75,7 +75,7 @@ private:
     static Box<PrimitiveKind> parsePrimitiveKind(std::string_view name);
     static std::optional<std::pair<uint32_t, uint32_t>> getBindingPower(TokenKind kind);
 
-    bool isLookaheadGenericArgs();
+    bool isLookaheadGenericArgs() const;
 
     std::vector<Trivia> takePendingTrivia();
     std::vector<Attribute> takePendingAttributes();

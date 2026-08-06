@@ -9,12 +9,13 @@
 
 namespace ionsl
 {
-using Literal = std::variant<
-    int64_t,
-    double,
-    std::string,
-    bool
->;
+enum class IntegerSuffix { None, Unsigned, Long };
+enum class FloatSuffix   { None, Half, Explicit };
+
+struct IntegerLiteral { int64_t value; IntegerSuffix suffix; bool isHex; };
+struct FloatLiteral   { double value; FloatSuffix suffix; };
+
+using Literal = std::variant<std::string, IntegerLiteral, FloatLiteral, bool>;
 
 struct Attribute
 {
