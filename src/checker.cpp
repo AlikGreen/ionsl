@@ -4,8 +4,8 @@
 
 namespace ionsl
 {
-    Checker::Checker(const Module &module)
-        : m_declNodes(module.decls)
+    Checker::Checker(Module &module)
+        : m_declNodes(module.decls), m_declTable(module.decls)
     {
 
     }
@@ -40,7 +40,7 @@ namespace ionsl
         return m_diagnostics;
     }
 
-    std::vector<Diagnostic> Checker::check(const Module &module)
+    std::vector<Diagnostic> Checker::check(Module &module)
     {
         Checker checker{module};
         return checker.check();
@@ -287,7 +287,7 @@ namespace ionsl
                 }
                 else if constexpr (std::is_same_v<T, StructType>)
                 {
-                    for(const auto& field : type.decl->fields)
+                    for(const auto& field : std::get<StructDecl>(m_declTable.get(type.declId)->decl).fields)
                     {
                         checkType(field.type);
 

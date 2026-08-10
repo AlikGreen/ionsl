@@ -6,6 +6,7 @@ namespace ionsl
     {
         m_visitedNames.clear();
         m_closure.clear();
+        m_declTable = DeclTable(m_module.decls);
         visitByName(entry.name);
 
         Module module{
@@ -22,7 +23,7 @@ namespace ionsl
         if (m_visitedNames.contains(name)) return;
         m_visitedNames.insert(name);
 
-        const DeclNode* decl = findDeclNode(name);
+        DeclNode* decl = findDeclNode(name);
         if (!decl) return;
         m_closure.push_back(*decl);
 
@@ -37,15 +38,15 @@ namespace ionsl
         walker.onType = [this](const Type& t)
         {
             if (auto* s = std::get_if<StructType>(&t.kind))
-                visitByName(s->decl->name);
+                visitByName(std::get<StructDecl>(m_declTable.get(s->declId)->decl).name);
         };
 
         walker.walk(*decl);
     }
 
-    const DeclNode * DependencyAnalyzer::findDeclNode(const std::string &name)
+    DeclNode * DependencyAnalyzer::findDeclNode(const std::string &name)
     {
-        for(const auto& decl : m_module.decls)
+        for(auto& decl : m_module.decls)
         {
             bool sameName = std::visit(
             [this, name]<typename T0>(T0&& d) -> bool

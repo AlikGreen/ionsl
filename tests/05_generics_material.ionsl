@@ -20,10 +20,10 @@ struct SurfaceOutput
 
 struct VertexOutput
 {
-    [[semantic("SV_Position")]] position : vec4f,
-    [[semantic("TEXCOORD", 0)]] normal   : vec3f,
-    [[semantic("TEXCOORD", 1)]] fragPos  : vec3f,
-    [[semantic("TEXCOORD", 2)]] uv       : vec2f,
+    [[position]] position : vec4f,
+    normal   : vec3f,
+    fragPos  : vec3f,
+    uv       : vec2f,
 }
 
 interface Material

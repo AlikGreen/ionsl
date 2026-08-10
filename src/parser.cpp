@@ -94,6 +94,8 @@ namespace ionsl
             decl = parseVarDecl();
         else if(check(TokenKind::KwInterface))
             decl = parseInterfaceDecl();
+        else if (check(TokenKind::KwType))
+            decl = parseTypeDefDecl();
         else // TODO in future add an ErrorDecl for recovery for LSP
             throw std::runtime_error("Expected a declaration (like function or var) at the top level.");
 
@@ -263,6 +265,17 @@ namespace ionsl
         }
 
         return interface;
+    }
+
+    TypeDefDecl Parser::parseTypeDefDecl()
+    {
+        TypeDefDecl typeDef{};
+        consume(TokenKind::KwType);
+        typeDef.name = std::string(advance().text);
+        consume(TokenKind::Equal);
+        typeDef.type = parseType();
+        consume(TokenKind::Semicolon);
+        return typeDef;
     }
 
     ExprNode Parser::parseExpr(const uint32_t minBP)
@@ -464,7 +477,7 @@ namespace ionsl
                 op = UnaryOp::PreIncrement;
                 break;
             default:
-                throw std::exception("TODO fix this");
+                throw std::runtime_error("TODO fix this");
         }
 
         UnaryExpr expr{};
@@ -647,13 +660,15 @@ namespace ionsl
 
     void Parser::consumeTriviaAndAttribs()
     {
-        while (!done() && (match(TokenKind::BlockComment) || match(TokenKind::LineComment) || check(TokenKind::LBracketLBracket)))
+        while (!done() && (check(TokenKind::BlockComment) || check(TokenKind::LineComment) || check(TokenKind::LBracketLBracket)))
         {
             if(check(TokenKind::LBracketLBracket))
             {
                 consumeAttribute();
                 continue;
             }
+
+            m_pos++;
 
             Trivia trivia{};
             trivia.isBlockComment = previous().kind == TokenKind::BlockComment;

@@ -145,16 +145,18 @@ struct CustomType
     std::vector<Box<Type>> genericArgs;
 };
 
+using DeclId = uint64_t;
+
 struct StructDecl;
 struct StructType
 {
-    const StructDecl* decl;
+    DeclId declId;
 };
 
 struct InterfaceDecl;
 struct InterfaceType
 {
-    const InterfaceDecl* decl;
+    DeclId declId;
 };
 
 using TypeKind = std::variant<

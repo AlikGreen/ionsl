@@ -2,16 +2,16 @@
 
 namespace ionsl
 {
-    void AstWalker::walk(const std::vector<DeclNode>& decls)
+    void AstWalker::walk(std::vector<DeclNode>& decls)
     {
-        for (const auto& decl : decls) walk(decl);
+        for (auto& decl : decls) walk(decl);
     }
 
-    void AstWalker::walk(const DeclNode& decl)
+    void AstWalker::walk(DeclNode& decl)
     {
         if (onDecl) onDecl(decl);
 
-        std::visit([this]<typename T0>(const T0& d)
+        std::visit([this]<typename T0>(T0& d)
         {
             using T = std::decay_t<T0>;
             if constexpr (std::is_same_v<T, StructDecl>)    walkStruct(d);
@@ -21,20 +21,20 @@ namespace ionsl
         }, decl.decl);
     }
 
-    void AstWalker::walkStruct(const StructDecl& decl)
+    void AstWalker::walkStruct(StructDecl& decl)
     {
-        for (const auto& field : decl.fields)
+        for (auto& field : decl.fields)
         {
             walk(field.type);
             if (field.initializer) walk(*field.initializer);
         }
-        for (const auto& method : decl.methods)
+        for (auto& method : decl.methods)
             walkFunction(method.decl);
     }
 
-    void AstWalker::walkFunction(const FunctionDecl& decl)
+    void AstWalker::walkFunction(FunctionDecl& decl)
     {
-        for (const auto& param : decl.params)
+        for (auto& param : decl.params)
         {
             walk(param.type);
             if (param.defaultValue) walk(*param.defaultValue);
@@ -43,23 +43,23 @@ namespace ionsl
         if (decl.body) walkBlock(*decl.body);
     }
 
-    void AstWalker::walkVar(const VarDecl& decl)
+    void AstWalker::walkVar(VarDecl& decl)
     {
         walk(decl.type);
         if (decl.initializer) walk(*decl.initializer);
     }
 
-    void AstWalker::walkInterface(const InterfaceDecl& decl)
+    void AstWalker::walkInterface(InterfaceDecl& decl)
     {
-        for (const auto& method : decl.methods)
+        for (auto& method : decl.methods)
             walkFunction(method.decl);
     }
 
-    void AstWalker::walk(const StmtNode& stmt)
+    void AstWalker::walk(StmtNode& stmt)
     {
         if (onStmt) onStmt(stmt);
 
-        std::visit([this]<typename T0>(const T0& s)
+        std::visit([this]<typename T0>(T0& s)
         {
             using T = std::decay_t<T0>;
             if constexpr (std::is_same_v<T, DeclStmt>)  walk(s.decl);
@@ -72,24 +72,24 @@ namespace ionsl
         }, stmt.stmt);
     }
 
-    void AstWalker::walkBlock(const BlockStmt& stmt)
+    void AstWalker::walkBlock(BlockStmt& stmt)
     {
-        for (const auto& s : stmt.statements) walk(s);
+        for (auto& s : stmt.statements) walk(s);
     }
 
-    void AstWalker::walkIf(const IfStmt& stmt)
+    void AstWalker::walkIf(IfStmt& stmt)
     {
         walk(stmt.condition);
         walkBlock(stmt.thenBranch);
         if (stmt.elseBranch) walkBlock(*stmt.elseBranch);
     }
 
-    void AstWalker::walkWhile(const WhileStmt& stmt)
+    void AstWalker::walkWhile(WhileStmt& stmt)
     {
         walk(stmt.condition); walkBlock(stmt.body);
     }
 
-    void AstWalker::walkFor(const ForStmt& stmt)
+    void AstWalker::walkFor(ForStmt& stmt)
     {
         walk(*stmt.init);
         walk(stmt.condition);
@@ -97,16 +97,16 @@ namespace ionsl
         walkBlock(stmt.body);
     }
 
-    void AstWalker::walkReturn(const ReturnStmt& stmt)
+    void AstWalker::walkReturn(ReturnStmt& stmt)
     {
         if (stmt.expr) walk(*stmt.expr);
     }
 
-    void AstWalker::walk(const ExprNode& expr)
+    void AstWalker::walk(ExprNode& expr)
     {
         if (onExpr) onExpr(expr);
 
-        std::visit([this]<typename T0>(const T0& e)
+        std::visit([this]<typename T0>(T0& e)
         {
             using T = std::decay_t<T0>;
             if constexpr (std::is_same_v<T, BinaryExpr>)      walkBinary(e);
@@ -118,37 +118,37 @@ namespace ionsl
         }, expr.expr);
     }
 
-    void AstWalker::walkBinary(const BinaryExpr& expr)
+    void AstWalker::walkBinary(BinaryExpr& expr)
     {
         walk(*expr.left); walk(*expr.right);
     }
 
-    void AstWalker::walkUnary(const UnaryExpr& expr)
+    void AstWalker::walkUnary(UnaryExpr& expr)
     {
         walk(*expr.operand);
     }
 
-    void AstWalker::walkFieldAccess(const FieldAccessExpr& expr)
+    void AstWalker::walkFieldAccess(FieldAccessExpr& expr)
     {
         walk(*expr.object);
     }
 
-    void AstWalker::walkFunctionCall(const FunctionCallExpr& expr)
+    void AstWalker::walkFunctionCall(FunctionCallExpr& expr)
     {
         walk(*expr.callee);
-        for (const auto& arg : expr.args) walk(arg);
+        for (auto& arg : expr.args) walk(arg);
     }
 
-    void AstWalker::walkIndex(const IndexExpr& expr)
+    void AstWalker::walkIndex(IndexExpr& expr)
     {
         walk(*expr.array); walk(*expr.index);
     }
 
-    void AstWalker::walk(const Type& type)
+    void AstWalker::walk(Type& type)
     {
         if (onType) onType(type);
 
-        std::visit([this]<typename T0>(const T0& t)
+        std::visit([this]<typename T0>(T0& t)
         {
             using T = std::decay_t<T0>;
             if constexpr (std::is_same_v<T, ArrayType>)

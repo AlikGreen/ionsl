@@ -2,6 +2,7 @@
 #include <set>
 
 #include "ast.h"
+#include "declTable.h"
 #include "module.h"
 
 namespace ionsl
@@ -35,8 +36,9 @@ private:
 
     std::vector<DeclNode> m_ast;
 
-    std::unordered_map<std::string, StructType> m_structs;
-    std::unordered_map<std::string, InterfaceType> m_interfaces;
+    DeclTable m_declTable{};
+
+    std::unordered_map<std::string, Type> m_resolvedTypes;
     std::unordered_map<std::string, StructType> m_currentTypeBindings;
 
     void resolveDecl(DeclNode& decl);
@@ -44,6 +46,7 @@ private:
     void resolveVarDecl(VarDecl& decl);
     void resolveStructDecl(StructDecl& decl);
     void resolveInterfaceDecl(InterfaceDecl& decl);
+    void resolveTypeDefDecl(TypeDefDecl& decl);
 
     void resolveExpr(ExprNode& expr);
     void resolveTypeExpr(TypeExpr& expr);

@@ -38,6 +38,7 @@ private:
     FunctionDecl parseFunctionDecl();
     VarDecl parseVarDecl();
     InterfaceDecl parseInterfaceDecl();
+    TypeDefDecl parseTypeDefDecl();
 
     ExprNode parseExpr(uint32_t minBP = 0);
     ExprNode parseInfixExpr(ExprNode left, const Token &opToken);

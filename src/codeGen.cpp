@@ -11,8 +11,8 @@ namespace ionsl
 
         };
 
-    CodeGen::CodeGen(const Module &module)
-        : m_declNodes(module.decls)
+    CodeGen::CodeGen(Module &module)
+        : m_declTable(module.decls), m_declNodes(module.decls)
     {
     }
 
@@ -39,7 +39,7 @@ namespace ionsl
         return m_source.str();
     }
 
-    std::string CodeGen::generate(const Module &module)
+    std::string CodeGen::generate(Module &module)
     {
         CodeGen codeGen{module};
         return codeGen.generate();
@@ -133,6 +133,8 @@ namespace ionsl
 
     void CodeGen::genFunctionDecl(const FunctionDecl &decl)
     {
+        if (!decl.body.has_value()) return;
+
         genFunctionSignature(decl);
         newLine();
 
@@ -325,9 +327,9 @@ namespace ionsl
 
                 if constexpr (std::is_same_v<T, std::string>)
                     m_source << '"' << literal << '"';
-                else if constexpr (std::is_same_v<T, int64_t>)
-                    m_source << literal;
-                else if constexpr (std::is_same_v<T, double>)
+                else if constexpr (std::is_same_v<T, IntegerLiteral>)
+                    genIntegerLiteral(literal);
+                else if constexpr (std::is_same_v<T, FloatLiteral>)
                     genFloatLiteral(literal);
                 else if constexpr (std::is_same_v<T, bool>)
                     m_source << literal;
@@ -336,16 +338,25 @@ namespace ionsl
         );
     }
 
-    void CodeGen::genFloatLiteral(double value)
+    void CodeGen::genFloatLiteral(const FloatLiteral literal)
     {
+        // TODO Ignores suffix for now
         std::ostringstream oss;
-        oss << value;
+        oss << literal.value;
         std::string s = oss.str();
 
         if (s.find_first_of(".eEnN") == std::string::npos)
             s += ".0";
 
         m_source << s;
+    }
+
+    void CodeGen::genIntegerLiteral(const IntegerLiteral literal)
+    {
+        // TODO fully handle suffixes
+        m_source << literal.value;
+        if (literal.suffix == IntegerSuffix::Unsigned)
+            m_source << 'u';
     }
 
     void CodeGen::genStmt(const StmtNode &stmt)
@@ -570,7 +581,7 @@ namespace ionsl
 
     void CodeGen::genStructType(const StructType &type)
     {
-        m_source << type.decl->name;
+        m_source << std::get<StructDecl>(m_declTable.get(type.declId)->decl).name;
     }
 
     void CodeGen::genMatrixType(const MatrixType &type)

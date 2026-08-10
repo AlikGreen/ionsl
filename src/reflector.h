@@ -2,6 +2,7 @@
 #include <vector>
 
 #include "ast.h"
+#include "declTable.h"
 #include "module.h"
 
 namespace ionsl
@@ -136,11 +137,12 @@ namespace refl
 class Reflector
 {
 public:
-    explicit Reflector(const Module &module);
+    explicit Reflector(Module &module);
     refl::Data reflect();
 
-    static refl::Data reflect(const Module &module);
+    static refl::Data reflect(Module &module);
 private:
+    DeclTable m_declTable{};
     const std::vector<DeclNode>& m_ast;
     refl::Data m_reflection;
 
