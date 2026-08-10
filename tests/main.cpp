@@ -1,6 +1,7 @@
 #include <chrono>
 #include <fstream>
-#include <print>
+#include <iostream>
+#include <string>
 
 #include <ionsl/ionsl.h>
 
@@ -33,23 +34,22 @@ bool saveFile(const std::string& path, const std::string& contents)
 void printDiagnostics(const std::vector<ionsl::Diagnostic>& diags)
 {
     for (const auto& diag : diags)
-        std::println("{} at line {} column {}: {}",
-            diag.severity == ionsl::Severity::Error ? "error" : "warning",
-            diag.sourceSpan.startLoc.line, diag.sourceSpan.startLoc.column, diag.message);
+        std::cout << (diag.severity == ionsl::Severity::Error ? "error" : "warning") << " at line " <<
+            diag.sourceSpan.startLoc.line << " column " << diag.sourceSpan.startLoc.column << ":" << diag.message << std::endl;
 }
 
 // Loads + compiles a single standalone shader file and reports whether it succeeded.
 // Returns the compiled module on success so callers that need to link/generate can reuse it.
 std::optional<ionsl::Module> testShaderFile(const std::string& path)
 {
-    std::println("--- {} ---", path);
+    std::cout << "--- " << path << " ---" << std::endl;
 
     const std::string startPath = R"(C:\Users\alikg\CLionProjects\ionsl\tests\)";
 
     auto source = loadFile(startPath + path);
     if (!source)
     {
-        std::println("could not read file: {}", path);
+        std::cout << "could not read file: " << path << std::endl;
         return std::nullopt;
     }
 
@@ -58,11 +58,11 @@ std::optional<ionsl::Module> testShaderFile(const std::string& path)
 
     if (!module.diagnostics.empty())
     {
-        std::println("FAILED\n");
+        std::cout << "FAILED\n";
         return std::nullopt;
     }
 
-    std::println("OK ({} top-level decls)\n", module.decls.size());
+    std::cout << "OK ({} top-level decls)\n" << module.decls.size() << std::endl;
     return module;
 }
 
@@ -92,11 +92,11 @@ int main()
 
     ionsl::SpecializationRequest spec{};
     spec.genericFunction = genericModule->findFunctionByName("fragmentMain");
-    spec.bindings["M"] = ionsl::StructType{ .decl = genericModule->findStructByName("RustyMetal") };
+    spec.bindings["M"] = ionsl::StructType{ .declId = genericModule->findDeclIdByName("RustyMetal") };
 
-    if (!spec.genericFunction || !spec.bindings["M"].decl)
+    if (!spec.genericFunction || spec.bindings["M"].declId == -1)
     {
-        std::println("could not find fragmentMain or RustyMetal for specialization");
+        std::cout << "could not find fragmentMain or RustyMetal for specialization\n";
         return 1;
     }
 
@@ -108,26 +108,26 @@ int main()
     printDiagnostics(linked.diagnostics);
     if (!linked.diagnostics.empty())
     {
-        std::println("link FAILED\n");
+        std::cout << "link FAILED\n";
         return 1;
     }
 
     auto reflection = ionsl::Compiler::reflect(linked);
 
-    std::println("--- reflection ---");
+    std::cout << "--- reflection ---\n";
     for (const auto& ep : reflection.entryPoints)
-        std::println("entry point: {}", ep.name);
+        std::cout << "entry point: " << ep.name;
     for (const auto& res : reflection.resources)
-        std::println("resource: {}", res.name);
+        std::cout << "resource: " << res.name;
 
     if (reflection.entryPoints.empty())
     {
-        std::println("no entry points found after linking");
+        std::cout << "no entry points found after linking\n";
         return 1;
     }
 
     auto code = ionsl::Compiler::generate(linked, reflection.entryPoints.at(0).name);
-    std::println("\n--- generated HLSL ---\n{}", code);
+    std::cout << "\n--- generated HLSL ---\n" << code;
 
     return 0;
 }

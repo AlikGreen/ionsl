@@ -1,4 +1,5 @@
 #pragma once
+#include <atomic>
 #include <memory>
 #include <string>
 #include <variant>
@@ -9,6 +10,10 @@
 
 namespace ionsl
 {
+using DeclId = uint64_t;
+
+DeclId nextDeclId();
+
 enum class IntegerSuffix { None, Unsigned, Long };
 enum class FloatSuffix   { None, Half, Explicit };
 
@@ -138,6 +143,12 @@ struct InterfaceDecl
     std::vector<Attribute> attributes;
 };
 
+struct TypeDefDecl
+{
+    std::string name;
+    Type type;
+};
+
 enum class VarModifier
 {
     None, Mutable
@@ -158,7 +169,8 @@ using Decl = std::variant<
     FunctionDecl,
     VarDecl,
     StructDecl,
-    InterfaceDecl
+    InterfaceDecl,
+    TypeDefDecl
 >;
 
 
@@ -167,6 +179,7 @@ struct DeclNode
     std::vector<Trivia> trivia;
     Decl decl;
     SourceSpan span;
+    DeclId id = nextDeclId();
 };
 
 struct IfStmt

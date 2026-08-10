@@ -2,6 +2,8 @@
 
 #include <utility>
 
+#include "astWalker.h"
+
 namespace ionsl
 {
     Resolver::Resolver(ResolveDesc desc)
@@ -11,29 +13,20 @@ namespace ionsl
 
     Module Resolver::resolve()
     {
-        m_ast = m_desc.modules.at(0).decls;
+        m_ast.clear();
 
-        for(size_t i = 1; i < m_desc.modules.size(); i++)
+        for (const auto & module : m_desc.modules)
         {
-            for(const auto& decl : m_desc.modules.at(i).decls)
-            {
+            for (auto& decl : module.decls)
                 m_ast.push_back(decl);
-            }
         }
 
-        for(auto& decl : m_ast)
-        {
-            if(const auto struc = std::get_if<StructDecl>(&decl.decl))
-                m_structs[struc->name] = StructType { struc };
-            if(const auto interface = std::get_if<InterfaceDecl>(&decl.decl))
-                m_interfaces[interface->name] = InterfaceType { interface };
-        }
+        m_declTable = DeclTable(m_ast);
 
         for(auto& decl : m_ast)
         {
             resolveDecl(decl);
         }
-
 
         return {m_desc.modules.at(0).path, std::move(m_ast), {}};
     }
@@ -59,6 +52,8 @@ namespace ionsl
                     resolveVarDecl(d);
                 else if constexpr (std::is_same_v<T, InterfaceDecl>)
                     resolveInterfaceDecl(d);
+                else if constexpr (std::is_same_v<T, TypeDefDecl>)
+                    resolveTypeDefDecl(d);
             },
             decl.decl
         );
@@ -112,6 +107,11 @@ namespace ionsl
         {
             resolveFunctionDecl(method.decl);
         }
+    }
+
+    void Resolver::resolveTypeDefDecl(TypeDefDecl &decl)
+    {
+        resolveType(decl.type);
     }
 
     void Resolver::resolveExpr(ExprNode &expr)
@@ -201,17 +201,13 @@ namespace ionsl
 
             return TypeExpr { .type = Type {  .kind = type } };
         }
-        if(m_structs.contains(expr.name))
+        if(m_resolvedTypes.contains(expr.name))
         {
-            return TypeExpr { .type = Type {  .kind = m_structs.at(expr.name) } };
+            return TypeExpr { .type = m_resolvedTypes.at(expr.name) };
         }
         if(m_currentTypeBindings.contains(expr.name))
         {
             return TypeExpr { .type = Type {  .kind = m_currentTypeBindings.at(expr.name) } };
-        }
-        if(m_interfaces.contains(expr.name))
-        {
-            return TypeExpr { .type = Type {  .kind = m_interfaces.at(expr.name) } };
         }
         if(kResourceTypeNames.contains(expr.name) && !expr.genericArgs.empty())
         {
@@ -295,14 +291,8 @@ namespace ionsl
 
                 if constexpr (std::is_same_v<T, CustomType>)
                 {
-                    if(const auto it = m_structs.find(type.name.name()); it != m_structs.end())
-                    {
-                        return Type{
-                            .trivia = original.trivia,
-                            .span = original.span,
-                            .kind = it->second,
-                        };
-                    }
+                    if (const auto it = m_resolvedTypes.find(type.name.name()); it != m_resolvedTypes.end())
+                        return it->second;
 
                     if(const auto it = m_currentTypeBindings.find(type.name.name()); it != m_currentTypeBindings.end())
                     {
@@ -313,13 +303,53 @@ namespace ionsl
                         };
                     }
 
-                    if(const auto it = m_interfaces.find(type.name.name()); it != m_interfaces.end())
+                    for (const auto& d : m_ast)
                     {
-                        return Type{
-                            .trivia = original.trivia,
-                            .span = original.span,
-                            .kind = it->second,
-                        };
+                        auto newType = std::visit(
+                        [&type, this, &original, d]<typename T1>(T1&& decl) -> std::optional<Type>
+                        {
+                            using DeclType = std::decay_t<T1>;
+                            if (decl.name != type.name.name())
+                                return std::nullopt;
+
+                            if constexpr (std::is_same_v<DeclType, StructDecl>)
+                            {
+                                StructType structType{};
+                                structType.declId = d.id;
+
+                                auto t = Type{
+                                    .trivia = original.trivia,
+                                    .span = original.span,
+                                    .kind = structType,
+                                };
+                                m_resolvedTypes[decl.name] = t;
+                                return t;
+                            }
+                            if constexpr (std::is_same_v<DeclType, InterfaceDecl>)
+                            {
+                                InterfaceType interfaceDecl{};
+                                interfaceDecl.declId = d.id;
+
+                                auto t = Type{
+                                    .trivia = original.trivia,
+                                    .span = original.span,
+                                    .kind = interfaceDecl,
+                                };
+                                m_resolvedTypes[decl.name] = t;
+                                return t;
+                            }
+                            if constexpr (std::is_same_v<DeclType, TypeDefDecl>)
+                            {
+                                auto t = resolveType(decl.type);
+                                m_resolvedTypes[decl.name] = t;
+                                return t;
+                            }
+
+                            return std::nullopt;
+                        }, d.decl);
+
+                        if (newType.has_value())
+                            return newType.value();
                     }
                 }
                 else if constexpr (std::is_same_v<T, ArrayType>)
@@ -337,7 +367,7 @@ namespace ionsl
                 }
                 else if constexpr (std::is_same_v<T, StructType>)
                 {
-                    for(auto& field : const_cast<StructDecl*>(type.decl)->fields) // TODO probably shouldn't do this
+                    for(auto& field : std::get<StructDecl>(m_declTable.get(type.declId)->decl).fields)
                     {
                         field.type = std::move(resolveType(field.type));
 
@@ -367,4 +397,5 @@ namespace ionsl
             original.kind
         );
     }
+
 }

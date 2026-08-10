@@ -38,7 +38,7 @@ namespace ionsl
         return generator.generate();
     }
 
-    refl::Data Compiler::reflect(const Module &module)
+    refl::Data Compiler::reflect(Module &module)
     {
         return Reflector::reflect(module);
     }

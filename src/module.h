@@ -13,6 +13,7 @@ public:
 
     const FunctionDecl* findFunctionByName(std::string_view name) const;
     const StructDecl* findStructByName(std::string_view name) const;
+    DeclId findDeclIdByName(std::string_view name) const;
 
     std::string path;
     std::vector<DeclNode> decls;

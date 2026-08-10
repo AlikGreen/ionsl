@@ -17,6 +17,6 @@ public:
     static Module compile(const std::string &source, const std::string &path);
     static Module link(const LinkDesc& desc);
     static std::string generate(const Module& linked, const std::string& epName);
-    static refl::Data reflect(const Module& module);
+    static refl::Data reflect(Module& module);
 };
 }

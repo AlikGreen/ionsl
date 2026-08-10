@@ -33,4 +33,20 @@ namespace ionsl
 
         return nullptr;
     }
+
+    DeclId Module::findDeclIdByName(std::string_view name) const
+    {
+        for(const auto & decl : decls)
+        {
+            const bool sameName = std::visit([name]<typename T0>(T0&& d) -> bool
+            {
+                return d.name == name;
+            }, decl.decl);
+
+            if (sameName)
+                return decl.id;
+        }
+
+        return -1;
+    }
 }

@@ -8,32 +8,32 @@ namespace ionsl
 class AstWalker
 {
 public:
-    std::function<void(const DeclNode&)> onDecl;
-    std::function<void(const StmtNode&)> onStmt;
-    std::function<void(const ExprNode&)> onExpr;
-    std::function<void(const Type&)> onType;
+    std::function<void(DeclNode&)> onDecl;
+    std::function<void(StmtNode&)> onStmt;
+    std::function<void(ExprNode&)> onExpr;
+    std::function<void(Type&)> onType;
 
-    void walk(const std::vector<DeclNode>& decls);
-    void walk(const DeclNode& decl);
-    void walk(const StmtNode& stmt);
-    void walk(const ExprNode& expr);
-    void walk(const Type& type);
+    void walk(std::vector<DeclNode>& decls);
+    void walk(DeclNode& decl);
+    void walk(StmtNode& stmt);
+    void walk(ExprNode& expr);
+    void walk(Type& type);
 private:
-    void walkStruct(const StructDecl& decl);
-    void walkFunction(const FunctionDecl& decl);
-    void walkVar(const VarDecl& decl);
-    void walkInterface(const InterfaceDecl& decl);
+    void walkStruct(StructDecl& decl);
+    void walkFunction(FunctionDecl& decl);
+    void walkVar(VarDecl& decl);
+    void walkInterface(InterfaceDecl& decl);
 
-    void walkBlock(const BlockStmt& stmt);
-    void walkIf(const IfStmt& stmt);
-    void walkWhile(const WhileStmt& stmt);
-    void walkFor(const ForStmt& stmt);
-    void walkReturn(const ReturnStmt& stmt);
+    void walkBlock(BlockStmt& stmt);
+    void walkIf(IfStmt& stmt);
+    void walkWhile(WhileStmt& stmt);
+    void walkFor(ForStmt& stmt);
+    void walkReturn(ReturnStmt& stmt);
 
-    void walkBinary(const BinaryExpr& expr);
-    void walkUnary(const UnaryExpr& expr);
-    void walkFieldAccess(const FieldAccessExpr& expr);
-    void walkFunctionCall(const FunctionCallExpr& expr);
-    void walkIndex(const IndexExpr& expr);
+    void walkBinary(BinaryExpr& expr);
+    void walkUnary(UnaryExpr& expr);
+    void walkFieldAccess(FieldAccessExpr& expr);
+    void walkFunctionCall(FunctionCallExpr& expr);
+    void walkIndex(IndexExpr& expr);
 };
 }

@@ -20,7 +20,7 @@ enum class TokenKind
     Percent, PercentEqual,
     KwStruct, KwTrue, KwFalse, KwElse, KwBreak, KwContinue,
     KwFunction, KwVar, KwIf, KwWhile, KwFor, KwReturn, KwMut,
-    KwInterface, LineComment, BlockComment,
+    KwInterface, KwType, LineComment, BlockComment,
     EndOfFile, Unknown
 };
 

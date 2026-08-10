@@ -2,7 +2,7 @@
 
 namespace ionsl
 {
-    Reflector::Reflector(const Module &module)
+    Reflector::Reflector(Module &module)
         : m_ast(module.decls)
     {
     }
@@ -17,7 +17,7 @@ namespace ionsl
         return m_reflection;
     }
 
-    refl::Data Reflector::reflect(const Module &module)
+    refl::Data Reflector::reflect(Module &module)
     {
         Reflector reflector{module};
         return reflector.reflect();
@@ -206,9 +206,9 @@ namespace ionsl
             }
             else if constexpr (std::is_same_v<T, StructType>)
             {
-                refl::StructLayout layout = reflectStructLayout(*kind.decl);
+                refl::StructLayout layout = reflectStructLayout(std::get<StructDecl>(m_declTable.get(kind.declId)->decl));
                 refl::TypeInfo info;
-                info.name = kind.decl->name;
+                info.name = std::get<StructDecl>(m_declTable.get(kind.declId)->decl).name;
                 info.sizeBytes = layout.sizeBytes;
                 info.setKind(refl::StructTypeInfo{ std::move(layout) });
                 return info;

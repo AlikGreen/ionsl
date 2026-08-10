@@ -1,6 +1,7 @@
 #pragma once
 #include <sstream>
 
+#include "declTable.h"
 #include "parser.h"
 
 namespace ionsl
@@ -8,11 +9,16 @@ namespace ionsl
 class CodeGen
 {
 public:
-    explicit CodeGen(const Module &module);
+    explicit CodeGen(Module &module);
     std::string generate();
 
-    static std::string generate(const Module& module);
+    static std::string generate(Module& module);
 private:
+    DeclTable m_declTable;
+    const std::vector<DeclNode>& m_declNodes;
+    std::ostringstream m_source;
+    uint32_t m_indent{};
+
     void genTrivia(const std::vector<Trivia> &trivias);
 
     void genDecl(const DeclNode& decl);
@@ -33,7 +39,8 @@ private:
     void genFunctionCallExpr(const FunctionCallExpr& expr);
     void genTypeExpr(const TypeExpr& expr);
     void genLiteralExpr(const Literal& expr);
-    void genFloatLiteral(double value);
+    void genFloatLiteral(FloatLiteral literal);
+    void genIntegerLiteral(IntegerLiteral literal);
 
     void genStmt(const StmtNode& stmt);
     void genBlockStmt(const BlockStmt& block);
@@ -61,9 +68,5 @@ private:
     static std::string opToString(UnaryOp op);
     static std::string resourceKindToString(ResourceBindingKind kind);
     static bool isPostfixOp(UnaryOp op);
-
-    const std::vector<DeclNode>& m_declNodes;
-    std::ostringstream m_source;
-    uint32_t m_indent{};
 };
 }

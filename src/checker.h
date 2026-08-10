@@ -1,6 +1,7 @@
 #pragma once
 #include <unordered_set>
 
+#include "declTable.h"
 #include "module.h"
 
 namespace ionsl
@@ -8,15 +9,16 @@ namespace ionsl
 class Checker
 {
 public:
-    explicit Checker(const Module &module);
+    explicit Checker(Module &module);
     std::vector<Diagnostic> check();
 
-    static std::vector<Diagnostic> check(const Module& module);
+    static std::vector<Diagnostic> check(Module& module);
 private:
     struct TopLevel{};
     using ScopeDeclType = std::variant<const FunctionDecl*, const BlockStmt*, const IfStmt*, const ForStmt*, const WhileStmt*, TopLevel>;
     struct Scope;
 
+    DeclTable m_declTable;
     const std::vector<DeclNode>& m_declNodes;
     std::vector<Diagnostic> m_diagnostics;
     std::vector<Scope> m_scopes;
