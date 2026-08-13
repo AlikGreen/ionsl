@@ -278,12 +278,14 @@ namespace ionsl
         return typeDef;
     }
 
-    ExprNode Parser::parseExpr(const uint32_t minBP)
+    ExprNode Parser::parseExpr(const uint32_t minBP, const std::unordered_set<TokenKind>& stopTokens)
     {
         auto lhs = parsePrefixExpr();
 
         while(true)
         {
+            if(stopTokens.contains(peek().kind))
+                break;
             auto bp = getBindingPower(peek().kind);
             if(!bp.has_value()) break;
 
@@ -428,7 +430,7 @@ namespace ionsl
 
             while (!match(TokenKind::RAngle))
             {
-                expr.genericArgs.push_back(parseType());
+                expr.genericArgs.push_back(parseExpr());
                 match(TokenKind::Comma);
             }
         }
@@ -714,7 +716,7 @@ namespace ionsl
 
     Type Parser::parseType()
     {
-        auto leadingTrivia = takePendingTrivia();
+        const auto leadingTrivia = takePendingTrivia();
         const Token startToken = peek();
 
         Type baseType = parseTypeName(startToken, leadingTrivia);
@@ -730,12 +732,9 @@ namespace ionsl
         const std::string_view baseName = startToken.text;
         const bool hasGenericArgs = match(TokenKind::LAngle);
 
-        if (const auto it = kResourceTypeNames.find(baseName); it != kResourceTypeNames.end())
-            return parseResourceType(it->second, startToken, leadingTrivia, hasGenericArgs);
-
-        if (hasGenericArgs && isVectorTypeName(baseName))
+        if (hasGenericArgs && baseName == "vector")
             return parseVectorType(startToken, leadingTrivia);
-        if (hasGenericArgs && isMatrixTypeName(baseName))
+        if (hasGenericArgs && baseName == "matrix")
             return parseMatrixType(startToken, leadingTrivia);
 
         if (!hasGenericArgs)
@@ -764,13 +763,12 @@ namespace ionsl
 
     Type Parser::parseVectorType(const Token &startToken, const std::vector<Trivia> &leadingTrivia)
     {
-        const Type innerType = parseType();
-        const PrimitiveKind innerPrimitive = std::get<PrimitiveType>(innerType.kind).kind;
-        consume(TokenKind::RAngle);
-
         VectorType vecType{};
-        vecType.scalarType = innerPrimitive;
-        vecType.dimension = startToken.text[3] - '0';
+        vecType.scalarType = Box<ExprNode>::make(std::move(parseExpr()));
+        consume(TokenKind::Comma);
+        vecType.dimension = Box<ExprNode>::make(std::move(parseExpr(0, { TokenKind::RAngle })));
+
+        match(TokenKind::RAngle);
 
         return Type{
             .trivia = leadingTrivia,
@@ -781,42 +779,19 @@ namespace ionsl
 
     Type Parser::parseMatrixType(const Token &startToken, const std::vector<Trivia> &leadingTrivia)
     {
-        const Type innerType = parseType();
-        const PrimitiveKind innerPrimitive = std::get<PrimitiveType>(innerType.kind).kind;
-        match(TokenKind::RAngle);
-
         MatrixType matType{};
-        matType.scalarType = innerPrimitive;
-        matType.rows = startToken.text[3] - '0';
-        matType.columns = startToken.text[5] - '0';
+        matType.scalarType = Box<ExprNode>::make(std::move(parseExpr()));
+        consume(TokenKind::Comma);
+        matType.rows = Box<ExprNode>::make(std::move(parseExpr()));
+        consume(TokenKind::Comma);
+        matType.columns = Box<ExprNode>::make(std::move(parseExpr(0, { TokenKind::RAngle })));
+
+        match(TokenKind::RAngle);
 
         return Type{
             .trivia = leadingTrivia,
             .span = SourceSpan::between(startToken.span, previous().span),
             .kind = matType,
-        };
-    }
-
-    Type Parser::parseResourceType(const ResourceBindingKind resourceKind, const Token &startToken,
-                                   const std::vector<Trivia> &leadingTrivia, const bool hasGenericArgs)
-    {
-        Box<Type> elementType{};
-
-        if(hasGenericArgs)
-        {
-            elementType = Box<Type>::make(parseType());
-            match(TokenKind::RAngle);
-        }
-
-        ResourceBindingType resourceType;
-
-        resourceType.kind = resourceKind;
-        resourceType.elementType = std::move(elementType);
-
-        return Type{
-            .trivia = leadingTrivia,
-            .span = SourceSpan::between(startToken.span, previous().span),
-            .kind = std::move(resourceType),
         };
     }
 
@@ -837,67 +812,6 @@ namespace ionsl
         CustomType customType;
 
         customType.name = QualifiedName{{std::string(baseName)}},
-        customType.genericArgs = std::move(genericArgs);
-
-        return Type{
-            .trivia = leadingTrivia,
-            .span = SourceSpan::between(startToken.span, previous().span),
-            .kind = std::move(customType),
-        };
-    }
-
-    Type Parser::parseGenericTypeArgs(const Token &startToken, const std::vector<Trivia>& leadingTrivia)
-    {
-        Type innerType = parseType();
-
-        if(startToken.text.starts_with("vec") && startToken.text.size() == 4)
-        {
-            // TODO add validation to ensure is primitive type
-            const PrimitiveKind innerPrimitive = std::get<PrimitiveType>(innerType.kind).kind;
-            match(TokenKind::RAngle);
-
-            VectorType vecType{};
-            vecType.scalarType = innerPrimitive;
-            vecType.dimension = startToken.text[3] - '0';
-
-            return Type{
-                .trivia = leadingTrivia,
-                .span = SourceSpan::between(startToken.span, previous().span),
-                .kind = vecType,
-            };
-        }
-
-        if(startToken.text.starts_with("mat") && startToken.text.size() == 6)
-        {
-            // TODO add validation to ensure is primitive type
-            const PrimitiveKind innerPrimitive = std::get<PrimitiveType>(innerType.kind).kind;
-            consume(TokenKind::RAngle);
-
-            MatrixType matType{};
-            matType.scalarType = innerPrimitive;
-            matType.rows = startToken.text[3] - '0';
-            matType.columns = startToken.text[5] - '0';
-
-            return Type{
-                .trivia = leadingTrivia,
-                .span = SourceSpan::between(startToken.span, previous().span),
-                .kind = matType,
-            };
-        }
-
-        std::vector<Box<Type>> genericArgs{};
-        genericArgs.push_back(Box<Type>::make(std::move(innerType)));
-
-        do
-        {
-            genericArgs.push_back(Box<Type>::make(std::move(parseType())));
-        } while (match(TokenKind::Comma));
-
-        consume(TokenKind::RAngle);
-
-        CustomType customType;
-
-        customType.name = QualifiedName{{std::string(startToken.text)}},
         customType.genericArgs = std::move(genericArgs);
 
         return Type{

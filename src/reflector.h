@@ -161,10 +161,8 @@ private:
     static bool hasSystemValueAttribute(const std::vector<Attribute>& attrs);
 
     static refl::ScalarKind toScalarKind(PrimitiveKind kind);
-    static refl::ResourceKind toResourceKind(ResourceBindingKind kind);
 
     static std::string primitiveDisplayName(PrimitiveKind kind);
-    static std::string resourceKindName(ResourceBindingKind kind);
 
     static uint32_t typeSize(refl::TypeInfo type);
     static uint32_t scalarSize(refl::ScalarKind kind);

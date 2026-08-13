@@ -4,6 +4,7 @@
 #include "ast.h"
 #include "declTable.h"
 #include "module.h"
+#include "typeSystem.h"
 
 namespace ionsl
 {
@@ -37,25 +38,32 @@ private:
     std::vector<DeclNode> m_ast;
 
     DeclTable m_declTable{};
+    TypeSystem m_typeSystem{};
 
     std::unordered_map<std::string, Type> m_resolvedTypes;
     std::unordered_map<std::string, StructType> m_currentTypeBindings;
 
     void resolveDecl(DeclNode& decl);
+
+    void resolveDeclSignature(DeclNode &decl);
+
     void resolveFunctionDecl(FunctionDecl& decl);
     void resolveVarDecl(VarDecl& decl);
     void resolveStructDecl(StructDecl& decl);
     void resolveInterfaceDecl(InterfaceDecl& decl);
     void resolveTypeDefDecl(TypeDefDecl& decl);
 
-    void resolveExpr(ExprNode& expr);
-    void resolveTypeExpr(TypeExpr& expr);
-    void resolveBinaryExpr(BinaryExpr& expr);
-    void resolveUnaryExpr(UnaryExpr& expr);
-    void resolveIndexExpr(IndexExpr& expr);
-    void resolveFunctionCallExpr(FunctionCallExpr& expr);
-    void resolveFieldAccessExpr(FieldAccessExpr& expr);
-    Expr resolveIdentifierExpr(IdentifierExpr expr);
+    void resolveFunctionDeclSignature(FunctionDecl& decl);
+    void resolveTypeDefDeclSignature(TypeDefDecl& decl);
+
+    Type resolveExpr(ExprNode& expr);
+    Type resolveTypeExpr(TypeExpr& expr);
+    Type resolveBinaryExpr(BinaryExpr& expr);
+    Type resolveUnaryExpr(UnaryExpr& expr);
+    Type resolveIndexExpr(IndexExpr& expr);
+    Type resolveFunctionCallExpr(FunctionCallExpr& expr);
+    Type resolveFieldAccessExpr(FieldAccessExpr& expr);
+    Type resolveIdentifierExpr(IdentifierExpr& expr, ExprNode& node);
 
     void resolveStmt(StmtNode& stmt);
     void resolveBlockStmt(BlockStmt& block);

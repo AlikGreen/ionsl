@@ -180,7 +180,7 @@ namespace ionsl
         Token token{};
         token.kind = kind;
         token.text = m_source.substr(startLoc.offset, m_loc.offset - startLoc.offset);
-        token.span = { startLoc, m_loc };
+        token.span = SourceSpan{ startLoc, m_loc };
         return token;
     }
 

@@ -1,4 +1,5 @@
 #pragma once
+#include <ranges>
 #include <vector>
 
 #include "ast.h"
@@ -21,6 +22,22 @@ public:
             return it->second;
 
         return nullptr;
+    }
+
+    std::vector<FunctionDecl*> getFunctionsByName(const std::string &name)
+    {
+        std::vector<FunctionDecl*> funcs;
+
+        for (const auto decl: m_byId | std::views::values)
+        {
+            if (auto funcDecl = std::get_if<FunctionDecl>(&decl->decl))
+            {
+                if (funcDecl->name == name)
+                    funcs.push_back(funcDecl);
+            }
+        }
+
+        return funcs;
     }
 private:
     std::unordered_map<DeclId, DeclNode*> m_byId;

@@ -156,10 +156,7 @@ namespace ionsl
                 walk(*t.elementType);
                 if (t.size) walk(**t.size);
             }
-            else if constexpr (std::is_same_v<T, ResourceBindingType>)
-            {
-                if (t.elementType) walk(*t.elementType);
-            }
+            // TODO all nested types
         }, type.kind);
     }
 }

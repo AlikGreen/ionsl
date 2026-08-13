@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "box.h"
 #include "lexer.h"
 
 namespace ionsl
@@ -102,41 +103,17 @@ struct ArrayType
     std::optional<Box<ExprNode>> size;
 };
 
-enum class ResourceBindingKind
-{
-    ConstantBuffer, StructuredBuffer, RWStructuredBuffer,
-    RWByteAddressBuffer, Texture2D, RWTexture2D,
-    SamplerState, PushConstant
-};
-
-static const std::unordered_map<std::string_view, ResourceBindingKind> kResourceTypeNames = {
-    { "ConstantBuffer", ResourceBindingKind::ConstantBuffer },
-    { "StructuredBuffer", ResourceBindingKind::StructuredBuffer },
-    { "RWStructuredBuffer", ResourceBindingKind::RWStructuredBuffer },
-    { "RWByteAddressBuffer", ResourceBindingKind::RWByteAddressBuffer },
-    { "Texture2D", ResourceBindingKind::Texture2D },
-    { "RWTexture2D", ResourceBindingKind::RWTexture2D },
-    { "SamplerState", ResourceBindingKind::SamplerState },
-    { "PushConstant", ResourceBindingKind::PushConstant },
-};
-
-struct ResourceBindingType
-{
-    ResourceBindingKind kind;
-    Box<Type> elementType;
-};
-
 struct VectorType
 {
-    PrimitiveKind scalarType;
-    uint8_t dimension;
+    Box<ExprNode> scalarType;
+    Box<ExprNode> dimension;
 };
 
 struct MatrixType
 {
-    PrimitiveKind scalarType;
-    uint8_t rows;
-    uint8_t columns;
+    Box<ExprNode> scalarType;
+    Box<ExprNode> rows;
+    Box<ExprNode> columns;
 };
 
 struct CustomType
@@ -159,15 +136,19 @@ struct InterfaceType
     DeclId declId;
 };
 
+struct AutoType { };
+struct InvalidType { };
+
 using TypeKind = std::variant<
     PrimitiveType,
     CustomType,
     VectorType,
     MatrixType,
     ArrayType,
-    ResourceBindingType,
     StructType,
-    InterfaceType
+    InterfaceType,
+    AutoType,
+    InvalidType
 >;
 
 struct Type
@@ -175,6 +156,8 @@ struct Type
     std::vector<Trivia> trivia;
     SourceSpan span;
     TypeKind kind;
+
+    static Type invalid();
 };
 
 inline Box<PrimitiveKind> nameToPrimitiveKind(const std::string_view name)
@@ -183,15 +166,5 @@ inline Box<PrimitiveKind> nameToPrimitiveKind(const std::string_view name)
         return Box<PrimitiveKind>::make(it->second);
 
     return nullptr;
-}
-
-inline bool isVectorTypeName(const std::string_view baseName)
-{
-    return baseName.starts_with("vec") && baseName.size() == 4;
-}
-
-inline bool isMatrixTypeName(const std::string_view baseName)
-{
-    return baseName.starts_with("mat") && baseName.size() == 6;
 }
 }
