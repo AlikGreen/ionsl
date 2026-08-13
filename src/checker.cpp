@@ -141,8 +141,8 @@ namespace ionsl
         if(!isDeclared(expr.name))
             m_diagnostics.emplace_back(std::format("undeclared identifier '{}'", expr.name), span, Severity::Error);
 
-        for(const auto& type : expr.genericArgs)
-            checkType(type);
+        for(const auto& e : expr.genericArgs)
+            checkExpr(e); // TODO check that it is const expr
     }
 
     void Checker::checkIndexExpr(const IndexExpr &expr)
@@ -295,8 +295,6 @@ namespace ionsl
                             checkExpr(*field.initializer);
                     }
                 }
-                else if constexpr (std::is_same_v<T, ResourceBindingType>)
-                    checkType(*type.elementType);
             },
             t.kind
         );

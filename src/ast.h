@@ -38,7 +38,7 @@ struct FunctionCallExpr { Box<ExprNode> callee; std::vector<ExprNode> args; };
 struct IndexExpr { Box<ExprNode> array; Box<ExprNode> index; };
 struct TypeExpr { Type type; };
 
-struct IdentifierExpr{ std::string name; std::vector<Type> genericArgs; };
+struct IdentifierExpr{ std::string name; std::vector<ExprNode> genericArgs; };
 struct ErrorExpr{ };
 
 using Expr = std::variant<

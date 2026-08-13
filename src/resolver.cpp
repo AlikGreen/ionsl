@@ -21,6 +21,11 @@ namespace ionsl
                 m_ast.push_back(decl);
         }
 
+        for (auto& decl : m_ast)
+        {
+            resolveDeclSignature(decl);
+        }
+
         m_declTable = DeclTable(m_ast);
 
         for(auto& decl : m_ast)
@@ -59,23 +64,25 @@ namespace ionsl
         );
     }
 
+    void Resolver::resolveDeclSignature(DeclNode &decl)
+    {
+        // maybe need to resolve more signatures
+        // might need to add ones later like operator
+        // and templated structs/interfaces
+        std::visit(
+            [this]<typename T0>(T0&& d)
+            {
+                using T = std::decay_t<T0>;
+
+                if constexpr (std::is_same_v<T, FunctionDecl>)
+                    resolveFunctionDeclSignature(d);
+            },
+            decl.decl
+        );
+    }
+
     void Resolver::resolveFunctionDecl(FunctionDecl &decl)
     {
-        m_currentTypeBindings.clear();
-        for(const auto& spec : m_desc.specializations)
-        {
-            // TODO match whole signature
-            if(spec.genericFunction->name == decl.name)
-                m_currentTypeBindings = spec.bindings;
-        }
-
-        decl.returnType = resolveType(std::move(decl.returnType));
-
-        for(auto& param : decl.params)
-        {
-            param.type = resolveType(std::move(param.type));
-        }
-
         if(decl.body.has_value())
             resolveBlockStmt(decl.body.value());
     }
@@ -114,111 +121,145 @@ namespace ionsl
         resolveType(decl.type);
     }
 
-    void Resolver::resolveExpr(ExprNode &expr)
+    void Resolver::resolveFunctionDeclSignature(FunctionDecl &decl)
     {
-        std::visit(
-            [this, &expr]<typename T0>(T0&& e)
+        m_currentTypeBindings.clear();
+        for(const auto& spec : m_desc.specializations)
+        {
+            // TODO match whole signature (maybe not actually needed for specialization)
+            if(spec.genericFunction->name == decl.name)
+                m_currentTypeBindings = spec.bindings;
+        }
+
+        decl.returnType = resolveType(std::move(decl.returnType));
+
+        for(auto& param : decl.params)
+        {
+            param.type = resolveType(std::move(param.type));
+        }
+    }
+
+    Type Resolver::resolveExpr(ExprNode &expr)
+    {
+        return std::visit(
+            [this, &expr]<typename T0>(T0&& e) -> Type
             {
                 using T = std::decay_t<T0>;
 
                 if constexpr (std::is_same_v<T, BinaryExpr>)
-                    resolveBinaryExpr(e);
+                    return resolveBinaryExpr(e);
                 else if constexpr (std::is_same_v<T, IdentifierExpr>)
-                    expr.expr = resolveIdentifierExpr(std::move(e));
+                    return resolveIdentifierExpr(e, expr);
                 else if constexpr (std::is_same_v<T, IndexExpr>)
-                    resolveIndexExpr(e);
+                    return resolveIndexExpr(e);
                 else if constexpr (std::is_same_v<T, UnaryExpr>)
-                    resolveUnaryExpr(e);
+                    return resolveUnaryExpr(e);
                 else if constexpr (std::is_same_v<T, FieldAccessExpr>)
-                    resolveFieldAccessExpr(e);
+                    return resolveFieldAccessExpr(e);
                 else if constexpr (std::is_same_v<T, FunctionCallExpr>)
-                    resolveFunctionCallExpr(e);
+                    return resolveFunctionCallExpr(e);
+
+                return Type{ .kind = PrimitiveType { .kind = PrimitiveKind::Unknown }};
             },
             expr.expr
         );
     }
 
-    void Resolver::resolveTypeExpr(TypeExpr &expr)
+    Type Resolver::resolveTypeExpr(TypeExpr &expr)
     {
         expr.type = resolveType(std::move(expr.type));
+        return expr.type;
     }
 
-    void Resolver::resolveBinaryExpr(BinaryExpr &expr)
+    Type Resolver::resolveBinaryExpr(BinaryExpr &expr)
     {
-        resolveExpr(*expr.left);
-        resolveExpr(*expr.right);
+        auto leftType = resolveExpr(*expr.left);
+        auto rightType = resolveExpr(*expr.right);
+
+        auto ltrCost = m_typeSystem.getConversionCost(leftType, rightType);
+        auto rtlCost = m_typeSystem.getConversionCost(rightType, leftType);
+
+        if (!ltrCost.has_value() && !rtlCost.has_value())
+            return Type::invalid();
+
+        uint32_t rCost = ltrCost.has_value() ? ltrCost.value() : ~0u;
+        uint32_t lCost = rtlCost.has_value() ? ltrCost.value() : ~0u;
+
+        if (rCost < lCost)
+            return rightType;
+
+        return leftType;
     }
 
-    void Resolver::resolveUnaryExpr(UnaryExpr &expr)
+    Type Resolver::resolveUnaryExpr(UnaryExpr &expr)
     {
-        resolveExpr(*expr.operand);
+        return resolveExpr(*expr.operand);
     }
 
-    void Resolver::resolveIndexExpr(IndexExpr &expr)
+    Type Resolver::resolveIndexExpr(IndexExpr &expr)
     {
-        resolveExpr(*expr.array);
         resolveExpr(*expr.index);
+        return resolveExpr(*expr.array);
     }
 
-    void Resolver::resolveFunctionCallExpr(FunctionCallExpr &expr)
+    Type Resolver::resolveFunctionCallExpr(FunctionCallExpr &expr)
     {
-        resolveExpr(*expr.callee);
-
         for(auto& arg : expr.args)
             resolveExpr(arg);
+
+        return resolveExpr(*expr.callee);
     }
 
-    void Resolver::resolveFieldAccessExpr(FieldAccessExpr &expr)
+    Type Resolver::resolveFieldAccessExpr(FieldAccessExpr &expr)
     {
         resolveExpr(*expr.object);
+        // TODO get type from member
+        return Type { .kind = PrimitiveType { .kind = PrimitiveKind::Unknown }};
     }
 
-    Expr Resolver::resolveIdentifierExpr(IdentifierExpr expr)
+    Type Resolver::resolveIdentifierExpr(IdentifierExpr& expr, ExprNode& node)
     {
         if(const auto kind = nameToPrimitiveKind(expr.name))
         {
-            return TypeExpr { .type = Type {  .kind = PrimitiveType { *kind } } };
+            auto type = Type {  .kind = PrimitiveType { *kind } };
+            node.expr = TypeExpr { .type = type };
+            return type;
         }
-        if(isVectorTypeName(expr.name) && !expr.genericArgs.empty())
+        if(expr.name == "vector" && expr.genericArgs.size() == 2)
         {
-            const int dimensions = expr.name[3] - '0';
+            VectorType vecType{};
+            vecType.scalarType = Box<ExprNode>::make(std::move(expr.genericArgs[0]));
+            vecType.dimension = Box<ExprNode>::make(std::move(expr.genericArgs[1]));
 
-            VectorType type{};
-            type.dimension = dimensions;
-            type.scalarType = std::get<PrimitiveType>(expr.genericArgs[0].kind).kind;
-
-            return TypeExpr { .type = Type {  .kind = type } };
+            auto type = Type { .kind = vecType };
+            node.expr = TypeExpr { .type = type };
+            return type;
         }
-        if(isMatrixTypeName(expr.name) && !expr.genericArgs.empty())
+        if(expr.name == "matrix" && expr.genericArgs.size() == 3)
         {
-            const int rows = expr.name[3] - '0';
-            const int columns = expr.name[5] - '0';
+            MatrixType matType{};
+            matType.scalarType = Box<ExprNode>::make(std::move(expr.genericArgs[0]));
+            matType.rows = Box<ExprNode>::make(std::move(expr.genericArgs[1]));
+            matType.columns = Box<ExprNode>::make(std::move(expr.genericArgs[2]));
 
-            MatrixType type{};
-            type.rows = rows;
-            type.columns = columns;
-            type.scalarType = std::get<PrimitiveType>(expr.genericArgs[0].kind).kind;
-
-            return TypeExpr { .type = Type {  .kind = type } };
+            auto type = Type {  .kind = matType };
+            node.expr = TypeExpr { .type = type };
+            return type;
         }
         if(m_resolvedTypes.contains(expr.name))
         {
-            return TypeExpr { .type = m_resolvedTypes.at(expr.name) };
+            auto type = m_resolvedTypes.at(expr.name);
+            node.expr = TypeExpr { .type = type };
+            return type;
         }
         if(m_currentTypeBindings.contains(expr.name))
         {
-            return TypeExpr { .type = Type {  .kind = m_currentTypeBindings.at(expr.name) } };
-        }
-        if(kResourceTypeNames.contains(expr.name) && !expr.genericArgs.empty())
-        {
-            ResourceBindingType type{};
-            type.kind = kResourceTypeNames.at(expr.name);
-            type.elementType = Box<Type>::make(std::move(expr.genericArgs[0]));
-
-            return TypeExpr { .type = Type {  .kind = std::move(type) } };
+            auto type = Type {  .kind = m_currentTypeBindings.at(expr.name) };
+            node.expr = TypeExpr { .type = type };
+            return type;
         }
 
-        return std::move(expr);
+        return Type { .kind = PrimitiveType{ PrimitiveKind::Unknown } };
     }
 
     void Resolver::resolveStmt(StmtNode &stmt)
@@ -372,18 +413,10 @@ namespace ionsl
                         field.type = std::move(resolveType(field.type));
 
                         if(field.initializer)
-                            resolveExpr(*field.initializer);
+                        {
+                            auto exprType = resolveExpr(*field.initializer);
+                        }
                     }
-
-                    return Type {
-                        .trivia = original.trivia,
-                        .span = original.span,
-                        .kind = type,
-                    };
-                }
-                else if constexpr (std::is_same_v<T, ResourceBindingType>)
-                {
-                    type.elementType = Box<Type>::make(std::move(resolveType(*type.elementType)));
 
                     return Type {
                         .trivia = original.trivia,

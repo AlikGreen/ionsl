@@ -40,7 +40,7 @@ private:
     InterfaceDecl parseInterfaceDecl();
     TypeDefDecl parseTypeDefDecl();
 
-    ExprNode parseExpr(uint32_t minBP = 0);
+    ExprNode parseExpr(uint32_t minBP = 0, const std::unordered_set<TokenKind>& stopTokens = {});
     ExprNode parseInfixExpr(ExprNode left, const Token &opToken);
     ExprNode parsePrefixExpr();
     ExprNode parseIdentifierExpr();
@@ -69,10 +69,8 @@ private:
     Type parseArraySuffix(Type elementType, const Token &startToken);
     Type parseVectorType(const Token& startToken, const std::vector<Trivia>& leadingTrivia);
     Type parseMatrixType(const Token& startToken, const std::vector<Trivia>& leadingTrivia);
-    Type parseResourceType(ResourceBindingKind resourceKind, const Token& startToken, const std::vector<Trivia>& leadingTrivia, bool hasGenericArgs);
     Type parseCustomType(std::string_view baseName, const Token& startToken, const std::vector<Trivia>& leadingTrivia, bool hasGenericArgs);
 
-    Type parseGenericTypeArgs(const Token &startToken, const std::vector<Trivia> &leadingTrivia);
     static Box<PrimitiveKind> parsePrimitiveKind(std::string_view name);
     static std::optional<std::pair<uint32_t, uint32_t>> getBindingPower(TokenKind kind);
 

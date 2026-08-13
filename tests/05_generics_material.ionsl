@@ -58,7 +58,7 @@ fn buildSurfaceInput(input : VertexOutput) -> SurfaceInput
 [[shader("pixel")]]
 fn fragmentMain<M : Material>(
     input : VertexOutput,
-    materialParams : ConstantBuffer<M>
+    [[constant]] materialParams : M
 ) -> vec4f
 {
     var si : SurfaceInput = buildSurfaceInput(input);

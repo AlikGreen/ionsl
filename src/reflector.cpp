@@ -32,8 +32,8 @@ namespace ionsl
 
                 if constexpr (std::is_same_v<T, FunctionDecl>)
                     reflectFunctionDecl(d);
-                else if constexpr (std::is_same_v<T, VarDecl>)
-                    reflectVarDecl(d);
+                // else if constexpr (std::is_same_v<T, VarDecl>)
+                //     reflectVarDecl(d);
             },
         decl.decl
         );
@@ -138,18 +138,6 @@ namespace ionsl
         return layout.buffers.empty() ? std::nullopt : std::make_optional(std::move(layout));
     }
 
-    void Reflector::reflectVarDecl(const VarDecl &decl)
-    {
-        if(!std::holds_alternative<ResourceBindingType>(decl.type.kind)) return;
-        auto typeInfo = reflectType(decl.type);
-
-        refl::ResourceBinding binding{};
-        binding.name = decl.name;
-        binding.type = typeInfo;
-
-        m_reflection.resources.push_back(binding);
-    }
-
     refl::StructLayout Reflector::reflectStructLayout(const StructDecl& decl)
     {
         refl::StructLayout layout{};
@@ -192,16 +180,18 @@ namespace ionsl
             {
                 refl::TypeInfo info;
                 info.name = "vector";
-                info.sizeBytes = primitiveSize(kind.scalarType) * kind.dimension;
-                info.setKind(refl::VectorTypeInfo{ toScalarKind(kind.scalarType), kind.dimension });
+                // FIXME
+                // info.sizeBytes = primitiveSize(kind.scalarType) * kind.dimension;
+                // info.setKind(refl::VectorTypeInfo{ toScalarKind(kind.scalarType), kind.dimension });
                 return info;
             }
             else if constexpr (std::is_same_v<T, MatrixType>)
             {
                 refl::TypeInfo info;
                 info.name = "matrix";
-                info.sizeBytes = primitiveSize(kind.scalarType) * kind.rows * kind.columns;
-                info.setKind(refl::MatrixTypeInfo{ toScalarKind(kind.scalarType), kind.rows, kind.columns });
+                // FIXME
+                // info.sizeBytes = primitiveSize(kind.scalarType) * kind.rows * kind.columns;
+                // info.setKind(refl::MatrixTypeInfo{ toScalarKind(kind.scalarType), kind.rows, kind.columns });
                 return info;
             }
             else if constexpr (std::is_same_v<T, StructType>)
@@ -221,15 +211,6 @@ namespace ionsl
                 info.name = elem.name + "[]";
                 info.sizeBytes = count ? elem.sizeBytes * (*count) : 0;
                 info.setKind(refl::ArrayTypeInfo{ Box<refl::TypeInfo>::make(std::move(elem)), count });
-                return info;
-            }
-            else if constexpr (std::is_same_v<T, ResourceBindingType>)
-            {
-                refl::TypeInfo elem = reflectType(*kind.elementType);
-                refl::TypeInfo info;
-                info.name = resourceKindName(kind.kind);
-                info.sizeBytes = 0;
-                info.setKind(refl::ResourceTypeInfo{ toResourceKind(kind.kind), Box<refl::TypeInfo>::make(std::move(elem)) });
                 return info;
             }
 
@@ -312,30 +293,6 @@ namespace ionsl
         }
     }
 
-    refl::ResourceKind Reflector::toResourceKind(ResourceBindingKind kind)
-    {
-        switch (kind)
-        {
-            case ResourceBindingKind::ConstantBuffer:
-                return refl::ResourceKind::ConstantBuffer;
-            case ResourceBindingKind::PushConstant:
-                return refl::ResourceKind::PushConstant;
-            case ResourceBindingKind::SamplerState:
-                return refl::ResourceKind::SamplerState;
-            case ResourceBindingKind::StructuredBuffer:
-                return refl::ResourceKind::StructuredBuffer;
-            case ResourceBindingKind::Texture2D:
-                return refl::ResourceKind::Texture2D;
-            case ResourceBindingKind::RWStructuredBuffer:
-                return refl::ResourceKind::RWStructuredBuffer;
-            case ResourceBindingKind::RWTexture2D:
-                return refl::ResourceKind::RWTexture2D;
-            case ResourceBindingKind::RWByteAddressBuffer:
-                return refl::ResourceKind::RWByteAddressBuffer;
-            default:
-                return refl::ResourceKind::ConstantBuffer;
-        }
-    }
 
     std::string Reflector::primitiveDisplayName(PrimitiveKind kind)
     {
@@ -370,31 +327,6 @@ namespace ionsl
         }
     }
 
-    std::string Reflector::resourceKindName(ResourceBindingKind kind)
-    {
-        switch (kind)
-        {
-            case ResourceBindingKind::ConstantBuffer:
-                return "ConstantBuffer";
-            case ResourceBindingKind::PushConstant:
-                return "PushConstant";
-            case ResourceBindingKind::SamplerState:
-                return "SamplerState";
-            case ResourceBindingKind::StructuredBuffer:
-                return "StructuredBuffer";
-            case ResourceBindingKind::Texture2D:
-                return "Texture2D";
-            case ResourceBindingKind::RWStructuredBuffer:
-                return "RWStructuredBuffer";
-            case ResourceBindingKind::RWTexture2D:
-                return "RWTexture2D";
-            case ResourceBindingKind::RWByteAddressBuffer:
-                return "RWByteAddressBuffer";
-            default:
-                return "";
-        }
-    }
-
     uint32_t Reflector::typeSize(refl::TypeInfo type)
     {
         return std::visit([]<typename T0>(const T0& kind) -> uint32_t
@@ -420,10 +352,6 @@ namespace ionsl
             else if constexpr (std::is_same_v<T, ArrayType>)
             {
                 return typeSize(*kind.elementType) * (kind.count.has_value() ? kind.count.value() : 0);
-            }
-            else if constexpr (std::is_same_v<T, ResourceBindingType>)
-            {
-                return typeSize(*kind.elementType);
             }
 
             return {};

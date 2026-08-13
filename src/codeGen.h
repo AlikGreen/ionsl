@@ -19,6 +19,8 @@ private:
     std::ostringstream m_source;
     uint32_t m_indent{};
 
+    std::unordered_map<char, uint32_t> m_registerCounters;
+
     void genTrivia(const std::vector<Trivia> &trivias);
 
     void genDecl(const DeclNode& decl);
@@ -26,8 +28,11 @@ private:
     void genVarDecl(const VarDecl& decl);
     void genStructDecl(const StructDecl& decl);
 
+    void genConstantBufferDecl(const ParamDecl& decl);
+    void genStorageBufferDecl(const ParamDecl& decl);
+
     void genForwardDecl(const DeclNode& decl);
-    void genFunctionSignature(const FunctionDecl& decl);
+    void genFunctionSignature(const FunctionDecl& decl, bool genResources = true);
     void genStructSignature(const StructDecl& decl);
 
     void genExpr(const ExprNode& expr, bool topLevel = false);
@@ -58,15 +63,14 @@ private:
     void genStructType(const StructType& type);
     void genMatrixType(const MatrixType& type);
     void genVectorType(const VectorType &type);
-    void genResourceType(const ResourceBindingType &type);
 
     void genAttribute(const std::vector<Attribute>& attributes);
+    static bool hasAttribute(const std::vector<Attribute>& attributes, const std::string& name);
 
     void newLine();
 
     static std::string opToString(BinaryOp op);
     static std::string opToString(UnaryOp op);
-    static std::string resourceKindToString(ResourceBindingKind kind);
     static bool isPostfixOp(UnaryOp op);
 };
 }

@@ -92,7 +92,7 @@ namespace ionsl
 
                 if constexpr (std::is_same_v<T, FunctionDecl>)
                 {
-                    genFunctionSignature(d);
+                    genFunctionSignature(d, false);
                     m_source << ";";
                 }
                 else if constexpr (std::is_same_v<T, StructDecl>)
@@ -105,21 +105,44 @@ namespace ionsl
         );
     }
 
-    void CodeGen::genFunctionSignature(const FunctionDecl &decl)
+    void CodeGen::genFunctionSignature(const FunctionDecl &decl, const bool genResources)
     {
+        std::vector<ParamDecl> params;
+
+        if (!genResources)
+            params = decl.params;
+        else
+            for(const auto & param : decl.params)
+            {
+                // TODO add texture and sampler support
+
+                if (hasAttribute(param.attributes, "constant"))
+                    genConstantBufferDecl(param);
+                else if (hasAttribute(param.attributes, "storage"))
+                    genStorageBufferDecl(param);
+                else
+                    params.push_back(param);
+            }
+
+        if (params.size() != decl.params.size())
+        {
+            newLine();
+            newLine();
+        }
+
         genType(decl.returnType);
 
         m_source << ' ' << decl.name << '(';
 
-        for(size_t i = 0; i < decl.params.size(); i++)
+        for(size_t i = 0; i < params.size(); i++)
         {
-            genType(decl.params[i].type);
-            genTrivia(decl.params[i].trivia);
-            m_source << " " << decl.params[i].name;
+            genType(params[i].type);
+            genTrivia(params[i].trivia);
+            m_source << " " << params[i].name;
 
-            genAttribute(decl.params[i].attributes);
+            genAttribute(params[i].attributes);
 
-            if(i != decl.params.size() - 1)
+            if(i != params.size() - 1)
                 m_source << ", ";
         }
 
@@ -144,7 +167,7 @@ namespace ionsl
 
     void CodeGen::genVarDecl(const VarDecl &decl)
     {
-        if(decl.modifier != VarModifier::Mutable && !std::holds_alternative<ResourceBindingType>(decl.type.kind))
+        if(decl.modifier != VarModifier::Mutable)
             m_source << "const ";
 
         genType(decl.type);
@@ -213,6 +236,39 @@ namespace ionsl
         newLine();
     }
 
+    void CodeGen::genConstantBufferDecl(const ParamDecl &decl)
+    {
+        m_source << "ConstantBuffer<";
+        genType(decl.type);
+        m_source << "> " << decl.name << " : register(b" << m_registerCounters['b']++ << ");";
+    }
+
+    void CodeGen::genStorageBufferDecl(const ParamDecl &decl)
+    {
+        bool writeAccess = false; // TODO get from access attrib
+
+        // TODO if type is Bytes/u8[] make it byte array buffer
+
+        char registerChar = 't';
+
+        if (writeAccess)
+        {
+            registerChar = 'u';
+            m_source << "RW";
+        }
+
+        m_source << "StructuredBuffer<";
+
+        Type elementType = decl.type;
+        if (std::holds_alternative<ArrayType>(elementType.kind))
+            elementType = *std::get<ArrayType>(elementType.kind).elementType;
+
+        genType(elementType);
+        m_source << "> " << decl.name;
+        const uint32_t registerNum = m_registerCounters[registerChar]++;
+        m_source << " : register(" << registerChar << registerNum << ");";
+    }
+
     void CodeGen::genExpr(const ExprNode &expr, bool topLevel)
     {
         genTrivia(expr.trivia);
@@ -265,7 +321,7 @@ namespace ionsl
             m_source << "<";
             for(size_t i = 0; i < expr.genericArgs.size(); i++)
             {
-                genType(expr.genericArgs.at(i));
+                genExpr(expr.genericArgs.at(i));
                 if(i != expr.genericArgs.size() - 1)
                     m_source << ", ";
             }
@@ -495,8 +551,6 @@ namespace ionsl
                     genMatrixType(type);
                 else if constexpr (std::is_same_v<T, VectorType>)
                     genVectorType(type);
-                else if constexpr (std::is_same_v<T, ResourceBindingType>)
-                    genResourceType(type);
             },
             t.kind
         );
@@ -587,30 +641,23 @@ namespace ionsl
     void CodeGen::genMatrixType(const MatrixType &type)
     {
         m_source << "matrix<";
-        genPrimitiveType(type.scalarType);
-        m_source << ", " << static_cast<uint32_t>(type.rows) << ", " << static_cast<uint32_t>(type.columns) << ">";
+        genExpr(*type.scalarType);
+        m_source << ", ";
+        genExpr(*type.rows);
+        m_source << ", ";
+        genExpr(*type.columns);
+        m_source << ">";
     }
 
     void CodeGen::genVectorType(const VectorType &type)
     {
         m_source << "vector<";
-        genPrimitiveType(type.scalarType);
-        m_source << ", " << static_cast<uint32_t>(type.dimension) << ">";
+        genExpr(*type.scalarType);
+        m_source << ", ";
+        genExpr(*type.dimension);
+        m_source << ">";
     }
 
-    void CodeGen::genResourceType(const ResourceBindingType &type)
-    {
-        m_source << resourceKindToString(type.kind);
-
-        if(type.elementType)
-        {
-            m_source << '<';
-
-            genType(*type.elementType);
-
-            m_source << '>';
-        }
-    }
 
     void CodeGen::genAttribute(const std::vector<Attribute> &attributes)
     {
@@ -623,6 +670,17 @@ namespace ionsl
             m_source << " : " << it->second;
             break;
         }
+    }
+
+    bool CodeGen::hasAttribute(const std::vector<Attribute> &attributes, const std::string& name)
+    {
+        for (const auto& attrib : attributes)
+        {
+            if (attrib.name.name() == name)
+                return true;
+        }
+
+        return false;
     }
 
     void CodeGen::newLine()
@@ -693,22 +751,6 @@ namespace ionsl
         }
     }
 
-    std::string CodeGen::resourceKindToString(const ResourceBindingKind kind)
-    {
-        switch (kind)
-        {
-            case ResourceBindingKind::ConstantBuffer:      return "ConstantBuffer";
-            case ResourceBindingKind::PushConstant:        return "ConstantBuffer";
-            case ResourceBindingKind::SamplerState:        return "SamplerState";
-            case ResourceBindingKind::StructuredBuffer:    return "StructuredBuffer";
-            case ResourceBindingKind::Texture2D:           return "Texture2D";
-            case ResourceBindingKind::RWStructuredBuffer:  return "RWStructuredBuffer";
-            case ResourceBindingKind::RWTexture2D:         return "RWTexture2D";
-            case ResourceBindingKind::RWByteAddressBuffer: return "RWByteAddressBuffer";
-
-            default:                     return "";
-        }
-    }
 
     bool CodeGen::isPostfixOp(const UnaryOp op)
     {

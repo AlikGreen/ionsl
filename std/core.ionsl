@@ -7,16 +7,24 @@
 // type vec3<T> = vector<T, 3>;
 // type vec4<T> = vector<T, 4>;
 
-type vec2f = vec2<f32>;
-type vec3f = vec3<f32>;
-type vec4f = vec4<f32>;
+type vec2f = vector<f32, 2>;
+type vec3f = vector<f32, 3>;
+type vec4f = vector<f32, 4>;
 // type vec3i = vector<i32, 3>;
 
 // type mat3x3<T> = matrix<T, 3, 3>;
 // type mat4x4<T> = matrix<T, 4, 4>;
 
-[[target(hlsl, "normalize")]]
-fn normalize(v : vec3<f32>) -> vec3<f32>;
+[[hlsl(function = "normalize")]]
+fn normalize(v : vec3f) -> vec3f;
 
-[[target(hlsl, "dot")]]
-fn dot(a : vec3<f32>, b : vec3<f32>) -> f32;
+[[hlsl(function = "dot")]]
+fn dot(a : vec3f, b : vec3f) -> f32;
+
+[[hlsl(expr = "$lhs + $rhs")]]
+operator +(lhs : f32, rhs : f32) -> f32;
+
+operator +(lhs : vec3f, rhs : vec3f) -> vec3f
+{
+    return vec3f(lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z);
+}
