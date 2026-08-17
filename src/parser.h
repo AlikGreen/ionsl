@@ -40,6 +40,11 @@ private:
     InterfaceDecl parseInterfaceDecl();
     TypeDefDecl parseTypeDefDecl();
 
+    OperatorDecl parseOperatorDecl();
+    BinaryOpDecl parseBinaryOpDecl();
+    UnaryOpDecl parseUnaryOpDecl();
+    CastOpDecl parseCastOpDecl();
+
     ExprNode parseExpr(uint32_t minBP = 0, const std::unordered_set<TokenKind>& stopTokens = {});
     ExprNode parseInfixExpr(ExprNode left, const Token &opToken);
     ExprNode parsePrefixExpr();

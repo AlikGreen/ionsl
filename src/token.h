@@ -20,7 +20,8 @@ enum class TokenKind
     Percent, PercentEqual,
     KwStruct, KwTrue, KwFalse, KwElse, KwBreak, KwContinue,
     KwFunction, KwVar, KwIf, KwWhile, KwFor, KwReturn, KwMut,
-    KwInterface, KwType, LineComment, BlockComment,
+    KwInterface, KwType, KwOperator, KwPrefix, KwPostfix,
+    KwCast, LineComment, BlockComment,
     EndOfFile, Unknown
 };
 
@@ -78,19 +79,35 @@ constexpr std::string_view tokenKindDisplayName(const TokenKind kind)
         case TokenKind::MinusMinus:             return "'--'";
         case TokenKind::PlusPlus:               return "'++'";
 
+        case TokenKind::AmpEqual:               return "&=";
+        case TokenKind::PipeEqual:              return "|=";
+        case TokenKind::LAngleLAngle:           return "<<";
+        case TokenKind::RAngleRAngle:           return ">>";
+        case TokenKind::LAngleLAngleEqual:      return "<<=";
+        case TokenKind::RAngleRAngleEqual:      return ">>=";
+        case TokenKind::CaretEqual:             return "^=";
+        case TokenKind::Percent:                return "%";
+        case TokenKind::PercentEqual:           return "%=";
+
         case TokenKind::KwStruct:               return "'struct'";
         case TokenKind::KwTrue:                 return "'true'";
         case TokenKind::KwFalse:                return "'false'";
         case TokenKind::KwElse:                 return "'else'";
         case TokenKind::KwBreak:                return "'break'";
         case TokenKind::KwContinue:             return "'continue'";
-        case TokenKind::KwFunction:              return "'fn'";
-        case TokenKind::KwVar:                   return "'var'";
-        case TokenKind::KwIf:                    return "'if'";
-        case TokenKind::KwWhile:                 return "'while'";
-        case TokenKind::KwFor:                   return "'for'";
-        case TokenKind::KwReturn:                return "'return'";
-        case TokenKind::KwMut:                   return "'mut'";
+        case TokenKind::KwFunction:             return "'fn'";
+        case TokenKind::KwVar:                  return "'var'";
+        case TokenKind::KwIf:                   return "'if'";
+        case TokenKind::KwWhile:                return "'while'";
+        case TokenKind::KwFor:                  return "'for'";
+        case TokenKind::KwReturn:               return "'return'";
+        case TokenKind::KwMut:                  return "'mut'";
+        case TokenKind::KwInterface:            return "'interface'";
+        case TokenKind::KwType:                 return "'type'";
+        case TokenKind::KwOperator:             return "'operator'";
+        case TokenKind::KwPrefix:               return "'prefix'";
+        case TokenKind::KwPostfix:              return "'postfix'";
+        case TokenKind::KwCast:                 return "'cast'";
 
         case TokenKind::LineComment:             return "a line comment";
         case TokenKind::BlockComment:             return "a block comment";

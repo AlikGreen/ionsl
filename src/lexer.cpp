@@ -13,7 +13,9 @@ namespace ionsl
         { "while",  TokenKind::KwWhile }, { "interface", TokenKind::KwInterface },
         { "for",  TokenKind::KwFor }, { "return",  TokenKind::KwReturn },
         { "break",  TokenKind::KwBreak }, { "continue",  TokenKind::KwContinue },
-        { "type", TokenKind::KwType }
+        { "type", TokenKind::KwType }, { "operator", TokenKind::KwOperator },
+        { "cast", TokenKind::KwCast }, { "prefix", TokenKind::KwPrefix },
+        { "postfix", TokenKind::KwPostfix },
     };
 
     static const std::unordered_map<std::string_view, TokenKind> symbols

@@ -106,6 +106,41 @@ struct FunctionDecl
     std::vector<Attribute> attributes;
 };
 
+struct UnaryOpDecl
+{
+    UnaryOp op;
+    ParamDecl operand;
+    Type returnType;
+};
+
+struct BinaryOpDecl
+{
+    BinaryOp op;
+    ParamDecl lhs;
+    ParamDecl rhs;
+    Type returnType;
+};
+
+struct CastOpDecl
+{
+    bool isImplicit;
+    ParamDecl source;
+    Type targetType;
+};
+
+using OperatorDeclKind = std::variant<
+    UnaryOpDecl,
+    BinaryOpDecl,
+    CastOpDecl
+>;
+
+struct OperatorDecl
+{
+    OperatorDeclKind decl;
+    std::optional<BlockStmt> body;
+    std::vector<Attribute> attributes;
+};
+
 struct StructField
 {
     SourceSpan span;
@@ -170,7 +205,8 @@ using Decl = std::variant<
     VarDecl,
     StructDecl,
     InterfaceDecl,
-    TypeDefDecl
+    TypeDefDecl,
+    OperatorDecl
 >;
 
 
