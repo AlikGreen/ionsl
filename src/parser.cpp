@@ -278,6 +278,58 @@ namespace ionsl
         return typeDef;
     }
 
+    OperatorDecl Parser::parseOperatorDecl()
+    {
+        consume(TokenKind::KwOperator);
+
+        if (tokenToBinaryOp(peek().kind).has_value())
+            return parseBinaryOpDecl();
+        if (check(TokenKind::KwPrefix) || check(TokenKind::KwPostfix))
+            return parseUnaryOpDecl();
+        if (check(TokenKind::KwCast))
+            return parseCastOpDecl();
+
+        return CastOpDecl{};
+    }
+
+    BinaryOpDecl Parser::parseBinaryOpDecl()
+    {
+        BinaryOpDecl decl;
+        decl.op = tokenToBinaryOp(advance().kind).value();
+        consume(TokenKind::LParen);
+
+        decl.lhs.attributes = takePendingAttributes();
+        decl.lhs.trivia = takePendingTrivia();
+        decl.lhs.name = advance().text;
+        consume(TokenKind::Colon);
+        decl.lhs.type = parseType();
+
+        consume(TokenKind::Comma);
+
+        decl.rhs.attributes = takePendingAttributes();
+        decl.rhs.trivia = takePendingTrivia();
+        decl.rhs.name = advance().text;
+        consume(TokenKind::Colon);
+        decl.rhs.type = parseType();
+
+        consume(TokenKind::RParen);
+        consume(TokenKind::Arrow, "operator functions must have a return type");
+        decl.returnType = parseType();
+
+        if(check(TokenKind::LBrace))
+            decl.body = parseBlockStmt();
+        else
+            consume(TokenKind::Semicolon);
+    }
+
+    UnaryOpDecl Parser::parseUnaryOpDecl()
+    {
+    }
+
+    CastOpDecl Parser::parseCastOpDecl()
+    {
+    }
+
     ExprNode Parser::parseExpr(const uint32_t minBP, const std::unordered_set<TokenKind>& stopTokens)
     {
         auto lhs = parsePrefixExpr();
