@@ -1,22 +1,36 @@
 #pragma once
-#include "module.h"
-#include "reflector.h"
-#include "resolver.h"
+#include <span>
+
+#include "ast/module.h"
+#include "ast/decl.h"
+#include "ast/symbolTable.h"
+#include "codegen/codeGenerator.h"
+#include "lexer/token.h"
 
 namespace ionsl
 {
-struct LinkDesc
-{
-    std::vector<Module> modules;
-    std::vector<SpecializationRequest> specializations;
-};
-
 class Compiler
 {
 public:
-    static Module compile(const std::string &source, const std::string &path);
-    static Module link(const LinkDesc& desc);
-    static std::string generate(const Module& linked, const std::string& epName);
-    static refl::Data reflect(Module& module);
+    std::vector<Token> tokenize(const std::string &source);
+    Module parse(std::span<Token> tokens);
+
+    template<typename T>
+    requires std::is_base_of_v<CodeGenerator, T> && std::is_constructible_v<T, const Module&, const SymbolTable&>
+    std::string generate(const Module& module)
+    {
+        return T(module, symbolTable).generate();
+    }
+
+    Compiler() = default;
+
+    Compiler(const Compiler&) = delete;
+    Compiler& operator=(const Compiler&) = delete;
+
+    Compiler(Compiler&&) noexcept = default;
+    Compiler& operator=(Compiler&&) noexcept = default;
+private:
+    DeclarationIdAllocator declAllocator;
+    SymbolTable symbolTable;
 };
 }

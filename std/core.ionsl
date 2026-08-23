@@ -28,3 +28,8 @@ operator +(lhs : vec3f, rhs : vec3f) -> vec3f
 {
     return vec3f(lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z);
 }
+
+operator prefix++(value : vec3f) -> vec3f
+{
+    return vec3f(value.x + 1, value.y + 1, value.z + 1);
+}

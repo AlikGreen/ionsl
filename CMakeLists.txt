@@ -10,8 +10,7 @@ file(GLOB_RECURSE
         ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h
 )
 
-add_library(ionsl STATIC ${SRC_FILES} include/ionsl/ionsl.h
-        src/ast.cpp)
+add_library(ionsl STATIC ${SRC_FILES} include/ionsl/ionsl.h)
 target_include_directories(ionsl PUBLIC include)
 
 file(GLOB_RECURSE
