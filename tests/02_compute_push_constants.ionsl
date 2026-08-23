@@ -17,7 +17,7 @@ var gBuffer : RWByteAddressBuffer;
 
 [[shader("compute")]]
 [[numthreads(64, 1, 1)]]
-fn computeMain(dispatchThreadID : vec3<u32> [[semantic("SV_DispatchThreadID")]])
+fn computeMain([[semantic("SV_DispatchThreadID")]] dispatchThreadID : vec3<u32>)
 {
     if(dispatchThreadID.x >= pc.count)
     {
