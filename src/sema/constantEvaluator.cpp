@@ -2,13 +2,8 @@
 
 namespace ionsl
 {
-    std::optional<ConstantValue> ConstantEvaluator::evaluate(Expression &expr, const DeclTable &declTable)
-    {
-        return ConstantEvaluator(declTable).evaluate(expr);
-    }
-
-    ConstantEvaluator::ConstantEvaluator(const DeclTable &declTable)
-        : m_declTable(declTable) { }
+    ConstantEvaluator::ConstantEvaluator(const DeclTable &declTable, const TypeSystem& typeSystem)
+        : m_declTable(declTable), m_typeSystem(typeSystem) { }
 
     std::optional<ConstantValue> ConstantEvaluator::evaluate(Expression& expr)
     {
@@ -25,6 +20,10 @@ namespace ionsl
         const auto left = evaluate(*expr.left);
         const auto right = evaluate(*expr.right);
 
-        if(!left.has_value() || !right.has_value()) return std::nullopt;
+        if(!left || !right) return std::nullopt;
+
+        TypeId resultType = expr.resultType;
+
+
     }
 }

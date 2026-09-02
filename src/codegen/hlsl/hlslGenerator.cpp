@@ -4,6 +4,6 @@ namespace ionsl
 {
     std::string HlslGenerator::generate()
     {
-
+        return "";
     }
 }

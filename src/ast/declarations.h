@@ -65,6 +65,7 @@ public:
     std::vector<ValueDecl*> fields;
     std::vector<FunctionDecl*> methods;
 
+    ValueDecl* findField(SymbolId name) const;
     StructDecl* clone(Arena &arena) const override;
 };
 

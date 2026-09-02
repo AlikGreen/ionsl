@@ -58,6 +58,17 @@ namespace ionsl
         return decl;
     }
 
+    ValueDecl* StructDecl::findField(SymbolId name) const
+    {
+        for(const auto& field : fields)
+        {
+            if(field->name == name)
+                return field;
+        }
+
+        return nullptr;
+    }
+
     StructDecl* StructDecl::clone(Arena &arena) const
     {
         auto* decl = arena.create<StructDecl>();

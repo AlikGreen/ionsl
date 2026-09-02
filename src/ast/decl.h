@@ -2,7 +2,6 @@
 #include <cstdint>
 
 #include "astWalker.h"
-#include "module.h"
 
 
 namespace ionsl
@@ -29,7 +28,7 @@ class DeclTable
 public:
     DeclTable() = default;
     explicit DeclTable(Module& module);
-    Declaration* get(DeclId id) const;
+    [[nodiscard]] Declaration* get(DeclId id) const;
 private:
     std::unordered_map<DeclId, Declaration*> m_map{};
 };

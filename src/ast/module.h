@@ -1,7 +1,9 @@
 #pragma once
 
-#include "symbolTable.h"
+#include "decl.h"
+#include "scopeTable.h"
 #include "typeTable.h"
+
 #include "../common/arena.h"
 #include "../common/diagnostics.h"
 
@@ -16,6 +18,7 @@ public:
     DiagnosticSink diagnostics;
     TypeTable typeTable;
     DeclTable declTable;
+    ScopeTable scopeTable;
 
     std::vector<Declaration*> declarations;
 

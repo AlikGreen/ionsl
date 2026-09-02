@@ -17,14 +17,14 @@ public:
     requires std::is_base_of_v<AstNode, T>
     T* as()
     {
-        return dynamic_cast<T>(this);
+        return dynamic_cast<T*>(this);
     }
 
     template<typename T>
     requires std::is_base_of_v<AstNode, T>
     bool is()
     {
-        return dynamic_cast<T>(this) != nullptr;
+        return dynamic_cast<T*>(this) != nullptr;
     }
 };
 }

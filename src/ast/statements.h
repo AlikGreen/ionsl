@@ -6,6 +6,8 @@
 
 namespace ionsl
 {
+// TODO switch/match stmt
+
 class Expression;
 class Declaration;
 class Statement : public AstNode
@@ -26,8 +28,8 @@ class IfStmt final : public Statement
 {
 public:
     Expression* condition{};
-    Statement* thenBranch{};
-    Statement* elseBranch{}; // Can be nullptr
+    BlockStmt* thenBranch{};
+    BlockStmt* elseBranch{}; // Can be nullptr
 
     IfStmt* clone(Arena &arena) const override;
 };
