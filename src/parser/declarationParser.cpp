@@ -29,6 +29,7 @@ namespace ionsl
         decl->attributes = parseAttributes();
         expect(TokenKind::KwFunction);
         decl->name = m_symbolTable.intern(advance().text);
+        m_ast.scopeTable.registerDecl(m_currentScope, decl->name, decl->id);
         expect(TokenKind::LParen);
 
         if(!check(TokenKind::RParen))
@@ -58,6 +59,7 @@ namespace ionsl
         decl->attributes = parseAttributes();
         expect(TokenKind::KwStruct);
         decl->name = m_symbolTable.intern(advance().text);
+        m_ast.scopeTable.registerDecl(m_currentScope, decl->name, decl->id);
 
         if(match(TokenKind::Colon))
         {
@@ -93,6 +95,7 @@ namespace ionsl
         decl->attributes = parseAttributes();
         expect(TokenKind::KwInterface);
         decl->name = m_symbolTable.intern(advance().text);
+        m_ast.scopeTable.registerDecl(m_currentScope, decl->name, decl->id);
 
         expect(TokenKind::LBrace);
 
@@ -118,6 +121,7 @@ namespace ionsl
         auto* decl = createDecl<ValueDecl>();
         decl->attributes = parseAttributes();
         decl->name = m_symbolTable.intern(advance().text);
+        m_ast.scopeTable.registerDecl(m_currentScope, decl->name, decl->id);
         expect(TokenKind::Colon);
         decl->type = parseType();
 

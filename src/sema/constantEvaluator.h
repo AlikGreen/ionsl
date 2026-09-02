@@ -1,5 +1,6 @@
 #pragma once
 #include "../ast/expressions.h"
+#include "../ast/typeSystem.h"
 
 namespace ionsl
 {
@@ -12,12 +13,12 @@ struct ConstantValue
 class ConstantEvaluator
 {
 public:
-    static std::optional<ConstantValue> evaluate(Expression &expr, const DeclTable &declTable);
+    ConstantEvaluator(const DeclTable& declTable, const TypeSystem& typeSystem);
+    std::optional<ConstantValue> evaluate(Expression& expr);
 private:
     const DeclTable& m_declTable;
+    const TypeSystem& m_typeSystem;
 
-    ConstantEvaluator(const DeclTable& declTable);
-    std::optional<ConstantValue> evaluate(Expression& expr);
 
     std::optional<ConstantValue> evaluateBinaryExpr(const BinaryExpr& expr);
     std::optional<ConstantValue> evaluateUnaryExpr(UnaryExpr& expr);

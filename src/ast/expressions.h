@@ -14,6 +14,8 @@ class Expression : public AstNode
 {
 public:
     Expression* clone(Arena& arena) const override = 0;
+
+    TypeId resultType = TypeIdInvalid;
 };
 
 class BinaryExpr final : public Expression
@@ -77,6 +79,22 @@ public:
     Expression* index{};
 
     IndexExpr* clone(Arena &arena) const override;
+};
+
+enum class ConversionKind
+{
+    Implicit,
+    Explicit
+};
+
+class ConversionExpr final : public Expression
+{
+public:
+    Expression* operand{};
+    TypeId targetType = TypeIdInvalid;
+    ConversionKind kind = ConversionKind::Implicit;
+
+    ConversionExpr* clone(Arena &arena) const override;
 };
 
 class ErrorExpr final : public Expression

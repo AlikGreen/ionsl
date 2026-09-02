@@ -65,6 +65,16 @@ namespace ionsl
         return newExpr;
     }
 
+    ConversionExpr * ConversionExpr::clone(Arena &arena) const
+    {
+        auto* newExpr = arena.create<ConversionExpr>();
+        newExpr->span = span;
+        newExpr->kind = kind;
+        newExpr->targetType = targetType;
+        newExpr->operand = operand->clone(arena);
+        return newExpr;
+    }
+
     ErrorExpr* ErrorExpr::clone(Arena &arena) const
     {
         auto* newExpr = arena.create<ErrorExpr>();

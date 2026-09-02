@@ -1,7 +1,7 @@
 #pragma once
 #include <span>
 
-#include "../ast/ast.h"
+#include "../ast/module.h"
 #include "../ast/declarations.h"
 #include "../ast/expressions.h"
 #include "../ast/statements.h"
@@ -29,6 +29,8 @@ private:
     Module m_ast{10*1024*1024}; // 10Mb
     DeclarationIdAllocator& m_declAllocator;
     SymbolTable& m_symbolTable;
+
+    ScopeId m_currentScope = ScopeIdInvalid;
 
     Declaration*   parseDeclaration();
     FunctionDecl*  parseFunctionDecl();
@@ -64,7 +66,7 @@ private:
 
     NamedTypeSyntax* createVoidType(const SourceSpan &span);
 
-    bool startsUnambiguousConst() const;
+    [[nodiscard]] bool startsUnambiguousConst() const;
 
     QualifiedName parseName();
     LiteralValue parseLiteral();

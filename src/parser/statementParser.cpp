@@ -34,10 +34,14 @@ namespace ionsl
 
         expect(TokenKind::LBrace);
 
+        m_currentScope = m_ast.scopeTable.create(m_currentScope);
+
         while(!match(TokenKind::RBrace))
         {
             stmt->statements.push_back(parseStatement());
         }
+
+        m_currentScope = m_ast.scopeTable.getScope(m_currentScope).parent;
 
         stmt->span = SourceSpan::between(start, previous().span);
         return stmt;
@@ -88,10 +92,10 @@ namespace ionsl
         expect(TokenKind::LParen);
         stmt->condition = parseExpression();
         expect(TokenKind::RParen);
-        stmt->thenBranch = parseStatement();
+        stmt->thenBranch = parseBlockStmt();
 
         if(match(TokenKind::KwElse))
-            stmt->elseBranch = parseStatement();
+            stmt->elseBranch = parseBlockStmt();
 
         stmt->span = SourceSpan::between(start, previous().span);
 
