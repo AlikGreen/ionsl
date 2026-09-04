@@ -25,7 +25,7 @@ public:
     AstWalker& on(ExpressionCallback callback);
     AstWalker& on(TypeSyntaxCallback callback);
 
-    void walk(Module& module);
+    void walk(const Module& module);
     void walk(AstNode &node);
 private:
     void walkDeclaration(Declaration& declaration);
@@ -33,10 +33,9 @@ private:
     void walkExpression(Expression& expression);
     void walkTypeSyntax(TypeSyntax& type);
 
-private:
     DeclarationCallback m_declarationCallback;
-    StatementCallback m_statementCallback;
-    ExpressionCallback m_expressionCallback;
-    TypeSyntaxCallback m_typeSyntaxCallback;
+    StatementCallback   m_statementCallback;
+    ExpressionCallback  m_expressionCallback;
+    TypeSyntaxCallback  m_typeSyntaxCallback;
 };
 }

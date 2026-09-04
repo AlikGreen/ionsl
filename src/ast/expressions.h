@@ -5,6 +5,7 @@
 #include "qualifiedName.h"
 #include "symbol.h"
 #include "type.h"
+#include "typeSyntax.h"
 #include "../common/arena.h"
 #include "../common/enums.h"
 
@@ -59,6 +60,7 @@ class CallExpr final : public Expression
 public:
     Expression* callee{};
     std::vector<Expression*> args{};
+    std::vector<TypeArgument*> genericArgs{};
 
     CallExpr* clone(Arena &arena) const override;
 };

@@ -1,4 +1,5 @@
 #pragma once
+#include <optional>
 #include <vector>
 
 #include "token.h"
@@ -17,7 +18,7 @@ private:
     std::string_view m_source;
     SourceLocation m_loc{};
 
-    Token nextToken();
+    std::optional<Token> nextToken();
 
     [[nodiscard]] Token makeToken(TokenKind kind, SourceLocation startLoc) const;
 

@@ -15,7 +15,7 @@ enum class TokenKind
     GreaterEqual, AmpAmp, PipePipe, MinusMinus, PlusPlus,
     AmpEqual, PipeEqual, LAngleLAngle, RAngleRAngle,
     LAngleLAngleEqual, RAngleRAngleEqual, CaretEqual,
-    Percent, PercentEqual,
+    Percent, PercentEqual, ColonColonLAngle,
     KwStruct, KwTrue, KwFalse, KwElse, KwBreak, KwContinue,
     KwFunction, KwVar, KwIf, KwWhile, KwFor, KwReturn, KwMut,
     KwInterface, KwType, KwOperator, KwPrefix, KwPostfix,
@@ -77,15 +77,16 @@ constexpr std::string_view tokenKindDisplayName(const TokenKind kind)
         case TokenKind::MinusMinus:             return "'--'";
         case TokenKind::PlusPlus:               return "'++'";
 
-        case TokenKind::AmpEqual:               return "&=";
-        case TokenKind::PipeEqual:              return "|=";
-        case TokenKind::LAngleLAngle:           return "<<";
-        case TokenKind::RAngleRAngle:           return ">>";
-        case TokenKind::LAngleLAngleEqual:      return "<<=";
-        case TokenKind::RAngleRAngleEqual:      return ">>=";
-        case TokenKind::CaretEqual:             return "^=";
-        case TokenKind::Percent:                return "%";
-        case TokenKind::PercentEqual:           return "%=";
+        case TokenKind::AmpEqual:               return "'&='";
+        case TokenKind::PipeEqual:              return "'|='";
+        case TokenKind::LAngleLAngle:           return "'<<'";
+        case TokenKind::RAngleRAngle:           return "'>>'";
+        case TokenKind::LAngleLAngleEqual:      return "'<<='";
+        case TokenKind::RAngleRAngleEqual:      return "'>>='";
+        case TokenKind::CaretEqual:             return "'^=";
+        case TokenKind::Percent:                return "'%'";
+        case TokenKind::PercentEqual:           return "'%='";
+        case TokenKind::ColonColonLAngle:       return "'::<'";
 
         case TokenKind::KwStruct:               return "'struct'";
         case TokenKind::KwTrue:                 return "'true'";

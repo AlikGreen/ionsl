@@ -23,7 +23,7 @@ struct QualifiedName
         parts.push_back(id);
     }
 
-    std::string string(const SymbolTable& table)
+    std::string string(const SymbolTable& table) const
     {
         std::string fullName;
 

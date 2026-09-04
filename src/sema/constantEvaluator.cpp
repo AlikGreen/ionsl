@@ -11,6 +11,8 @@ namespace ionsl
             return evaluateBinaryExpr(*binary);
         if(auto* unary = expr.as<UnaryExpr>())
             return evaluateUnaryExpr(*unary);
+        if(auto* literal = expr.as<LiteralExpr>())
+            return evaluateLiteralExpr(*literal);
 
         return std::nullopt;
     }
@@ -24,6 +26,19 @@ namespace ionsl
 
         TypeId resultType = expr.resultType;
 
+        return std::nullopt; // FIXME
+    }
 
+    std::optional<ConstantValue> ConstantEvaluator::evaluateUnaryExpr(UnaryExpr &expr)
+    {
+        return std::nullopt; // FIXME
+    }
+
+    std::optional<ConstantValue> ConstantEvaluator::evaluateLiteralExpr(const LiteralExpr &expr)
+    {
+        ConstantValue constVal{};
+        constVal.value = expr.literal;
+        constVal.type = expr.resultType;
+        return constVal;
     }
 }
