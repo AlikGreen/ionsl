@@ -1,4 +1,6 @@
 #include "lexer.h"
+
+#include <optional>
 #include <string>
 #include <unordered_map>
 
@@ -41,7 +43,7 @@ namespace ionsl
         { "<<", TokenKind::LAngleLAngle }, { ">>", TokenKind::RAngleRAngle },
         { "<<=", TokenKind::LAngleLAngleEqual }, { ">>=", TokenKind::RAngleRAngleEqual },
         { "^=", TokenKind::CaretEqual }, { "%=", TokenKind::PercentEqual },
-        { "%", TokenKind::Percent },
+        { "%", TokenKind::Percent }, { "::<", TokenKind::ColonColonLAngle },
     };
 
 
@@ -56,9 +58,10 @@ namespace ionsl
 
         while(!done())
         {
-            Token token = nextToken();
-            tokens.push_back(token);
-            if(token.kind == TokenKind::EndOfFile)
+            auto token = nextToken();
+            if(!token) continue;
+            tokens.push_back(*token);
+            if(token->kind == TokenKind::EndOfFile)
                 break;
         }
 
@@ -71,7 +74,7 @@ namespace ionsl
         return lexer.tokenize();
     }
 
-    Token Lexer::nextToken()
+    std::optional<Token> Lexer::nextToken()
     {
         skipWhitespace();
 
@@ -87,11 +90,15 @@ namespace ionsl
             {
                 while(!done() && peek() != '\n')
                     advance();
+
+                return std::nullopt;
             }
             else if(peek(1) == '*')
             {
                 while(!done() && !(peek() == '*' && peek(1) == '/'))
                     advance();
+
+                return std::nullopt;
             }
         }
 

@@ -9,12 +9,21 @@ namespace ionsl
 {
     void SemanticAnalyzer::analyze()
     {
-        for(auto decl : m_module.declarations)
+        for(const auto decl : m_module.declarations)
+        {
+            checkDeclSignature(*decl);
+        }
+
+        for(const auto decl : m_module.declarations)
         {
             checkDeclaration(*decl);
         }
     }
 
+    void SemanticAnalyzer::analyze(Module& module, SymbolTable& symbolTable, TypeSystem& typeSystem, DeclTable& declTable, ScopeTable& scopeTable)
+    {
+        return SemanticAnalyzer(module, symbolTable, typeSystem, declTable, scopeTable).analyze();
+    }
 
     TypeId SemanticAnalyzer::resolveType(TypeSyntax& syntax)
     {
@@ -27,14 +36,14 @@ namespace ionsl
 
             PrimitiveKind primitiveKind = toPrimitiveKind(namedSyntax->name.string(m_symbols));
             if(primitiveKind != PrimitiveKind::Unknown)
-                return m_module.typeTable.getPrimitiveType(primitiveKind);
+                return m_typeSystem.types().getPrimitiveType(primitiveKind);
 
             return resolveNamedType(*namedSyntax);
         }
 
         if(const auto* arraySyntax = syntax.as<ArrayTypeSyntax>())
         {
-            resolveArrayType(*arraySyntax);
+            return resolveArrayType(*arraySyntax);
         }
 
         return TypeIdInvalid;
@@ -55,7 +64,7 @@ namespace ionsl
 
         const uint32_t dimension = std::get<uint64_t>(res->value);
 
-        return m_module.typeTable.getVectorType(elementType, dimension);
+        return m_typeSystem.types().getVectorType(elementType, dimension);
     }
 
     TypeId SemanticAnalyzer::resolveMatrixType(const NamedTypeSyntax &syntax)
@@ -76,23 +85,25 @@ namespace ionsl
         if(!columnsRes) return TypeIdInvalid; // TODO diagnostics
         const uint32_t columns = std::get<uint64_t>(columnsRes->value);
 
-        return m_module.typeTable.getMatrixType(elementType, rows, columns);
+        return m_typeSystem.types().getMatrixType(elementType, rows, columns);
     }
 
     TypeId SemanticAnalyzer::resolveNamedType(const NamedTypeSyntax &syntax)
     {
-        const auto decls = m_module.scopeTable.findDecls(m_currentScope, syntax.name);
+        const auto decls = m_scopeTable.findDecls(m_currentScope, syntax.name);
 
         for(const DeclId id : decls)
         {
             // TODO make sure type matches full signature when introducing generics
-            Declaration* decl = m_module.declTable.get(id);
+            Declaration* decl = m_declTable.get(id);
             if(decl->is<StructDecl>())
-                return m_module.typeTable.getStructType(decl->id);
+                return m_typeSystem.types().getStructType(decl->id);
             if(decl->is<InterfaceDecl>())
-                return m_module.typeTable.getInterfaceType(decl->id);
+                return m_typeSystem.types().getInterfaceType(decl->id);
             // TODO alias decl
         }
+
+        m_module.diagnostics.error(syntax.span, "Unknown type {}", syntax.name.string(m_symbols));
 
         return TypeIdInvalid;
     }
@@ -110,7 +121,7 @@ namespace ionsl
             size = std::get<uint64_t>(sizeRes->value);
         }
 
-        return m_module.typeTable.getArrayType(elementType, size);
+        return m_typeSystem.types().getArrayType(elementType, size);
     }
 
 
@@ -200,13 +211,13 @@ namespace ionsl
             argumentTypes.push_back(type);
         }
 
-        auto candidates = m_module.scopeTable.findDecls(m_currentScope, identifier.name);
+        auto candidates = m_scopeTable.findDecls(m_currentScope, identifier.name);
         uint32_t bestConversionCost = ~0u;
         Declaration* bestCandidate = nullptr;
 
         for(const auto candidate : candidates)
         {
-            Declaration* decl = m_module.declTable.get(candidate);
+            Declaration* decl = m_declTable.get(candidate);
 
             if(auto* funcDecl = decl->as<FunctionDecl>())
             {
@@ -244,16 +255,19 @@ namespace ionsl
 
     TypeId SemanticAnalyzer::checkIdentifierExpr(IdentifierExpr &expression) const
     {
-        auto candidates = m_module.scopeTable.findDecls(m_currentScope, expression.name);
+        auto candidates = m_scopeTable.findDecls(m_currentScope, expression.name);
 
         TypeId bestCandidateType  = TypeIdInvalid;
 
-        for(const auto& id : std::ranges::reverse_view(candidates))
+        for(const auto& id : candidates)
         {
-            const auto decl = m_module.declTable.get(id);
+            const auto decl = m_declTable.get(id);
             if(const auto value = decl->as<ValueDecl>())
                 bestCandidateType = value->resolvedType;
-
+            if(const auto struc = decl->as<StructDecl>())
+                bestCandidateType = m_typeSystem.types().getStructType(struc->id);
+            if(const auto interface = decl->as<InterfaceDecl>())
+                bestCandidateType = m_typeSystem.types().getInterfaceType(interface->id);
             // TODO other decl types
         }
 
@@ -268,7 +282,7 @@ namespace ionsl
         checkExpression(*expression.index);
         const TypeId arrayTypeId = checkExpression(*expression.array);
 
-        TypeInfo arrayType = m_module.typeTable.getInfo(arrayTypeId);
+        TypeInfo arrayType = m_typeSystem.types().getInfo(arrayTypeId);
 
         // TODO validation
         expression.resultType = arrayType.as<ArrayType>()->elementType;
@@ -303,10 +317,14 @@ namespace ionsl
     TypeId SemanticAnalyzer::checkFieldAccessExpr(FieldAccessExpr &expression)
     {
         const TypeId objTypeId = checkExpression(*expression.object);
-        TypeInfo objType = m_module.typeTable.getInfo(objTypeId);
+
+        if(objTypeId == TypeIdInvalid)
+            return TypeIdInvalid;
+
+        TypeInfo objType = m_typeSystem.types().getInfo(objTypeId);
         // TODO validation and interfaces
-        const DeclId structDeclId =  objType.as<StructType>()->declId;
-        const StructDecl& structDecl = *m_module.declTable.get(structDeclId)->as<StructDecl>();
+        const DeclId structDeclId = objType.as<StructType>()->declId;
+        const StructDecl& structDecl = *m_declTable.get(structDeclId)->as<StructDecl>();
         const ValueDecl& field = *structDecl.findField(expression.memberName);
         expression.resultType = field.resolvedType;
         return expression.resultType;
@@ -334,10 +352,12 @@ namespace ionsl
 
     void SemanticAnalyzer::checkBlockStmt(const BlockStmt &statement)
     {
+        m_currentScope = statement.scope;
         for(const auto stmt : statement.statements)
         {
             checkStatement(*stmt);
         }
+        m_currentScope = m_scopeTable.getScope(m_currentScope).parent;
     }
 
     void SemanticAnalyzer::checkIfStmt(const IfStmt &statement)
@@ -394,6 +414,16 @@ namespace ionsl
             checkStructDecl(*structDecl);
         if(const auto valDecl = declaration.as<ValueDecl>())
             checkValueDecl(*valDecl);
+    }
+
+    void SemanticAnalyzer::checkDeclSignature(Declaration &declaration)
+    {
+        if(const auto funcDecl = declaration.as<FunctionDecl>())
+            checkFunctionSignature(*funcDecl);
+        if(const auto interfaceDecl = declaration.as<InterfaceDecl>())
+            checkInterfaceSignature(*interfaceDecl);
+        if(const auto structDecl = declaration.as<StructDecl>())
+            checkStructSignature(*structDecl);
     }
 
     void SemanticAnalyzer::checkFunctionSignature(FunctionDecl &declaration)

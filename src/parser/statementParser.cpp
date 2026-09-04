@@ -34,14 +34,15 @@ namespace ionsl
 
         expect(TokenKind::LBrace);
 
-        m_currentScope = m_ast.scopeTable.create(m_currentScope);
+        m_currentScope = m_scopeTable.create(m_currentScope);
+        stmt->scope = m_currentScope;
 
         while(!match(TokenKind::RBrace))
         {
             stmt->statements.push_back(parseStatement());
         }
 
-        m_currentScope = m_ast.scopeTable.getScope(m_currentScope).parent;
+        m_currentScope = m_scopeTable.getScope(m_currentScope).parent;
 
         stmt->span = SourceSpan::between(start, previous().span);
         return stmt;

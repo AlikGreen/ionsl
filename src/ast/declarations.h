@@ -27,7 +27,7 @@ class ValueDecl  final : public Declaration
 public:
     SymbolId name{};
     TypeSyntax* type{};
-    TypeId resolvedType{};
+    TypeId resolvedType = TypeIdInvalid;
     Expression* initializer{};
     // TODO modifiers eg mutable
 

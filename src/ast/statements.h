@@ -4,8 +4,11 @@
 #include "astNode.h"
 
 
+
 namespace ionsl
 {
+using ScopeId = uint32_t;
+
 // TODO switch/match stmt
 
 class Expression;
@@ -19,6 +22,7 @@ public:
 class BlockStmt final : public Statement
 {
 public:
+    ScopeId scope = ~0u;
     std::vector<Statement*> statements{};
 
     BlockStmt* clone(Arena &arena) const override;
@@ -29,7 +33,7 @@ class IfStmt final : public Statement
 public:
     Expression* condition{};
     BlockStmt* thenBranch{};
-    BlockStmt* elseBranch{}; // Can be nullptr
+    BlockStmt* elseBranch{}; // can be nullptr
 
     IfStmt* clone(Arena &arena) const override;
 };

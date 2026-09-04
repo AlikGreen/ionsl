@@ -4,12 +4,15 @@
 
 namespace ionsl
 {
-    Parser::Parser(const std::span<Token> tokens, DeclarationIdAllocator& declAllocator, SymbolTable& symbolTable)
-        : m_tokens(tokens), m_declAllocator(declAllocator), m_symbolTable(symbolTable) { }
-
-    Module Parser::parse(const std::span<Token> tokens, DeclarationIdAllocator& declAllocator, SymbolTable& symbolTable)
+    Parser::Parser(const std::span<Token> tokens, DeclarationIdAllocator& declAllocator, SymbolTable& symbolTable, ScopeTable& scopeTable, DeclTable& declTable)
+        : m_tokens(tokens), m_declAllocator(declAllocator), m_symbolTable(symbolTable), m_scopeTable(scopeTable), m_declTable(declTable)
     {
-        Parser parser{tokens, declAllocator, symbolTable};
+         m_currentScope = m_scopeTable.create(ScopeIdInvalid);
+    }
+
+    Module Parser::parse(const std::span<Token> tokens, DeclarationIdAllocator& declAllocator, SymbolTable& symbolTable, ScopeTable& scopeTable, DeclTable& declTable)
+    {
+        Parser parser{tokens, declAllocator, symbolTable, scopeTable, declTable};
         return parser.parse();
     }
 
@@ -20,7 +23,7 @@ namespace ionsl
             m_ast.declarations.push_back(parseDeclaration());
         }
 
-        m_ast.declTable = DeclTable(m_ast);
+        m_declTable.regenerate(m_ast);
         return std::move(m_ast); // maybe should clone?
     }
 
@@ -90,10 +93,8 @@ namespace ionsl
         }
     }
 
-    std::vector<Attribute> Parser::parseAttributes()
+    void Parser::parseAttributes()
     {
-        std::vector<Attribute> attribs{};
-
         while(match(TokenKind::LBracketLBracket))
         {
             Attribute attr;
@@ -107,10 +108,15 @@ namespace ionsl
                 while (!match(TokenKind::RParen));
             }
             expect(TokenKind::RBracketRBracket);
-            attribs.push_back(attr);
+            m_pendingAttributes.push_back(attr);
         }
+    }
 
-        return attribs;
+    std::vector<Attribute> Parser::takeAttributes()
+    {
+        auto pending = m_pendingAttributes;
+        m_pendingAttributes.clear();
+        return pending;
     }
 
     AttributeArg Parser::parseAttribArg()

@@ -12,7 +12,7 @@ namespace ionsl
 
         TypeSyntax* type = parseNamedType(std::move(name), startSpan);
 
-        if(type == nullptr)
+        if(!type)
             return nullptr;
 
         while(check(TokenKind::LBracket))
@@ -33,21 +33,10 @@ namespace ionsl
         auto* type = m_ast.arena.create<NamedTypeSyntax>();
         type->name = std::move(name);
 
-        if(match(TokenKind::LAngle))
+        if(match(TokenKind::LAngle) || match(TokenKind::ColonColonLAngle))
         {
-            if(check(TokenKind::RAngle))
-            {
-                reportError(peek().span, "expected generic argument");
-                return nullptr;
-            }
-
-            do
-            {
-                type->arguments.push_back(parseGenericArgument());
-            }while(match(TokenKind::Comma));
-
-            if(!expect(TokenKind::RAngle))
-                return nullptr;
+            type->arguments = parseGenericArgs();
+            if(type->arguments.empty()) return nullptr;
         }
 
         type->span = SourceSpan::between(start, previous().span);
@@ -71,11 +60,11 @@ namespace ionsl
         return type;
     }
 
-    TypeArgument* Parser::parseGenericArgument()
+    TypeArgument* Parser::parseGenericArg()
     {
         if (startsUnambiguousConst())
         {
-            auto* expr = parseExpression();
+            auto* expr = parseExpression(0, { TokenKind::RAngle });
 
             auto* arg = create<TypeArgumentValue>();
             arg->span = expr->span;
@@ -98,12 +87,33 @@ namespace ionsl
             restoreState(snapshot);
         }
 
-        auto* expr = parseExpression();
+        auto* expr = parseExpression(0, { TokenKind::RAngle });
 
         auto* arg = create<TypeArgumentValue>();
         arg->span = expr->span;
         arg->expression = expr;
         return arg;
+    }
+
+    std::vector<TypeArgument*> Parser::parseGenericArgs()
+    {
+        std::vector<TypeArgument*> args;
+
+        if(check(TokenKind::RAngle))
+        {
+            reportError(peek().span, "expected generic argument");
+            return {};
+        }
+
+        do
+        {
+            args.push_back(parseGenericArg());
+        }while(match(TokenKind::Comma));
+
+        if(!expect(TokenKind::RAngle))
+            return {};
+
+        return args;
     }
 
     NamedTypeSyntax* Parser::createVoidType(const SourceSpan &span)

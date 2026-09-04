@@ -11,18 +11,24 @@ namespace ionsl
 class SemanticAnalyzer
 {
 public:
-    SemanticAnalyzer(Module& module, const SymbolTable& symbolTable, const TypeSystem& typeSystem)
-        : m_module(module), m_symbols(symbolTable), m_typeSystem(typeSystem), m_constEval(m_module.declTable, m_typeSystem) { }
+    SemanticAnalyzer(Module& module, SymbolTable& symbolTable, TypeSystem& typeSystem, DeclTable& declTable, ScopeTable& scopeTable)
+        : m_module(module), m_symbols(symbolTable), m_typeSystem(typeSystem), m_declTable(declTable), m_scopeTable(scopeTable),
+          m_constEval(declTable, m_typeSystem)
+    {
+    }
 
     void analyze();
+    static void analyze(Module& module, SymbolTable& symbolTable, TypeSystem& typeSystem, DeclTable& declTable, ScopeTable& scopeTable);
 private:
     Module& m_module;
     const SymbolTable& m_symbols;
 
-    TypeSystem m_typeSystem;
+    TypeSystem& m_typeSystem;
+    DeclTable& m_declTable;
+    ScopeTable& m_scopeTable;
     ConstantEvaluator m_constEval;
 
-    ScopeId m_currentScope;
+    ScopeId m_currentScope = 0;
 
     TypeId resolveType(TypeSyntax& syntax);
     TypeId resolveVectorType(const NamedTypeSyntax& syntax);
@@ -49,6 +55,7 @@ private:
     void checkBreakContinueStmt();
 
     void checkDeclaration(Declaration& declaration);
+    void checkDeclSignature(Declaration& declaration);
 
     void checkFunctionSignature(FunctionDecl& declaration);
     void checkStructSignature(const StructDecl& declaration);

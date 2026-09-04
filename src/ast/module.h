@@ -16,9 +16,6 @@ class Module
 public:
     Arena arena;
     DiagnosticSink diagnostics;
-    TypeTable typeTable;
-    DeclTable declTable;
-    ScopeTable scopeTable;
 
     std::vector<Declaration*> declarations;
 

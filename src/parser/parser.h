@@ -1,5 +1,6 @@
 #pragma once
 #include <span>
+#include <unordered_set>
 
 #include "../ast/module.h"
 #include "../ast/declarations.h"
@@ -19,8 +20,8 @@ struct ParserState
 class Parser
 {
 public:
-    explicit Parser(std::span<Token> tokens, DeclarationIdAllocator& declAllocator, SymbolTable& symbolTable);
-    static Module parse(std::span<Token> tokens, DeclarationIdAllocator& declAllocator, SymbolTable& symbolTable);
+    explicit Parser(std::span<Token> tokens, DeclarationIdAllocator& declAllocator, SymbolTable& symbolTable, ScopeTable& scopeTable, DeclTable& declTable);
+    static Module parse(std::span<Token> tokens, DeclarationIdAllocator& declAllocator, SymbolTable& symbolTable, ScopeTable& scopeTable, DeclTable& declTable);
 
     Module parse();
 private:
@@ -28,22 +29,26 @@ private:
     uint32_t m_pos{};
     Module m_ast{10*1024*1024}; // 10Mb
     DeclarationIdAllocator& m_declAllocator;
+
     SymbolTable& m_symbolTable;
+    ScopeTable& m_scopeTable;
+    DeclTable& m_declTable;
 
-    ScopeId m_currentScope = ScopeIdInvalid;
+    ScopeId m_currentScope = 0;
+    std::vector<Attribute> m_pendingAttributes;
 
-    Declaration*   parseDeclaration();
-    FunctionDecl*  parseFunctionDecl();
-    StructDecl*    parseStructDecl();
+    Declaration* parseDeclaration();
+    FunctionDecl* parseFunctionDecl();
+    StructDecl* parseStructDecl();
     InterfaceDecl* parseInterfaceDecl();
-    ValueDecl*     parseVarDecl();
-    ValueDecl*     parseValueDecl();
+    ValueDecl* parseVarDecl();
+    ValueDecl* parseValueDecl();
 
     Statement* parseStatement();
     BlockStmt* parseBlockStmt();
     WhileStmt* parseWhileStmt();
     ForStmt* parseForStmt();
-    IfStmt*  parseIfStmt();
+    IfStmt* parseIfStmt();
     ReturnStmt* parseReturnStmt();
     BreakStmt* parseBreakStmt();
     ContinueStmt* parseContinueStmt();
@@ -51,7 +56,7 @@ private:
     ExprStmt* parseExprStmt();
 
 
-    Expression* parseExpression(uint32_t minBindingPower = 0);
+    Expression* parseExpression(uint32_t minBindingPower = 0, const std::unordered_set<TokenKind>& stopTokens = {});
     Expression* parseInfixExpr(Expression* left, TokenKind opKind);
     Expression* parsePrefixExpr();
     Expression* makeUnaryPrefixExpr(const Token &operatorToken, Expression *operand);
@@ -62,7 +67,9 @@ private:
     TypeSyntax* parseType();
     NamedTypeSyntax* parseNamedType(QualifiedName name, const SourceSpan &start);
     ArrayTypeSyntax* parseArrayType(TypeSyntax* elementType, const SourceSpan &start);
-    TypeArgument* parseGenericArgument();
+
+    TypeArgument* parseGenericArg();
+    std::vector<TypeArgument*> parseGenericArgs();
 
     NamedTypeSyntax* createVoidType(const SourceSpan &span);
 
@@ -71,10 +78,11 @@ private:
     QualifiedName parseName();
     LiteralValue parseLiteral();
 
-    std::vector<Attribute> parseAttributes();
+    void parseAttributes();
+    std::vector<Attribute> takeAttributes();
     AttributeArg parseAttribArg();
 
-    static std::optional<std::pair<uint32_t, uint32_t>> getBindingPower(TokenKind kind) ;
+    static std::optional<std::pair<uint32_t, uint32_t>> getBindingPower(TokenKind kind);
 
     template<typename T, typename... Args>
     requires std::is_constructible_v<T, Args...>

@@ -62,6 +62,16 @@ bool testShaderFile(const std::string& path, ionsl::Compiler& compiler)
     }
 
     std::cout << "OK ({} top-level decls)\n" << module.declarations.size() << std::endl;
+
+    compiler.link(module);
+
+    printDiagnostics(module.diagnostics.diagnostics());
+    if (!module.diagnostics.diagnostics().empty())
+    {
+        std::cout << "FAILED\n";
+        return false;
+    }
+
     return true;
 }
 
@@ -69,10 +79,7 @@ bool testShaderFile(const std::string& path, ionsl::Compiler& compiler)
 int main()
 {
     const std::vector<std::string> standaloneShaders = {
-        "01_basic_vertex_fragment.ionsl",
-        "02_compute_push_constants.ionsl",
-        "03_control_flow.ionsl",
-        "04_structs_arrays.ionsl",
+        "test1.ionsl",
     };
 
     ionsl::Compiler compiler;

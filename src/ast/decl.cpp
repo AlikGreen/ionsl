@@ -4,13 +4,15 @@
 
 namespace ionsl
 {
-    DeclTable::DeclTable(Module &module)
+    void DeclTable::regenerate(const Module& module)
     {
+        m_map.clear();
         AstWalker walker;
         walker.on([this](Declaration& decl)
         {
             m_map[decl.id] = &decl;
         });
+        walker.walk(module);
     }
 
     Declaration * DeclTable::get(const DeclId id) const

@@ -33,7 +33,7 @@ namespace ionsl
         return *this;
     }
 
-    void AstWalker::walk(Module& module)
+    void AstWalker::walk(const Module& module)
     {
         for(auto* declaration : module.declarations)
         {
@@ -145,6 +145,18 @@ namespace ionsl
                 }
             }
 
+            return;
+        }
+
+        if(auto* declStmt = statement.as<DeclStmt>())
+        {
+            walkDeclaration(*declStmt->decl);
+            return;
+        }
+
+        if(auto* exprStmt = statement.as<ExprStmt>())
+        {
+            walkExpression(*exprStmt->expr);
             return;
         }
 

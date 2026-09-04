@@ -9,7 +9,7 @@ namespace ionsl
 {
 using TypeId = uint32_t;
 
-constexpr TypeId TypeIdInvalid = 0;
+constexpr TypeId TypeIdInvalid = ~0u;
 constexpr TypeId TypeIdVoid = 0;
 constexpr TypeId TypeIdBool = 1;
 constexpr TypeId TypeIdU64 = 2;

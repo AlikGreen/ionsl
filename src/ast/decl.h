@@ -27,7 +27,7 @@ class DeclTable
 {
 public:
     DeclTable() = default;
-    explicit DeclTable(Module& module);
+    void regenerate(const Module& module);
     [[nodiscard]] Declaration* get(DeclId id) const;
 private:
     std::unordered_map<DeclId, Declaration*> m_map{};

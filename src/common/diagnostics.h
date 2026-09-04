@@ -1,4 +1,6 @@
 #pragma once
+#include <cstdint>
+#include <format>
 #include <string>
 #include <vector>
 
@@ -40,8 +42,15 @@ class DiagnosticSink
 {
 public:
     void add(const std::string& message, SourceSpan span, Severity severity) { m_diagnostics.emplace_back(message, span, severity); }
+
+    template<typename... Args>
+    void error(SourceSpan span, std::format_string<Args...> fmt, Args&&... args)
+    {
+        m_diagnostics.emplace_back(std::format(fmt, std::forward<Args>(args)...), span, Severity::Error);
+    }
+
     std::vector<Diagnostic>& diagnostics() { return m_diagnostics; }
-    const std::vector<Diagnostic>& diagnostics() const { return m_diagnostics; }
+    [[nodiscard]] const std::vector<Diagnostic>& diagnostics() const { return m_diagnostics; }
 private:
     std::vector<Diagnostic> m_diagnostics{};
 };

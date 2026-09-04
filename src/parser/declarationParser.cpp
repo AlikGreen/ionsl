@@ -4,6 +4,8 @@ namespace ionsl
 {
     Declaration* Parser::parseDeclaration()
     {
+        parseAttributes();
+
         switch (peek().kind)
         {
             case TokenKind::KwStruct:
@@ -26,10 +28,10 @@ namespace ionsl
     {
         auto* decl = createDecl<FunctionDecl>();
         const SourceSpan start = peek().span;
-        decl->attributes = parseAttributes();
+        decl->attributes = takeAttributes();
         expect(TokenKind::KwFunction);
         decl->name = m_symbolTable.intern(advance().text);
-        m_ast.scopeTable.registerDecl(m_currentScope, decl->name, decl->id);
+        m_scopeTable.registerDecl(m_currentScope, decl->name, decl->id);
         expect(TokenKind::LParen);
 
         if(!check(TokenKind::RParen))
@@ -56,10 +58,10 @@ namespace ionsl
     StructDecl* Parser::parseStructDecl()
     {
         auto* decl = createDecl<StructDecl>();
-        decl->attributes = parseAttributes();
+        decl->attributes = takeAttributes();
         expect(TokenKind::KwStruct);
         decl->name = m_symbolTable.intern(advance().text);
-        m_ast.scopeTable.registerDecl(m_currentScope, decl->name, decl->id);
+        m_scopeTable.registerDecl(m_currentScope, decl->name, decl->id);
 
         if(match(TokenKind::Colon))
         {
@@ -92,10 +94,10 @@ namespace ionsl
     InterfaceDecl* Parser::parseInterfaceDecl()
     {
         auto* decl = createDecl<InterfaceDecl>();
-        decl->attributes = parseAttributes();
+        decl->attributes = takeAttributes();
         expect(TokenKind::KwInterface);
         decl->name = m_symbolTable.intern(advance().text);
-        m_ast.scopeTable.registerDecl(m_currentScope, decl->name, decl->id);
+        m_scopeTable.registerDecl(m_currentScope, decl->name, decl->id);
 
         expect(TokenKind::LBrace);
 
@@ -118,10 +120,11 @@ namespace ionsl
 
     ValueDecl* Parser::parseValueDecl()
     {
+        parseAttributes();
         auto* decl = createDecl<ValueDecl>();
-        decl->attributes = parseAttributes();
+        decl->attributes = takeAttributes();
         decl->name = m_symbolTable.intern(advance().text);
-        m_ast.scopeTable.registerDecl(m_currentScope, decl->name, decl->id);
+        m_scopeTable.registerDecl(m_currentScope, decl->name, decl->id);
         expect(TokenKind::Colon);
         decl->type = parseType();
 

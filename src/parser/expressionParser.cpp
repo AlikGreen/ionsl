@@ -56,6 +56,7 @@ namespace ionsl
         switch (kind)
         {
             case TokenKind::LParen:
+            case TokenKind::ColonColonLAngle:
             case TokenKind::LBracket:
             case TokenKind::Dot:
                 return std::pair<uint32_t, uint32_t>{100, 0};
@@ -65,14 +66,14 @@ namespace ionsl
         }
     }
 
-    Expression* Parser::parseExpression(const uint32_t minBP)
+    Expression* Parser::parseExpression(const uint32_t minBP, const std::unordered_set<TokenKind>& stopTokens)
     {
         auto lhs = parsePrefixExpr();
 
         while(true)
         {
-            // if(stopTokens.contains(peek().kind))
-            //     break;
+            if(stopTokens.contains(peek().kind))
+                break;
 
             auto bp = getBindingPower(peek().kind);
             if(!bp.has_value()) break;
@@ -105,17 +106,22 @@ namespace ionsl
                 return fieldAccess;
             }
             case TokenKind::LParen:
+            case TokenKind::ColonColonLAngle:
             {
-                std::vector<Expression*> args;
+                auto* call = create<CallExpr>();
+
+                if(opKind == TokenKind::ColonColonLAngle)
+                {
+                    call->genericArgs = parseGenericArgs();
+                }
+
                 while (!match(TokenKind::RParen))
                 {
-                    args.push_back(parseExpression());
+                    call->args.push_back(parseExpression());
                     match(TokenKind::Comma);
                 }
 
-                auto* call = create<CallExpr>();
                 call->callee = left;
-                call->args = std::move(args);
                 call->span = SourceSpan::between(left->span, previous().span);
 
                 return call;
@@ -152,7 +158,7 @@ namespace ionsl
         }
     }
 
-    Expression * Parser::parsePrefixExpr()
+    Expression* Parser::parsePrefixExpr()
     {
         Token token = peek();
 
