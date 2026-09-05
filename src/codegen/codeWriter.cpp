@@ -1,24 +1,46 @@
 #include "codeWriter.h"
 
-namespace ions
+namespace ionsl
 {
+    CodeWriter::CodeWriter(const SymbolTable &symbolTable)
+        : m_symbolTable(&symbolTable)
+    {
+
+    }
+
+    void CodeWriter::writeSymbol(const SymbolId symbol)
+    {
+        write(m_symbolTable->get(symbol));
+    }
+
     void CodeWriter::write(const std::string_view text)
     {
+        if(m_atLineStart)
+            writeIndent();
+
         m_output << text;
         m_atLineStart = false;
     }
 
     void CodeWriter::writeLine(std::string_view text)
     {
-        if(!m_atLineStart) newline();
+        if(!m_atLineStart)
+        {
+            newline();
+        }
+        writeIndent();
         m_output << text;
         newline();
+    }
+
+    void CodeWriter::space()
+    {
+        m_output << ' ';
     }
 
     void CodeWriter::newline()
     {
         m_output << '\n';
-        writeIndent();
         m_atLineStart = true;
     }
 

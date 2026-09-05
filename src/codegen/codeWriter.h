@@ -1,14 +1,35 @@
 #pragma once
 #include <sstream>
 
-namespace ions
+#include "../ast/symbolTable.h"
+
+namespace ionsl
 {
 class CodeWriter
 {
 public:
+    CodeWriter() = default;
+    explicit CodeWriter(const SymbolTable& symbolTable);
+
+    void writeSymbol(SymbolId symbol);
+
     void write(std::string_view text);
+
+    template<typename... Args>
+    void write(std::format_string<Args...> fmt, Args&&... args)
+    {
+        write(std::format(fmt, std::forward<Args>(args)...));
+    }
+
     void writeLine(std::string_view text = {});
 
+    template<typename... Args>
+    void writeLine(std::format_string<Args...> fmt, Args&&... args)
+    {
+        writeLine(std::format(fmt, std::forward<Args>(args)...));
+    }
+
+    void space();
     void newline();
 
     void indent();
@@ -25,6 +46,9 @@ public:
         std::string_view separator,
         Func&& func)
     {
+        if(m_atLineStart)
+            writeIndent();
+
         bool first = true;
         m_atLineStart = false;
 
@@ -40,6 +64,7 @@ public:
 
     [[nodiscard]] std::string string() const;
 private:
+    const SymbolTable* m_symbolTable{};
     std::ostringstream m_output;
     uint32_t m_indent = 0;
     bool m_atLineStart = true;

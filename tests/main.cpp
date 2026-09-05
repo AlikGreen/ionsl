@@ -5,6 +5,8 @@
 
 #include <ionsl/ionsl.h>
 
+#include "../src/codegen/hlsl/hlslGenerator.h"
+
 
 std::optional<std::string> loadFile(const std::string& path)
 {
@@ -35,7 +37,7 @@ void printDiagnostics(const std::vector<ionsl::Diagnostic>& diags)
 {
     for (const auto& diag : diags)
         std::cout << (diag.severity == ionsl::Severity::Error ? "error" : "warning") << " at line " <<
-            diag.sourceSpan.startLoc.line << " column " << diag.sourceSpan.startLoc.column << ":" << diag.message << std::endl;
+            diag.sourceSpan.startLoc.line << " column " << diag.sourceSpan.startLoc.column << ": " << diag.message << std::endl;
 }
 
 bool testShaderFile(const std::string& path, ionsl::Compiler& compiler)
@@ -71,6 +73,9 @@ bool testShaderFile(const std::string& path, ionsl::Compiler& compiler)
         std::cout << "FAILED\n";
         return false;
     }
+
+    std::string hlsl = compiler.generate<ionsl::HlslGenerator>(module);
+    std::cout << hlsl << std::endl;
 
     return true;
 }
