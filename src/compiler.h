@@ -20,10 +20,10 @@ public:
     void link(Module& module);
 
     template<typename T>
-    requires std::is_base_of_v<CodeGenerator, T> && std::is_constructible_v<T, const Module&, const SymbolTable&>
+    requires std::is_base_of_v<CodeGenerator, T> && std::is_constructible_v<T, const Module&, const SymbolTable&, const TypeTable&, const DeclTable&>
     std::string generate(const Module& module)
     {
-        return T(module, m_symbolTable).generate();
+        return T(module, m_symbolTable, m_typeTable, m_declTable).generate();
     }
 
     Compiler(const Compiler&) = delete;
