@@ -9,6 +9,7 @@ namespace ionsl
         auto* newType = arena.create<TypeArgumentType>();
         newType->span = span;
         newType->type = type->clone(arena);
+        newType->resolvedType = resolvedType;
         return newType;
     }
 
@@ -17,6 +18,7 @@ namespace ionsl
         auto* newType = arena.create<TypeArgumentValue>();
         newType->span = span;
         newType->expression = expression->clone(arena);
+        newType->resolvedType = resolvedType;
         return newType;
     }
 
@@ -25,6 +27,7 @@ namespace ionsl
         auto* newType = arena.create<NamedTypeSyntax>();
         newType->span = span;
         newType->name = name;
+        newType->resolvedType = resolvedType;
 
         for(const auto* arg : arguments)
             newType->arguments.push_back(arg->clone(arena));
@@ -38,6 +41,8 @@ namespace ionsl
         newType->span = span;
         newType->size = size->clone(arena);
         newType->elementType = elementType->clone(arena);
+        newType->resolvedType = resolvedType;
         return newType;
     }
+
 }

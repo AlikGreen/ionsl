@@ -16,6 +16,7 @@ class Module
 public:
     Arena arena;
     DiagnosticSink diagnostics;
+    ScopeId scope;
 
     std::vector<Declaration*> declarations;
 

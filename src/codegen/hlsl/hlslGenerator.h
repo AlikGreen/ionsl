@@ -25,6 +25,7 @@ private:
     void genVarDecl(ValueDecl& decl);
 
     void genStmt(Statement& stmt);
+    void genExprStmt(ExprStmt& stmt);
     void genBlockStmt(BlockStmt& stmt);
     void genIfStmt(IfStmt& stmt);
     void genWhileStmt(WhileStmt& stmt);

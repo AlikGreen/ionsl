@@ -1,5 +1,6 @@
 #pragma once
 #include "constantEvaluator.h"
+#include "typeResolver.h"
 #include "../ast/declarations.h"
 #include "../ast/module.h"
 #include "../ast/statements.h"
@@ -13,7 +14,7 @@ class SemanticAnalyzer
 public:
     SemanticAnalyzer(Module& module, SymbolTable& symbolTable, TypeSystem& typeSystem, DeclTable& declTable, ScopeTable& scopeTable)
         : m_module(module), m_symbols(symbolTable), m_typeSystem(typeSystem), m_declTable(declTable), m_scopeTable(scopeTable),
-          m_constEval(declTable, m_typeSystem)
+          m_constEval(declTable, m_typeSystem), m_typeResolver(typeSystem, m_constEval, symbolTable, scopeTable, declTable)
     {
     }
 
@@ -27,14 +28,11 @@ private:
     DeclTable& m_declTable;
     ScopeTable& m_scopeTable;
     ConstantEvaluator m_constEval;
+    TypeResolver m_typeResolver;
+
+    std::unordered_map<DeclId, TypeId> m_typeSubstitutions;
 
     ScopeId m_currentScope = 0;
-
-    TypeId resolveType(TypeSyntax& syntax);
-    TypeId resolveVectorType(const NamedTypeSyntax& syntax);
-    TypeId resolveMatrixType(const NamedTypeSyntax& syntax);
-    TypeId resolveNamedType(const NamedTypeSyntax& syntax);
-    TypeId resolveArrayType(const ArrayTypeSyntax& syntax);
 
     TypeId checkExpression(Expression& expression);
     TypeId checkBinaryExpr(BinaryExpr& expression);
@@ -61,12 +59,12 @@ private:
     void checkStructSignature(const StructDecl& declaration);
     void checkInterfaceSignature(const InterfaceDecl& declaration);
 
+    void checkAliasDecl(const AliasDecl& declaration);
     void checkFunctionDecl(const FunctionDecl& declaration);
     void checkStructDecl(const StructDecl& declaration);
     void checkInterfaceDecl(const InterfaceDecl& declaration);
     void checkValueDecl(ValueDecl& declaration);
 
-    static PrimitiveKind toPrimitiveKind(const std::string &name);
     Expression* makeConversion(Expression* operand, TypeId type) const;
 };
 }

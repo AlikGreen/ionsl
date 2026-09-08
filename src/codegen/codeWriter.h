@@ -63,6 +63,7 @@ public:
     }
 
     [[nodiscard]] std::string string() const;
+    uint32_t getIndent() const { return m_indent; }
 private:
     const SymbolTable* m_symbolTable{};
     std::ostringstream m_output;

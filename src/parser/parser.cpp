@@ -7,7 +7,8 @@ namespace ionsl
     Parser::Parser(const std::span<Token> tokens, DeclarationIdAllocator& declAllocator, SymbolTable& symbolTable, ScopeTable& scopeTable, DeclTable& declTable)
         : m_tokens(tokens), m_declAllocator(declAllocator), m_symbolTable(symbolTable), m_scopeTable(scopeTable), m_declTable(declTable)
     {
-         m_currentScope = m_scopeTable.create(ScopeIdInvalid);
+        m_currentScope = m_scopeTable.create(ScopeIdInvalid);
+        m_ast.scope = m_currentScope;
     }
 
     Module Parser::parse(const std::span<Token> tokens, DeclarationIdAllocator& declAllocator, SymbolTable& symbolTable, ScopeTable& scopeTable, DeclTable& declTable)

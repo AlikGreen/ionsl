@@ -21,18 +21,21 @@ namespace ionsl
             genStructDecl(*structDecl);
         if(const auto valDecl = decl.as<ValueDecl>())
             genVarDecl(*valDecl);
+
+        if(m_writer.getIndent() == 0)
+            m_writer.newline();
     }
 
     void HlslGenerator::genFunctionDecl(const FunctionDecl &decl)
     {
-        genType(decl.resolvedReturnType);
+        genType(decl.returnType->resolvedType);
         m_writer.space();
         m_writer.writeSymbol(decl.name);
         m_writer.write("(");
 
-        m_writer.writeSeparated(decl.params, ", ", [this](ValueDecl* param)
+        m_writer.writeSeparated(decl.params, ", ", [this](const ValueDecl* param)
         {
-            genType(param->resolvedType);
+            genType(param->type->resolvedType);
             m_writer.space();
             m_writer.writeSymbol(param->name);
 
@@ -63,7 +66,7 @@ namespace ionsl
 
         for(const auto field : decl.fields)
         {
-            genType(field->resolvedType);
+            genType(field->type->resolvedType);
             m_writer.space();
             m_writer.writeSymbol(field->name);
             m_writer.write(";");
@@ -90,7 +93,7 @@ namespace ionsl
 
     void HlslGenerator::genVarDecl(ValueDecl &decl)
     {
-        genType(decl.resolvedType);
+        genType(decl.type->resolvedType);
         m_writer.space();
         m_writer.writeSymbol(decl.name);
 
@@ -109,7 +112,7 @@ namespace ionsl
         if(const auto block = stmt.as<BlockStmt>())
             genBlockStmt(*block);
         if(const auto expr = stmt.as<ExprStmt>())
-            genExpr(*expr->expr);
+            genExprStmt(*expr);
         if(const auto decl = stmt.as<DeclStmt>())
             genDecl(*decl->decl);
         if(const auto ifStmt = stmt.as<IfStmt>())
@@ -124,6 +127,13 @@ namespace ionsl
             genBreakStmt(*breakStmt);
         if(const auto continueStmt = stmt.as<ContinueStmt>())
             genContinueStmt(*continueStmt);
+    }
+
+    void HlslGenerator::genExprStmt(ExprStmt &stmt)
+    {
+        genExpr(*stmt.expr);
+        m_writer.write(";");
+        m_writer.newline();
     }
 
     void HlslGenerator::genBlockStmt(BlockStmt &stmt)
@@ -182,14 +192,16 @@ namespace ionsl
     void HlslGenerator::genBreakStmt(BreakStmt &stmt)
     {
         m_writer.writeLine("break;");
+        m_writer.newline();
     }
 
     void HlslGenerator::genContinueStmt(ContinueStmt &stmt)
     {
         m_writer.writeLine("continue;");
+        m_writer.newline();
     }
 
-    void HlslGenerator::genType(TypeId id)
+    void HlslGenerator::genType(const TypeId id)
     {
         TypeInfo info = m_typeTable.getInfo(id);
 
@@ -230,8 +242,8 @@ namespace ionsl
 
         if(const auto it = typeNames.find(kind); it != typeNames.end())
             m_writer.write(it->second);
-
-        m_writer.write("unknown_type");
+        else
+            m_writer.write("unknown_type");
     }
 
     void HlslGenerator::genStructType(const StructType type)

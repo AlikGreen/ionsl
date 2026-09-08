@@ -2,17 +2,37 @@
 
 namespace ionsl
 {
+    static constexpr std::unordered_map<TypeId, PrimitiveKind> kPrimitives =
+    {
+        { TypeId::Void,   PrimitiveKind::Void },
+        { TypeId::Bool,   PrimitiveKind::Bool },
+        { TypeId::I8,     PrimitiveKind::Int8 },
+        { TypeId::I16,    PrimitiveKind::Int16 },
+        { TypeId::I32,    PrimitiveKind::Int32 },
+        { TypeId::I64,    PrimitiveKind::Int64 },
+        { TypeId::U8,     PrimitiveKind::UInt8 },
+        { TypeId::U16,    PrimitiveKind::UInt16 },
+        { TypeId::U32,    PrimitiveKind::UInt32 },
+        { TypeId::U64,    PrimitiveKind::UInt64 },
+        { TypeId::F16,    PrimitiveKind::Float16 },
+        { TypeId::F32,    PrimitiveKind::Float32 },
+        { TypeId::F64,    PrimitiveKind::Float64 },
+        { TypeId::String, PrimitiveKind::String },
+    };
+
     TypeTable::TypeTable()
     {
-        m_types.emplace_back(PrimitiveType{ PrimitiveKind::Void });
-        m_types.emplace_back(PrimitiveType{ PrimitiveKind::Bool });
+        m_types.resize(kPrimitives.size() + 1);
+        m_types[TypeId::Error.value()] = {ErrorType{}};
 
-        m_primitiveTypes[PrimitiveKind::Void] = TypeIdVoid;
-        m_primitiveTypes[PrimitiveKind::Bool] = TypeIdBool;
-        m_primitiveTypes[PrimitiveKind::UInt64] = TypeIdU64;
-        m_primitiveTypes[PrimitiveKind::Int64] = TypeIdI64;
-        m_primitiveTypes[PrimitiveKind::Float64] = TypeIdF64;
-        m_primitiveTypes[PrimitiveKind::String] = TypeIdString;
+
+        static_assert(std::size(kPrimitives) == static_cast<size_t>(PrimitiveKind::Unknown) - 1, "kPrimitives is missing an entry — every PrimitiveKind except Unknown must be listed here");
+
+        for(const auto& [id, kind] : kPrimitives)
+        {
+            m_types[id.value()] = {PrimitiveType{kind}};
+            m_primitiveTypes[kind] = id;
+        }
     }
 
     TypeId TypeTable::getPrimitiveType(const PrimitiveKind kind)
@@ -23,9 +43,7 @@ namespace ionsl
         TypeInfo info{};
         info.kind = PrimitiveType{kind};
 
-        const TypeId id = m_types.size();
-        m_types.push_back(info);
-
+        const TypeId id = addType(info);
         m_primitiveTypes[kind] = id;
         return id;
     }
@@ -36,8 +54,7 @@ namespace ionsl
         if(const auto it = m_vectorTypes.find(type); it != m_vectorTypes.end())
             return it->second;
 
-        const TypeId id = m_types.size();
-        m_types.emplace_back(type);
+        const TypeId id = addType(type);
         m_vectorTypes[type] = id;
         return id;
     }
@@ -48,8 +65,7 @@ namespace ionsl
         if(const auto it = m_matrixTypes.find(type); it != m_matrixTypes.end())
             return it->second;
 
-        const TypeId id = m_types.size();
-        m_types.emplace_back(type);
+        const TypeId id = addType(type);
         m_matrixTypes[type] = id;
         return id;
     }
@@ -60,8 +76,7 @@ namespace ionsl
         if(const auto it = m_arrayTypes.find(type); it != m_arrayTypes.end())
             return it->second;
 
-        const TypeId id = m_types.size();
-        m_types.emplace_back(type);
+        const TypeId id = addType(type);
         m_arrayTypes[type] = id;
         return id;
     }
@@ -74,7 +89,7 @@ namespace ionsl
         TypeInfo info{};
         info.kind = StructType{id};
 
-        const TypeId typeId = m_types.size();
+        const TypeId typeId{m_types.size()};
         m_types.push_back(info);
 
         m_structTypes[id] = typeId;
@@ -89,7 +104,7 @@ namespace ionsl
         TypeInfo info{};
         info.kind = InterfaceType{id};
 
-        const TypeId typeId = m_types.size();
+        const TypeId typeId{m_types.size()};
         m_types.push_back(info);
 
         m_interfaceTypes[id] = typeId;
@@ -98,7 +113,7 @@ namespace ionsl
 
     TypeInfo TypeTable::getInfo(const TypeId id) const
     {
-        return m_types.at(id);
+        return m_types.at(id.value());
     }
 
     bool TypeTable::isIntegral(const TypeId id) const
@@ -121,5 +136,18 @@ namespace ionsl
             default:
                 return false;
         }
+    }
+
+    TypeId TypeTable::addType(const TypeInfo info)
+    {
+        const TypeId typeId{m_types.size()};
+        m_types.push_back(info);
+        return typeId;
+    }
+
+    void TypeTable::addPrimitiveType(PrimitiveKind kind, TypeId id)
+    {
+
+        m_primitiveTypes[PrimitiveKind::Void] = id;
     }
 }

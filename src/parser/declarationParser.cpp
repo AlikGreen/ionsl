@@ -16,6 +16,8 @@ namespace ionsl
                 return parseFunctionDecl();
             case TokenKind::KwVar:
                 return parseVarDecl();
+            case TokenKind::KwType:
+                return parseAliasDecl();
             default:
             {
                 advance();
@@ -134,4 +136,62 @@ namespace ionsl
         return decl;
     }
 
+    AliasDecl* Parser::parseAliasDecl()
+    {
+        expect(TokenKind::KwType);
+        auto* decl = createDecl<AliasDecl>();
+
+        decl->name = m_symbolTable.intern(advance().text);
+        m_scopeTable.registerDecl(m_currentScope, decl->name, decl->id);
+
+
+        if(check(TokenKind::LAngle))
+        {
+            ScopeId old = m_currentScope;
+            m_currentScope = m_scopeTable.create(m_currentScope);
+            decl->genericParams = parseGenericParams();
+            decl->scope = m_currentScope;
+            m_currentScope = old;
+        }
+
+        expect(TokenKind::Equal);
+
+        decl->targetType = parseType();
+
+        expect(TokenKind::Semicolon);
+
+        return decl;
+    }
+
+    GenericParam * Parser::parseGenericParam()
+    {
+        // TODO implement value type params
+        // TODO implement requirements eg interfaces
+
+        auto* decl = createDecl<TypeGenericParam>();
+
+        decl->span = peek().span;
+        decl->name = m_symbolTable.intern(peek().text);
+        expect(TokenKind::Identifier);
+
+        m_scopeTable.registerDecl(m_currentScope, decl->name, decl->id);
+
+        return decl;
+    }
+
+    std::vector<GenericParam*> Parser::parseGenericParams()
+    {
+        expect(TokenKind::LAngle);
+
+        std::vector<GenericParam*> params;
+
+        do
+        {
+            params.push_back(parseGenericParam());
+        }while(match(TokenKind::Comma));
+
+        expect(TokenKind::RAngle);
+
+        return params;
+    }
 }
