@@ -21,6 +21,19 @@ public:
     [[nodiscard]] TypeInfo getInfo(TypeId id) const;
     [[nodiscard]] bool isIntegral(TypeId id) const;
 private:
+    TypeId addType(TypeInfo info);
+
+    template<typename T>
+    requires std::is_constructible_v<TypeInfo, T>
+    TypeId addType(T type)
+    {
+        const TypeId typeId{m_types.size()};
+        m_types.emplace_back(type);
+        return typeId;
+    }
+
+    void addPrimitiveType(PrimitiveKind kind, TypeId id);
+
     std::vector<TypeInfo> m_types;
 
     std::unordered_map<VectorType, TypeId> m_vectorTypes;

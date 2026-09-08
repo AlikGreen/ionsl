@@ -19,7 +19,6 @@ namespace ionsl
         decl->name = name;
 
         decl->type = type->clone(arena);
-        decl->resolvedType = resolvedType;
 
         return decl;
     }
@@ -33,7 +32,6 @@ namespace ionsl
         decl->name = name;
 
         decl->returnType = returnType->clone(arena);
-        decl->resolvedReturnType = resolvedReturnType;
 
         for(const auto* param : params)
             decl->params.push_back(param->clone(arena));
@@ -91,10 +89,50 @@ namespace ionsl
         return decl;
     }
 
+    AliasDecl * AliasDecl::clone(Arena &arena) const
+    {
+        auto* decl = arena.create<AliasDecl>();
+        decl->span = span;
+        decl->scope = scope;
+        decl->name = name;
+        decl->id = id;
+        decl->attributes = attributes;
+        decl->targetType = targetType->clone(arena);
+
+        for(const auto param : genericParams)
+            decl->genericParams.push_back(param->clone(arena));
+
+
+        return decl;
+    }
+
     ErrorDecl* ErrorDecl::clone(Arena &arena) const
     {
         auto* decl = arena.create<ErrorDecl>();
+        decl->id = id;
+        decl->name = name;
         decl->span = span;
+        decl->attributes = attributes;
+        return decl;
+    }
+
+    TypeGenericParam* TypeGenericParam::clone(Arena &arena) const
+    {
+        auto* decl = arena.create<TypeGenericParam>();
+        decl->span = span;
+        decl->name = name;
+        decl->attributes = attributes;
+        return decl;
+    }
+
+    ValueGenericParam* ValueGenericParam::clone(Arena &arena) const
+    {
+        auto* decl = arena.create<ValueGenericParam>();
+        decl->span = span;
+        decl->name = name;
+        decl->type = type->clone(arena);
+        decl->resolvedType = resolvedType;
+        decl->attributes = attributes;
         return decl;
     }
 }

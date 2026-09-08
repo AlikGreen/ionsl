@@ -87,10 +87,7 @@ namespace ionsl
 
             for(auto* parameter : function->params)
             {
-                if(parameter != nullptr)
-                {
-                    walk(*parameter);
-                }
+                walk(*parameter);
             }
 
             if(function->body != nullptr)
@@ -105,10 +102,7 @@ namespace ionsl
         {
             for(auto* field : structure->fields)
             {
-                if(field != nullptr)
-                {
-                    walk(*field);
-                }
+                walk(*field);
             }
 
             return;
@@ -116,15 +110,18 @@ namespace ionsl
 
         if(auto* value = declaration.as<ValueDecl>())
         {
-            if(value->type != nullptr)
-            {
-                walk(*value->type);
-            }
+            walk(*value->type);
 
             if(value->initializer != nullptr)
-            {
                 walk(*value->initializer);
-            }
+        }
+
+        if(auto* alias = declaration.as<AliasDecl>())
+        {
+            walk(*alias->targetType);
+
+            for(const auto param : alias->genericParams)
+                walk(*param);
         }
     }
 
@@ -289,4 +286,5 @@ namespace ionsl
             }
         }
     }
+
 }

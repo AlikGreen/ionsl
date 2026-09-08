@@ -110,11 +110,11 @@ namespace ionsl
             args.push_back(parseGenericArg());
         }while(match(TokenKind::Comma));
 
-        if(!expect(TokenKind::RAngle))
-            return {};
+        expect(TokenKind::RAngle);
 
         return args;
     }
+
 
     NamedTypeSyntax* Parser::createVoidType(const SourceSpan &span)
     {

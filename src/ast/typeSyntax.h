@@ -1,20 +1,24 @@
 #pragma once
 #include "astNode.h"
 #include "qualifiedName.h"
+#include "type.h"
 
 namespace ionsl
 {
 class Expression;
+class Declaration;
 
 class TypeSyntax : public AstNode
 {
 public:
+    TypeId resolvedType = TypeId::Error;
     TypeSyntax* clone(Arena& arena) const override = 0;
 };
 
 class TypeArgument : public AstNode
 {
 public:
+    TypeId resolvedType = TypeId::Error;
     TypeArgument* clone(Arena& arena) const override = 0;
 };
 

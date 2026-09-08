@@ -16,7 +16,7 @@ class Expression : public AstNode
 public:
     Expression* clone(Arena& arena) const override = 0;
 
-    TypeId resultType = TypeIdInvalid;
+    TypeId resultType = TypeId::Error;
 };
 
 class BinaryExpr final : public Expression
@@ -93,7 +93,7 @@ class ConversionExpr final : public Expression
 {
 public:
     Expression* operand{};
-    TypeId targetType = TypeIdInvalid;
+    TypeId targetType = TypeId::Error;
     ConversionKind kind = ConversionKind::Implicit;
 
     ConversionExpr* clone(Arena &arena) const override;

@@ -43,6 +43,10 @@ private:
     InterfaceDecl* parseInterfaceDecl();
     ValueDecl* parseVarDecl();
     ValueDecl* parseValueDecl();
+    AliasDecl* parseAliasDecl();
+
+    GenericParam* parseGenericParam();
+    std::vector<GenericParam*> parseGenericParams();
 
     Statement* parseStatement();
     BlockStmt* parseBlockStmt();

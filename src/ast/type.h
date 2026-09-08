@@ -7,15 +7,41 @@
 
 namespace ionsl
 {
-using TypeId = uint32_t;
+class TypeId
+{
+public:
+    constexpr TypeId() = default;
+    constexpr explicit TypeId(const uint32_t value) : m_value(value) {}
 
-constexpr TypeId TypeIdInvalid = ~0u;
-constexpr TypeId TypeIdVoid = 0;
-constexpr TypeId TypeIdBool = 1;
-constexpr TypeId TypeIdU64 = 2;
-constexpr TypeId TypeIdI64 = 3;
-constexpr TypeId TypeIdF64 = 4;
-constexpr TypeId TypeIdString = 5;
+    [[nodiscard]] constexpr uint32_t value() const { return m_value; }
+    friend constexpr bool operator==(TypeId, TypeId) = default;
+
+    static const TypeId Error;
+    static const TypeId Void;
+    static const TypeId Bool;
+    static const TypeId I8, I16, I32, I64;
+    static const TypeId U8, U16, U32, U64;
+    static const TypeId F16, F32, F64;
+    static const TypeId String;
+private:
+    uint32_t m_value = 0;
+};
+
+constexpr TypeId TypeId::Error   = TypeId(0);
+constexpr TypeId TypeId::Void    = TypeId(1);
+constexpr TypeId TypeId::Bool    = TypeId(3);
+constexpr TypeId TypeId::I8      = TypeId(4);
+constexpr TypeId TypeId::I16     = TypeId(5);
+constexpr TypeId TypeId::I32     = TypeId(6);
+constexpr TypeId TypeId::I64     = TypeId(7);
+constexpr TypeId TypeId::U8      = TypeId(8);
+constexpr TypeId TypeId::U16     = TypeId(9);
+constexpr TypeId TypeId::U32     = TypeId(10);
+constexpr TypeId TypeId::U64     = TypeId(11);
+constexpr TypeId TypeId::F16     = TypeId(12);
+constexpr TypeId TypeId::F32     = TypeId(13);
+constexpr TypeId TypeId::F64     = TypeId(14);
+constexpr TypeId TypeId::String  = TypeId(15);
 
 enum class PrimitiveKind : uint8_t
 {
@@ -83,8 +109,13 @@ struct InterfaceType
     DeclId declId = InvalidDeclId;
 };
 
+struct GenericType
+{
+    DeclId declId = InvalidDeclId;
+};
+
 struct AutoType { };
-struct InvalidType { };
+struct ErrorType { };
 
 using TypeKind = std::variant<
     PrimitiveType,
@@ -94,7 +125,8 @@ using TypeKind = std::variant<
     StructType,
     InterfaceType,
     AutoType,
-    InvalidType
+    GenericType,
+    ErrorType
 >;
 
 class TypeInfo
@@ -103,7 +135,7 @@ public:
     TypeKind kind{};
 
     template<typename T>
-    bool is() const
+    [[nodiscard]] bool is() const
     {
         return std::holds_alternative<T>(kind);
     }

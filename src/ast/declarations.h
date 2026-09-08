@@ -3,13 +3,17 @@
 #include "astNode.h"
 #include "attribute.h"
 #include "decl.h"
+#include "scopeTable.h"
 #include "type.h"
+#include "typeSyntax.h"
 
 #include "../common/arena.h"
 
 namespace ionsl
 {
-class TypeSyntax;
+    class GenericParam;
+    class TypeSyntax;
+class TypeArgument;
 
 class Expression;
 class BlockStmt;
@@ -18,6 +22,7 @@ class  Declaration : public AstNode
 public:
     std::vector<Attribute> attributes{};
     DeclId id{};
+    SymbolId name{};
 
     Declaration* clone(Arena& arena) const override = 0;
 };
@@ -25,9 +30,7 @@ public:
 class ValueDecl  final : public Declaration
 {
 public:
-    SymbolId name{};
     TypeSyntax* type{};
-    TypeId resolvedType = TypeIdInvalid;
     Expression* initializer{};
     // TODO modifiers eg mutable
 
@@ -37,9 +40,7 @@ public:
 class FunctionDecl final : public Declaration
 {
 public:
-    SymbolId name;
     TypeSyntax* returnType;
-    TypeId resolvedReturnType;
     std::vector<ValueDecl*> params;
     BlockStmt* body;
 
@@ -49,7 +50,6 @@ public:
 class InterfaceDecl final : public Declaration
 {
 public:
-    SymbolId name;
     std::vector<FunctionDecl*> methods;
 
     InterfaceDecl* clone(Arena &arena) const override;
@@ -58,20 +58,52 @@ public:
 class StructDecl final : public Declaration
 {
 public:
-    SymbolId name;
     std::vector<TypeId> resolvedInterfaces;
     std::vector<TypeSyntax*> interfaces;
 
     std::vector<ValueDecl*> fields;
     std::vector<FunctionDecl*> methods;
 
-    ValueDecl* findField(SymbolId name) const;
+    [[nodiscard]] ValueDecl* findField(SymbolId name) const;
     StructDecl* clone(Arena &arena) const override;
+};
+
+
+// e.g. type vec3<T> = vector<T, 3>
+class AliasDecl final : public Declaration
+{
+public:
+    std::vector<GenericParam*> genericParams;
+    TypeSyntax* targetType = nullptr;
+    ScopeId scope = ScopeIdInvalid;
+
+    AliasDecl* clone(Arena &arena) const override;
 };
 
 class ErrorDecl final : public Declaration
 {
 public:
     ErrorDecl* clone(Arena &arena) const override;
+};
+
+class GenericParam : public Declaration
+{
+public:
+    GenericParam* clone(Arena& arena) const override = 0;
+};
+
+class TypeGenericParam final : public GenericParam
+{
+public:
+    TypeGenericParam* clone(Arena& arena) const override;
+};
+
+class ValueGenericParam final : public GenericParam
+{
+public:
+    TypeSyntax* type{};
+    TypeId resolvedType = TypeId::Error;
+
+    ValueGenericParam* clone(Arena& arena) const override;
 };
 }
