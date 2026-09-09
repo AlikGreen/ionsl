@@ -34,6 +34,14 @@ namespace ionsl
         return TypeId::Error; // TODO diagnostics
     }
 
+    TypeId TypeResolver::resolveTypeArg(TypeArgument &arg, const SemaContext &ctx)
+    {
+        if(auto* typeArg = arg.as<TypeArgumentType>())
+            return typeArg->resolvedType = resolveType(*typeArg->type, ctx);
+
+        return TypeId::Error;
+    }
+
     TypeId TypeResolver::resolveVectorType(NamedTypeSyntax &syntax, const SemaContext& ctx)
     {
         if(syntax.arguments.size() != 2)

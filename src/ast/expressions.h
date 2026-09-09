@@ -65,6 +65,15 @@ public:
     CallExpr* clone(Arena &arena) const override;
 };
 
+class ConstructExpr final : public Expression
+{
+public:
+    TypeSyntax* type{};
+    std::vector<Expression*> args{};
+
+    ConstructExpr* clone(Arena &arena) const override;
+};
+
 class FieldAccessExpr final : public Expression
 {
 public:

@@ -28,21 +28,21 @@ namespace ionsl
         return SemanticAnalyzer(module, symbolTable, typeSystem, declTable, scopeTable).analyze();
     }
 
-    TypeId SemanticAnalyzer::checkExpression(Expression &expression, const SemaContext& ctx)
+    TypeId SemanticAnalyzer::checkExpression(Expression*& expression, const SemaContext& ctx)
     {
-        if(auto* binaryExpr = expression.as<BinaryExpr>())
+        if(auto* binaryExpr = expression->as<BinaryExpr>())
             return checkBinaryExpr(*binaryExpr, ctx);
-        if(auto* unaryExpr = expression.as<UnaryExpr>())
+        if(auto* unaryExpr = expression->as<UnaryExpr>())
             return checkUnaryExpr(*unaryExpr, ctx);
-        if(auto* callExpr = expression.as<CallExpr>())
-            return checkCallExpr(*callExpr, ctx);
-        if(auto* identifierExpr = expression.as<IdentifierExpr>())
+        if(auto* callExpr = expression->as<CallExpr>())
+            return checkCallExpr(expression, *callExpr, ctx);
+        if(auto* identifierExpr = expression->as<IdentifierExpr>())
             return checkIdentifierExpr(*identifierExpr, ctx);
-        if(auto* indexExpr = expression.as<IndexExpr>())
+        if(auto* indexExpr = expression->as<IndexExpr>())
             return checkIndexExpr(*indexExpr, ctx);
-        if(auto* literalExpr = expression.as<LiteralExpr>())
+        if(auto* literalExpr = expression->as<LiteralExpr>())
             return checkLiteralExpr(*literalExpr);
-        if(auto* fieldAccessExpr = expression.as<FieldAccessExpr>())
+        if(auto* fieldAccessExpr = expression->as<FieldAccessExpr>())
             return checkFieldAccessExpr(*fieldAccessExpr, ctx);
 
         return TypeId::Error;
@@ -50,8 +50,8 @@ namespace ionsl
 
     TypeId SemanticAnalyzer::checkBinaryExpr(BinaryExpr &expression, const SemaContext& ctx)
     {
-        const auto leftType = checkExpression(*expression.left, ctx);
-        const auto rightType = checkExpression(*expression.right, ctx);
+        const auto leftType = checkExpression(expression.left, ctx);
+        const auto rightType = checkExpression(expression.right, ctx);
 
         if(leftType == TypeId::Error || rightType == TypeId::Error) return TypeId::Error;
 
@@ -68,7 +68,7 @@ namespace ionsl
 
     TypeId SemanticAnalyzer::checkUnaryExpr(UnaryExpr &expression, const SemaContext& ctx)
     {
-        const auto operandType = checkExpression(*expression.operand, ctx);
+        const auto operandType = checkExpression(expression.operand, ctx);
 
         if(operandType == TypeId::Error) return TypeId::Error;
 
@@ -82,18 +82,30 @@ namespace ionsl
         return expression.resultType;
     }
 
-    TypeId SemanticAnalyzer::checkCallExpr(CallExpr &expression, const SemaContext& ctx)
+    TypeId SemanticAnalyzer::checkCallExpr(Expression*& slot, CallExpr &expression, const SemaContext& ctx)
     {
-        if(auto* identifier = expression.callee->as<IdentifierExpr>())
+        auto* identifier = expression.callee->as<IdentifierExpr>();
+        if(!identifier)
+            return TypeId::Error; // TODO check non identifier call
+
+        auto* typeSyntax = m_module.arena.create<NamedTypeSyntax>();
+        typeSyntax->name = identifier->name;
+        typeSyntax->span = identifier->span;
+        typeSyntax->arguments = expression.genericArgs;
+
+        for(const auto arg : expression.genericArgs)
+            m_typeResolver.resolveTypeArg(*arg, ctx);
+
+        if(m_typeResolver.resolveType(*typeSyntax, ctx) != TypeId::Error)
         {
-            return checkIdentifierCall(expression, *identifier, ctx);
+            auto* construct = m_module.arena.create<ConstructExpr>();
+            construct->type = typeSyntax;
+            construct->args = expression.args;
+            slot = construct;
+            return typeSyntax->resolvedType;
         }
 
-        // TypeId calleeType = checkExpression(*expression.callee);
-        // if(calleeType == TypeId::Error)
-
-        return TypeId::Error;
-
+        return checkIdentifierCall(expression, *identifier, ctx);
     }
 
     TypeId SemanticAnalyzer::checkIdentifierCall(CallExpr &expression, const IdentifierExpr &identifier, const SemaContext& ctx)
@@ -104,9 +116,9 @@ namespace ionsl
 
         std::vector<TypeId> argumentTypes;
 
-        for(auto* argument : expression.args)
+        for(auto& argument : expression.args)
         {
-            TypeId type = checkExpression(*argument, ctx);
+            TypeId type = checkExpression(argument, ctx);
 
             if(type == TypeId::Error)
                 return TypeId::Error;
@@ -145,7 +157,7 @@ namespace ionsl
         {
             for(const auto& [arg, param] : std::views::zip(expression.args, funcDecl->params))
             {
-                makeConversion(arg, param->type->resolvedType);
+                arg = makeConversion(arg, param->type->resolvedType);
             }
 
             return funcDecl->returnType->resolvedType;
@@ -181,8 +193,8 @@ namespace ionsl
 
     TypeId SemanticAnalyzer::checkIndexExpr(IndexExpr &expression, const SemaContext& ctx)
     {
-        checkExpression(*expression.index, ctx);
-        const TypeId arrayTypeId = checkExpression(*expression.array, ctx);
+        checkExpression(expression.index, ctx);
+        const TypeId arrayTypeId = checkExpression(expression.array, ctx);
 
         TypeInfo arrayType = m_typeSystem.types().getInfo(arrayTypeId);
 
@@ -217,7 +229,7 @@ namespace ionsl
 
     TypeId SemanticAnalyzer::checkFieldAccessExpr(FieldAccessExpr &expression, const SemaContext& ctx)
     {
-        const TypeId objTypeId = checkExpression(*expression.object, ctx);
+        const TypeId objTypeId = checkExpression(expression.object, ctx);
 
         if(objTypeId == TypeId::Error)
             return TypeId::Error;
@@ -234,7 +246,7 @@ namespace ionsl
     void SemanticAnalyzer::checkStatement(Statement &statement, const SemaContext& ctx)
     {
         if(const auto exprStmt = statement.as<ExprStmt>())
-            checkExpression(*exprStmt->expr, ctx);
+            checkExpression(exprStmt->expr, ctx);
         if(const auto declStmt = statement.as<DeclStmt>())
             checkDeclaration(*declStmt->decl, ctx);
         if(const auto blockStmt = statement.as<BlockStmt>())
@@ -261,9 +273,9 @@ namespace ionsl
         }
     }
 
-    void SemanticAnalyzer::checkIfStmt(const IfStmt &statement, const SemaContext& ctx)
+    void SemanticAnalyzer::checkIfStmt(IfStmt &statement, const SemaContext& ctx)
     {
-        const TypeId conditionType = checkExpression(*statement.condition, ctx);
+        const TypeId conditionType = checkExpression(statement.condition, ctx);
         if(conditionType != TypeId::Bool)
         {
             m_module.diagnostics.add("condition in an if statement must resolve to a bool", statement.condition->span, Severity::Error);
@@ -276,26 +288,26 @@ namespace ionsl
             checkBlockStmt(*statement.elseBranch, ctx);
     }
 
-    void SemanticAnalyzer::checkForStmt(const ForStmt &statement, const SemaContext& ctx)
+    void SemanticAnalyzer::checkForStmt(ForStmt &statement, const SemaContext& ctx)
     {
         checkStatement(*statement.init, ctx);
-        checkExpression(*statement.condition, ctx);
-        checkExpression(*statement.increment, ctx);
+        checkExpression(statement.condition, ctx);
+        checkExpression(statement.increment, ctx);
         checkBlockStmt(*statement.body, ctx);
     }
 
-    void SemanticAnalyzer::checkWhileStmt(const WhileStmt &statement, const SemaContext& ctx)
+    void SemanticAnalyzer::checkWhileStmt(WhileStmt &statement, const SemaContext& ctx)
     {
-        checkExpression(*statement.condition, ctx);
+        checkExpression(statement.condition, ctx);
         checkBlockStmt(*statement.body, ctx);
     }
 
-    void SemanticAnalyzer::checkReturnStmt(const ReturnStmt &statement, const SemaContext& ctx)
+    void SemanticAnalyzer::checkReturnStmt(ReturnStmt &statement, const SemaContext& ctx)
     {
         TypeId returnType = TypeId::Void;
 
         if(statement.expr)
-            returnType = checkExpression(*statement.expr, ctx);
+            returnType = checkExpression(statement.expr, ctx);
 
         // TODO check return type against function type
     }
@@ -342,7 +354,7 @@ namespace ionsl
         m_typeResolver.resolveType(*declaration.type, ctx);
 
         if(declaration.initializer)
-            checkExpression(*declaration.initializer, ctx);
+            checkExpression(declaration.initializer, ctx);
     }
 
 
