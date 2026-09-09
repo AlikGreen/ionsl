@@ -17,6 +17,7 @@ public:
     TypeResolver(TypeSystem& typeSystem, ConstantEvaluator& evaluator, SymbolTable& symbols, ScopeTable& scopeTable, DeclTable& decls);
 
     TypeId resolveType(TypeSyntax& syntax, const SemaContext& ctx);
+    TypeId resolveTypeArg(TypeArgument& arg, const SemaContext& ctx);
 private:
     TypeSystem& m_typeSystem;
     ConstantEvaluator& m_evaluator;

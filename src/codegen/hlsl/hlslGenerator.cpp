@@ -260,6 +260,8 @@ namespace ionsl
             genUnaryExpr(*unary);
         if(const auto call = expr.as<CallExpr>())
             genCallExpr(*call);
+        if(const auto construct = expr.as<ConstructExpr>())
+            genConstructExpr(*construct);
         if(const auto conversion = expr.as<ConversionExpr>())
             genConversionExpr(*conversion);
         if(const auto index = expr.as<IndexExpr>())
@@ -308,6 +310,20 @@ namespace ionsl
 
             m_writer.write(">");
         }
+
+        m_writer.write("(");
+
+        m_writer.writeSeparated(expr.args, ", ", [this](Expression* arg)
+        {
+            genExpr(*arg);
+        });
+
+        m_writer.write(")");
+    }
+
+    void HlslGenerator::genConstructExpr(const ConstructExpr &expr)
+    {
+        genType(expr.type->resolvedType);
 
         m_writer.write("(");
 

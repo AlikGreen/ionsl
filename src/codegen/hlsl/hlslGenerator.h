@@ -44,6 +44,7 @@ private:
     void genBinaryExpr(BinaryExpr& expr, bool addParens = false);
     void genUnaryExpr(UnaryExpr& expr);
     void genCallExpr(const CallExpr& expr);
+    void genConstructExpr(const ConstructExpr& expr);
     void genConversionExpr(const ConversionExpr& expr);
     void genIndexExpr(const IndexExpr& expr);
     void genLiteralExpr(LiteralExpr& expr);

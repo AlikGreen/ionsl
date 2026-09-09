@@ -33,10 +33,10 @@ private:
     ConstantEvaluator m_constEval;
     TypeResolver m_typeResolver;
 
-    TypeId checkExpression(Expression& expression, const SemaContext& ctx);
+    TypeId checkExpression(Expression*& expression, const SemaContext& ctx);
     TypeId checkBinaryExpr(BinaryExpr& expression, const SemaContext& ctx);
     TypeId checkUnaryExpr(UnaryExpr& expression, const SemaContext& ctx);
-    TypeId checkCallExpr(CallExpr& expression, const SemaContext& ctx);
+    TypeId checkCallExpr(Expression*& slot, CallExpr& expression, const SemaContext& ctx);
     TypeId checkIdentifierCall(CallExpr& expression, const IdentifierExpr& identifier, const SemaContext& ctx);
     TypeId checkIdentifierExpr(IdentifierExpr& expression, const SemaContext& ctx) const;
     TypeId checkIndexExpr(IndexExpr& expression, const SemaContext& ctx);
@@ -45,10 +45,10 @@ private:
 
     void checkStatement(Statement& statement, const SemaContext& ctx);
     void checkBlockStmt(const BlockStmt& statement, const SemaContext& ctx);
-    void checkIfStmt(const IfStmt& statement, const SemaContext& ctx);
-    void checkForStmt(const ForStmt& statement, const SemaContext& ctx);
-    void checkWhileStmt(const WhileStmt& statement, const SemaContext& ctx);
-    void checkReturnStmt(const ReturnStmt& statement, const SemaContext& ctx);
+    void checkIfStmt(IfStmt& statement, const SemaContext& ctx);
+    void checkForStmt(ForStmt& statement, const SemaContext& ctx);
+    void checkWhileStmt(WhileStmt& statement, const SemaContext& ctx);
+    void checkReturnStmt(ReturnStmt& statement, const SemaContext& ctx);
     void checkBreakContinueStmt();
 
     void checkDeclaration(Declaration& declaration, const SemaContext& ctx);

@@ -42,8 +42,25 @@ namespace ionsl
         auto* newExpr = arena.create<CallExpr>();
         newExpr->span = span;
         newExpr->callee = callee->clone(arena);
-        for(auto* arg : args)
+
+        for(const auto* arg : args)
             newExpr->args.push_back(arg->clone(arena));
+
+        for(const auto* arg : genericArgs)
+            newExpr->genericArgs.push_back(arg->clone(arena));
+
+        return newExpr;
+    }
+
+    ConstructExpr * ConstructExpr::clone(Arena &arena) const
+    {
+        auto* newExpr = arena.create<ConstructExpr>();
+        newExpr->span = span;
+        newExpr->type = type->clone(arena);
+
+        for(const auto* arg : args)
+            newExpr->args.push_back(arg->clone(arena));
+
         return newExpr;
     }
 
