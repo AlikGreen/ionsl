@@ -6,6 +6,7 @@
 
 namespace ionsl
 {
+struct SemaContext;
 class AliasDecl;
 class ArrayTypeSyntax;
 class NamedTypeSyntax;
@@ -15,7 +16,7 @@ class TypeResolver
 public:
     TypeResolver(TypeSystem& typeSystem, ConstantEvaluator& evaluator, SymbolTable& symbols, ScopeTable& scopeTable, DeclTable& decls);
 
-    TypeId resolveType(TypeSyntax& syntax, ScopeId scope, std::unordered_map<DeclId, TypeId>& typeSubstitutions);
+    TypeId resolveType(TypeSyntax& syntax, const SemaContext& ctx);
 private:
     TypeSystem& m_typeSystem;
     ConstantEvaluator& m_evaluator;
@@ -23,11 +24,11 @@ private:
     ScopeTable& m_scopeTable;
     DeclTable& m_decls;
 
-    TypeId resolveVectorType(NamedTypeSyntax& syntax, ScopeId scope, std::unordered_map<DeclId, TypeId>& typeSubstitutions);
-    TypeId resolveMatrixType(NamedTypeSyntax& syntax, ScopeId scope, std::unordered_map<DeclId, TypeId>& typeSubstitutions);
-    TypeId resolveNamedType(NamedTypeSyntax& syntax, ScopeId scope, std::unordered_map<DeclId, TypeId>& typeSubstitutions);
-    TypeId resolveAliasType(NamedTypeSyntax& syntax, const AliasDecl& alias, std::unordered_map<DeclId, TypeId>& typeSubstitutions);
-    TypeId resolveArrayType(ArrayTypeSyntax& syntax, ScopeId scope, std::unordered_map<DeclId, TypeId>& typeSubstitutions);
+    TypeId resolveVectorType(NamedTypeSyntax& syntax, const SemaContext& ctx);
+    TypeId resolveMatrixType(NamedTypeSyntax& syntax, const SemaContext& ctx);
+    TypeId resolveNamedType(NamedTypeSyntax& syntax, const SemaContext& ctx);
+    TypeId resolveAliasType(NamedTypeSyntax& syntax, const AliasDecl& alias, const SemaContext& ctx);
+    TypeId resolveArrayType(ArrayTypeSyntax& syntax, const SemaContext& ctx);
 
     static PrimitiveKind toPrimitiveKind(const std::string &name);
 };

@@ -27,7 +27,7 @@ private:
     requires std::is_constructible_v<TypeInfo, T>
     TypeId addType(T type)
     {
-        const TypeId typeId{m_types.size()};
+        const TypeId typeId{static_cast<uint32_t>(m_types.size())};
         m_types.emplace_back(type);
         return typeId;
     }

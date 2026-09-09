@@ -89,11 +89,10 @@ namespace ionsl
         return decl;
     }
 
-    AliasDecl * AliasDecl::clone(Arena &arena) const
+    AliasDecl* AliasDecl::clone(Arena &arena) const
     {
         auto* decl = arena.create<AliasDecl>();
         decl->span = span;
-        decl->scope = scope;
         decl->name = name;
         decl->id = id;
         decl->attributes = attributes;

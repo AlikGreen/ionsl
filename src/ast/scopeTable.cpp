@@ -5,12 +5,14 @@
 
 namespace ionsl
 {
+    constexpr ScopeId ScopeId::Error = ScopeId(0);
+
     ScopeId ScopeTable::create(const ScopeId parent)
     {
         Scope scope{};
         scope.parent = parent;
 
-        ScopeId id = m_nextScopeId++;
+        ScopeId id = ScopeId(m_nextScopeId++);
         m_scopes.emplace(id, scope);
         return id;
     }
@@ -32,7 +34,7 @@ namespace ionsl
 
     std::vector<DeclId> ScopeTable::findUnqualifiedDecls(ScopeId scopeId, const SymbolId symbol) const
     {
-        while(scopeId != ScopeIdInvalid)
+        while(scopeId != ScopeId::Error)
         {
             const Scope& scope = m_scopes.at(scopeId);
 

@@ -2,12 +2,11 @@
 #include <vector>
 
 #include "astNode.h"
-
+#include "scopeTable.h"
 
 
 namespace ionsl
 {
-using ScopeId = uint32_t;
 
 // TODO switch/match stmt
 
@@ -22,7 +21,7 @@ public:
 class BlockStmt final : public Statement
 {
 public:
-    ScopeId scope = ~0u;
+    ScopeId scope{};
     std::vector<Statement*> statements{};
 
     BlockStmt* clone(Arena &arena) const override;

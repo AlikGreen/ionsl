@@ -2,31 +2,29 @@
 
 namespace ionsl
 {
-    static constexpr std::unordered_map<TypeId, PrimitiveKind> kPrimitives =
-    {
-        { TypeId::Void,   PrimitiveKind::Void },
-        { TypeId::Bool,   PrimitiveKind::Bool },
-        { TypeId::I8,     PrimitiveKind::Int8 },
-        { TypeId::I16,    PrimitiveKind::Int16 },
-        { TypeId::I32,    PrimitiveKind::Int32 },
-        { TypeId::I64,    PrimitiveKind::Int64 },
-        { TypeId::U8,     PrimitiveKind::UInt8 },
-        { TypeId::U16,    PrimitiveKind::UInt16 },
-        { TypeId::U32,    PrimitiveKind::UInt32 },
-        { TypeId::U64,    PrimitiveKind::UInt64 },
-        { TypeId::F16,    PrimitiveKind::Float16 },
-        { TypeId::F32,    PrimitiveKind::Float32 },
-        { TypeId::F64,    PrimitiveKind::Float64 },
-        { TypeId::String, PrimitiveKind::String },
-    };
 
     TypeTable::TypeTable()
     {
+        static std::unordered_map<TypeId, PrimitiveKind> kPrimitives =
+        {
+            { TypeId::Void,   PrimitiveKind::Void },
+            { TypeId::Bool,   PrimitiveKind::Bool },
+            { TypeId::I8,     PrimitiveKind::Int8 },
+            { TypeId::I16,    PrimitiveKind::Int16 },
+            { TypeId::I32,    PrimitiveKind::Int32 },
+            { TypeId::I64,    PrimitiveKind::Int64 },
+            { TypeId::U8,     PrimitiveKind::UInt8 },
+            { TypeId::U16,    PrimitiveKind::UInt16 },
+            { TypeId::U32,    PrimitiveKind::UInt32 },
+            { TypeId::U64,    PrimitiveKind::UInt64 },
+            { TypeId::F16,    PrimitiveKind::Float16 },
+            { TypeId::F32,    PrimitiveKind::Float32 },
+            { TypeId::F64,    PrimitiveKind::Float64 },
+            { TypeId::String, PrimitiveKind::String },
+        };
+
         m_types.resize(kPrimitives.size() + 1);
         m_types[TypeId::Error.value()] = {ErrorType{}};
-
-
-        static_assert(std::size(kPrimitives) == static_cast<size_t>(PrimitiveKind::Unknown) - 1, "kPrimitives is missing an entry — every PrimitiveKind except Unknown must be listed here");
 
         for(const auto& [id, kind] : kPrimitives)
         {
@@ -89,8 +87,7 @@ namespace ionsl
         TypeInfo info{};
         info.kind = StructType{id};
 
-        const TypeId typeId{m_types.size()};
-        m_types.push_back(info);
+        const TypeId typeId = addType(info);
 
         m_structTypes[id] = typeId;
         return typeId;
@@ -104,8 +101,7 @@ namespace ionsl
         TypeInfo info{};
         info.kind = InterfaceType{id};
 
-        const TypeId typeId{m_types.size()};
-        m_types.push_back(info);
+        const TypeId typeId = addType(info);
 
         m_interfaceTypes[id] = typeId;
         return typeId;
@@ -140,7 +136,7 @@ namespace ionsl
 
     TypeId TypeTable::addType(const TypeInfo info)
     {
-        const TypeId typeId{m_types.size()};
+        const TypeId typeId{static_cast<uint32_t>(m_types.size())};
         m_types.push_back(info);
         return typeId;
     }

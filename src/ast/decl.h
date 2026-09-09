@@ -7,20 +7,43 @@
 namespace ionsl
 {
 class Declaration;
-using DeclId = uint32_t;
 
-constexpr DeclId InvalidDeclId = ~0u;
+class DeclId
+{
+public:
+    DeclId() = default;
+    explicit DeclId(const uint32_t val) : m_value(val) { }
 
+    [[nodiscard]] uint32_t value() const { return m_value; }
+    friend constexpr bool operator==(DeclId, DeclId) = default;
+
+    static const DeclId Error;
+private:
+    uint32_t m_value = 0;
+};
+}
+
+template<>
+struct std::hash<ionsl::DeclId>
+{
+    size_t operator()(const ionsl::DeclId& value) const noexcept
+    {
+        return value.value();
+    }
+};
+
+namespace ionsl
+{
 class DeclarationIdAllocator
 {
 public:
     DeclId allocate()
     {
-        return m_nextId++;
+        return DeclId{m_nextId++};
     }
 
 private:
-    uint64_t m_nextId = 0;
+    uint32_t m_nextId = 1;
 };
 
 class DeclTable

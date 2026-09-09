@@ -177,22 +177,22 @@ namespace ionsl
                 return BinaryTypeResult{
                     *commonType,
                     *commonType,
-                    TypeIdBool,
+                    TypeId::Bool,
                 };
             }
             case BinaryOp::LogicalAnd:
             case BinaryOp::LogicalOr:
             {
-                if(left != TypeIdBool ||
-                   right != TypeIdBool)
+                if(left != TypeId::Bool ||
+                   right != TypeId::Bool)
                 {
                     return std::nullopt;
                 }
 
                 return BinaryTypeResult{
-                    TypeIdBool,
-                    TypeIdBool,
-                    TypeIdBool
+                    TypeId::Bool,
+                    TypeId::Bool,
+                    TypeId::Bool
                 };
             }
             case BinaryOp::BitwiseAnd:
@@ -233,12 +233,12 @@ namespace ionsl
     {
         if(op == UnaryOp::LogicalNot)
         {
-            if(operand != TypeIdBool)
+            if(operand != TypeId::Bool)
                 return std::nullopt;
 
             return UnaryResultType {
-                TypeIdBool,
-                TypeIdBool
+                TypeId::Bool,
+                TypeId::Bool
             };
         }
 

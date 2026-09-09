@@ -27,21 +27,6 @@ private:
     uint32_t m_value = 0;
 };
 
-constexpr TypeId TypeId::Error   = TypeId(0);
-constexpr TypeId TypeId::Void    = TypeId(1);
-constexpr TypeId TypeId::Bool    = TypeId(3);
-constexpr TypeId TypeId::I8      = TypeId(4);
-constexpr TypeId TypeId::I16     = TypeId(5);
-constexpr TypeId TypeId::I32     = TypeId(6);
-constexpr TypeId TypeId::I64     = TypeId(7);
-constexpr TypeId TypeId::U8      = TypeId(8);
-constexpr TypeId TypeId::U16     = TypeId(9);
-constexpr TypeId TypeId::U32     = TypeId(10);
-constexpr TypeId TypeId::U64     = TypeId(11);
-constexpr TypeId TypeId::F16     = TypeId(12);
-constexpr TypeId TypeId::F32     = TypeId(13);
-constexpr TypeId TypeId::F64     = TypeId(14);
-constexpr TypeId TypeId::String  = TypeId(15);
 
 enum class PrimitiveKind : uint8_t
 {
@@ -101,17 +86,17 @@ struct MatrixType
 
 struct StructType
 {
-    DeclId declId = InvalidDeclId;
+    DeclId declId{};
 };
 
 struct InterfaceType
 {
-    DeclId declId = InvalidDeclId;
+    DeclId declId{};
 };
 
 struct GenericType
 {
-    DeclId declId = InvalidDeclId;
+    DeclId declId{};
 };
 
 struct AutoType { };
@@ -196,5 +181,14 @@ struct std::hash<ionsl::MatrixType>
         ionsl::hashCombine(seed, value.columns);
 
         return seed;
+    }
+};
+
+template<>
+struct std::hash<ionsl::TypeId>
+{
+    size_t operator()(const ionsl::TypeId& value) const noexcept
+    {
+        return value.value();
     }
 };
