@@ -5,9 +5,33 @@
 
 namespace ionsl
 {
-using ScopeId = uint32_t;
-constexpr ScopeId ScopeIdInvalid = ~0u;
+class ScopeId
+{
+public:
+    ScopeId() = default;
+    explicit ScopeId(const uint32_t val) : m_value(val) { }
 
+    [[nodiscard]] uint32_t value() const { return m_value; }
+    friend constexpr bool operator==(ScopeId, ScopeId) = default;
+
+    static const ScopeId Error;
+private:
+    uint32_t m_value = 0;
+};
+}
+
+template<>
+struct std::hash<ionsl::ScopeId>
+{
+    size_t operator()(const ionsl::ScopeId& value) const noexcept
+    {
+        return value.value();
+    }
+};
+
+
+namespace ionsl
+{
 class Scope
 {
 public:
@@ -24,10 +48,9 @@ public:
     void registerDecl(ScopeId scopeId, SymbolId name, DeclId id);
 
     // FIXME split into findValueDecls and findTypeDecls
-    std::vector<DeclId> findDecls(ScopeId scopeId, const QualifiedName& name) const;
-
+    [[nodiscard]] std::vector<DeclId> findDecls(ScopeId scopeId, const QualifiedName& name) const;
 private:
-    ScopeId m_nextScopeId = 0;
+    uint32_t m_nextScopeId = 1;
     std::unordered_map<ScopeId, Scope> m_scopes;
 
     [[nodiscard]] std::vector<DeclId> findUnqualifiedDecls(ScopeId scopeId, SymbolId symbol) const;

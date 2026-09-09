@@ -34,7 +34,7 @@ private:
     ScopeTable& m_scopeTable;
     DeclTable& m_declTable;
 
-    ScopeId m_currentScope = 0;
+    ScopeId m_currentScope{};
     std::vector<Attribute> m_pendingAttributes;
 
     Declaration* parseDeclaration();

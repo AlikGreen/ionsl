@@ -4,22 +4,22 @@
 #include <ranges>
 
 #include "constantEvaluator.h"
+#include "signatureResolutionPass.h"
 #include "../ast/declarations.h"
+#include "../ast/module.h"
 
 namespace ionsl
 {
     void SemanticAnalyzer::analyze()
     {
-        m_currentScope = m_module.scope;
+        SemaContext ctx{};
+        ctx.scope = m_module.scope;
+
+        SignatureResolutionPass(m_typeResolver, m_module.declarations).run(ctx);
 
         for(const auto decl : m_module.declarations)
         {
-            checkDeclSignature(*decl);
-        }
-
-        for(const auto decl : m_module.declarations)
-        {
-            checkDeclaration(*decl);
+            checkDeclaration(*decl, ctx);
         }
     }
 
@@ -28,30 +28,30 @@ namespace ionsl
         return SemanticAnalyzer(module, symbolTable, typeSystem, declTable, scopeTable).analyze();
     }
 
-    TypeId SemanticAnalyzer::checkExpression(Expression &expression)
+    TypeId SemanticAnalyzer::checkExpression(Expression &expression, const SemaContext& ctx)
     {
         if(auto* binaryExpr = expression.as<BinaryExpr>())
-            return checkBinaryExpr(*binaryExpr);
+            return checkBinaryExpr(*binaryExpr, ctx);
         if(auto* unaryExpr = expression.as<UnaryExpr>())
-            return checkUnaryExpr(*unaryExpr);
+            return checkUnaryExpr(*unaryExpr, ctx);
         if(auto* callExpr = expression.as<CallExpr>())
-            return checkCallExpr(*callExpr);
+            return checkCallExpr(*callExpr, ctx);
         if(auto* identifierExpr = expression.as<IdentifierExpr>())
-            return checkIdentifierExpr(*identifierExpr);
+            return checkIdentifierExpr(*identifierExpr, ctx);
         if(auto* indexExpr = expression.as<IndexExpr>())
-            return checkIndexExpr(*indexExpr);
+            return checkIndexExpr(*indexExpr, ctx);
         if(auto* literalExpr = expression.as<LiteralExpr>())
             return checkLiteralExpr(*literalExpr);
         if(auto* fieldAccessExpr = expression.as<FieldAccessExpr>())
-            return checkFieldAccessExpr(*fieldAccessExpr);
+            return checkFieldAccessExpr(*fieldAccessExpr, ctx);
 
         return TypeId::Error;
     }
 
-    TypeId SemanticAnalyzer::checkBinaryExpr(BinaryExpr &expression)
+    TypeId SemanticAnalyzer::checkBinaryExpr(BinaryExpr &expression, const SemaContext& ctx)
     {
-        const auto leftType = checkExpression(*expression.left);
-        const auto rightType = checkExpression(*expression.right);
+        const auto leftType = checkExpression(*expression.left, ctx);
+        const auto rightType = checkExpression(*expression.right, ctx);
 
         if(leftType == TypeId::Error || rightType == TypeId::Error) return TypeId::Error;
 
@@ -66,9 +66,9 @@ namespace ionsl
         return expression.resultType;
     }
 
-    TypeId SemanticAnalyzer::checkUnaryExpr(UnaryExpr &expression)
+    TypeId SemanticAnalyzer::checkUnaryExpr(UnaryExpr &expression, const SemaContext& ctx)
     {
-        const auto operandType = checkExpression(*expression.operand);
+        const auto operandType = checkExpression(*expression.operand, ctx);
 
         if(operandType == TypeId::Error) return TypeId::Error;
 
@@ -82,11 +82,11 @@ namespace ionsl
         return expression.resultType;
     }
 
-    TypeId SemanticAnalyzer::checkCallExpr(CallExpr &expression)
+    TypeId SemanticAnalyzer::checkCallExpr(CallExpr &expression, const SemaContext& ctx)
     {
         if(auto* identifier = expression.callee->as<IdentifierExpr>())
         {
-            return checkIdentifierCall(expression, *identifier);
+            return checkIdentifierCall(expression, *identifier, ctx);
         }
 
         // TypeId calleeType = checkExpression(*expression.callee);
@@ -94,19 +94,19 @@ namespace ionsl
 
         return TypeId::Error;
 
+    }
+
+    TypeId SemanticAnalyzer::checkIdentifierCall(CallExpr &expression, const IdentifierExpr &identifier, const SemaContext& ctx)
+    {
         // TODO check non identifier calls eg
         // var func = () -> { return 2; };
         // var x = func()
 
-    }
-
-    TypeId SemanticAnalyzer::checkIdentifierCall(CallExpr &expression, const IdentifierExpr &identifier)
-    {
         std::vector<TypeId> argumentTypes;
 
         for(auto* argument : expression.args)
         {
-            TypeId type = checkExpression(*argument);
+            TypeId type = checkExpression(*argument, ctx);
 
             if(type == TypeId::Error)
                 return TypeId::Error;
@@ -114,7 +114,7 @@ namespace ionsl
             argumentTypes.push_back(type);
         }
 
-        auto candidates = m_scopeTable.findDecls(m_currentScope, identifier.name);
+        auto candidates = m_scopeTable.findDecls(ctx.scope, identifier.name);
         uint32_t bestConversionCost = ~0u;
         Declaration* bestCandidate = nullptr;
 
@@ -156,9 +156,9 @@ namespace ionsl
         return TypeId::Error;
     }
 
-    TypeId SemanticAnalyzer::checkIdentifierExpr(IdentifierExpr &expression) const
+    TypeId SemanticAnalyzer::checkIdentifierExpr(IdentifierExpr &expression, const SemaContext& ctx) const
     {
-        auto candidates = m_scopeTable.findDecls(m_currentScope, expression.name);
+        auto candidates = m_scopeTable.findDecls(ctx.scope, expression.name);
 
         TypeId bestCandidateType  = TypeId::Error;
 
@@ -176,20 +176,18 @@ namespace ionsl
 
         // TODO diagnostics if no candidates
 
-        expression.resultType = bestCandidateType;
-        return bestCandidateType;
+        return expression.resultType = bestCandidateType;
     }
 
-    TypeId SemanticAnalyzer::checkIndexExpr(IndexExpr &expression)
+    TypeId SemanticAnalyzer::checkIndexExpr(IndexExpr &expression, const SemaContext& ctx)
     {
-        checkExpression(*expression.index);
-        const TypeId arrayTypeId = checkExpression(*expression.array);
+        checkExpression(*expression.index, ctx);
+        const TypeId arrayTypeId = checkExpression(*expression.array, ctx);
 
         TypeInfo arrayType = m_typeSystem.types().getInfo(arrayTypeId);
 
         // TODO validation
-        expression.resultType = arrayType.as<ArrayType>()->elementType;
-        return expression.resultType;
+        return expression.resultType = arrayType.as<ArrayType>()->elementType;
     }
 
     TypeId SemanticAnalyzer::checkLiteralExpr(LiteralExpr &expression) const
@@ -217,9 +215,9 @@ namespace ionsl
         return typeId;
     }
 
-    TypeId SemanticAnalyzer::checkFieldAccessExpr(FieldAccessExpr &expression)
+    TypeId SemanticAnalyzer::checkFieldAccessExpr(FieldAccessExpr &expression, const SemaContext& ctx)
     {
-        const TypeId objTypeId = checkExpression(*expression.object);
+        const TypeId objTypeId = checkExpression(*expression.object, ctx);
 
         if(objTypeId == TypeId::Error)
             return TypeId::Error;
@@ -233,71 +231,71 @@ namespace ionsl
         return expression.resultType;
     }
 
-    void SemanticAnalyzer::checkStatement(Statement &statement)
+    void SemanticAnalyzer::checkStatement(Statement &statement, const SemaContext& ctx)
     {
         if(const auto exprStmt = statement.as<ExprStmt>())
-            checkExpression(*exprStmt->expr);
+            checkExpression(*exprStmt->expr, ctx);
         if(const auto declStmt = statement.as<DeclStmt>())
-            checkDeclaration(*declStmt->decl);
+            checkDeclaration(*declStmt->decl, ctx);
         if(const auto blockStmt = statement.as<BlockStmt>())
-            checkBlockStmt(*blockStmt);
+            checkBlockStmt(*blockStmt, ctx);
         if(const auto ifStmt = statement.as<IfStmt>())
-            checkIfStmt(*ifStmt);
+            checkIfStmt(*ifStmt, ctx);
         if(const auto whileStmt = statement.as<WhileStmt>())
-            checkWhileStmt(*whileStmt);
+            checkWhileStmt(*whileStmt, ctx);
         if(const auto forStmt = statement.as<ForStmt>())
-            checkForStmt(*forStmt);
+            checkForStmt(*forStmt, ctx);
         if(const auto returnStmt = statement.as<ReturnStmt>())
-            checkReturnStmt(*returnStmt);
+            checkReturnStmt(*returnStmt, ctx);
         if(statement.is<BreakStmt>() || statement.is<ContinueStmt>())
             checkBreakContinueStmt();
     }
 
-    void SemanticAnalyzer::checkBlockStmt(const BlockStmt &statement)
+    void SemanticAnalyzer::checkBlockStmt(const BlockStmt &statement, const SemaContext& ctx)
     {
-        m_currentScope = statement.scope;
+        SemaContext scopeCtx = ctx.withScope(statement.scope);
+
         for(const auto stmt : statement.statements)
         {
-            checkStatement(*stmt);
+            checkStatement(*stmt, scopeCtx);
         }
-        m_currentScope = m_scopeTable.getScope(m_currentScope).parent;
     }
 
-    void SemanticAnalyzer::checkIfStmt(const IfStmt &statement)
+    void SemanticAnalyzer::checkIfStmt(const IfStmt &statement, const SemaContext& ctx)
     {
-        const TypeId conditionType = checkExpression(*statement.condition);
+        const TypeId conditionType = checkExpression(*statement.condition, ctx);
         if(conditionType != TypeId::Bool)
         {
             m_module.diagnostics.add("condition in an if statement must resolve to a bool", statement.condition->span, Severity::Error);
             return;
         }
 
-        checkBlockStmt(*statement.thenBranch);
+        checkBlockStmt(*statement.thenBranch, ctx);
 
         if(statement.elseBranch)
-            checkBlockStmt(*statement.elseBranch);
+            checkBlockStmt(*statement.elseBranch, ctx);
     }
 
-    void SemanticAnalyzer::checkForStmt(const ForStmt &statement)
+    void SemanticAnalyzer::checkForStmt(const ForStmt &statement, const SemaContext& ctx)
     {
-        checkStatement(*statement.init);
-        checkExpression(*statement.condition);
-        checkExpression(*statement.increment);
-        checkBlockStmt(*statement.body);
+        checkStatement(*statement.init, ctx);
+        checkExpression(*statement.condition, ctx);
+        checkExpression(*statement.increment, ctx);
+        checkBlockStmt(*statement.body, ctx);
     }
 
-    void SemanticAnalyzer::checkWhileStmt(const WhileStmt &statement)
+    void SemanticAnalyzer::checkWhileStmt(const WhileStmt &statement, const SemaContext& ctx)
     {
-        checkExpression(*statement.condition);
-        checkBlockStmt(*statement.body);
+        checkExpression(*statement.condition, ctx);
+        checkBlockStmt(*statement.body, ctx);
     }
 
-    void SemanticAnalyzer::checkReturnStmt(const ReturnStmt &statement)
+    void SemanticAnalyzer::checkReturnStmt(const ReturnStmt &statement, const SemaContext& ctx)
     {
         TypeId returnType = TypeId::Void;
 
         if(statement.expr)
-            returnType = checkExpression(*statement.expr);
+            returnType = checkExpression(*statement.expr, ctx);
 
         // TODO check return type against function type
     }
@@ -307,82 +305,44 @@ namespace ionsl
         // TODO make sure in for or while loop
     }
 
-    void SemanticAnalyzer::checkDeclaration(Declaration &declaration)
+    void SemanticAnalyzer::checkDeclaration(Declaration &declaration, const SemaContext& ctx)
     {
         if(const auto funcDecl = declaration.as<FunctionDecl>())
-            checkFunctionDecl(*funcDecl);
+            checkFunctionDecl(*funcDecl, ctx);
         if(const auto interfaceDecl = declaration.as<InterfaceDecl>())
-            checkInterfaceDecl(*interfaceDecl);
+            checkInterfaceDecl(*interfaceDecl, ctx);
         if(const auto structDecl = declaration.as<StructDecl>())
-            checkStructDecl(*structDecl);
+            checkStructDecl(*structDecl, ctx);
         if(const auto valDecl = declaration.as<ValueDecl>())
-            checkValueDecl(*valDecl);
+            checkValueDecl(*valDecl, ctx);
     }
 
-    void SemanticAnalyzer::checkDeclSignature(Declaration &declaration)
+    void SemanticAnalyzer::checkFunctionDecl(const FunctionDecl &declaration, const SemaContext& ctx)
     {
-        if(const auto funcDecl = declaration.as<FunctionDecl>())
-            checkFunctionSignature(*funcDecl);
-        if(const auto interfaceDecl = declaration.as<InterfaceDecl>())
-            checkInterfaceSignature(*interfaceDecl);
-        if(const auto structDecl = declaration.as<StructDecl>())
-            checkStructSignature(*structDecl);
-        if(const auto aliasDecl = declaration.as<AliasDecl>())
-            checkAliasDecl(*aliasDecl);
+        checkBlockStmt(*declaration.body, ctx);
     }
 
-    void SemanticAnalyzer::checkFunctionSignature(FunctionDecl &declaration)
+    void SemanticAnalyzer::checkStructDecl(const StructDecl &declaration, const SemaContext& ctx)
     {
-        m_typeResolver.resolveType(*declaration.returnType, m_currentScope, m_typeSubstitutions);
+        for(const auto method : declaration.methods)
+            checkFunctionDecl(*method, ctx);
 
-        for(const auto param : declaration.params)
-            checkValueDecl(*param);
-    }
-
-    void SemanticAnalyzer::checkStructSignature(const StructDecl &declaration)
-    {
         for(const auto field : declaration.fields)
-            checkValueDecl(*field);
-
-        for(const auto method : declaration.methods)
-            checkFunctionSignature(*method);
+            checkValueDecl(*field, ctx);
     }
 
-    void SemanticAnalyzer::checkInterfaceSignature(const InterfaceDecl &declaration)
+    void SemanticAnalyzer::checkInterfaceDecl(const InterfaceDecl &declaration, const SemaContext& ctx)
     {
         for(const auto method : declaration.methods)
-            checkFunctionSignature(*method);
+            checkFunctionDecl(*method, ctx);
     }
 
-    void SemanticAnalyzer::checkAliasDecl(const AliasDecl &declaration)
+    void SemanticAnalyzer::checkValueDecl(ValueDecl &declaration, const SemaContext& ctx)
     {
-        // TODO resolve generic value type params
-    }
-
-
-    void SemanticAnalyzer::checkFunctionDecl(const FunctionDecl &declaration)
-    {
-        checkBlockStmt(*declaration.body);
-    }
-
-    void SemanticAnalyzer::checkStructDecl(const StructDecl &declaration)
-    {
-        for(const auto method : declaration.methods)
-            checkFunctionDecl(*method);
-    }
-
-    void SemanticAnalyzer::checkInterfaceDecl(const InterfaceDecl &declaration)
-    {
-        for(const auto method : declaration.methods)
-            checkFunctionDecl(*method);
-    }
-
-    void SemanticAnalyzer::checkValueDecl(ValueDecl &declaration)
-    {
-        m_typeResolver.resolveType(*declaration.type, m_currentScope, m_typeSubstitutions);
+        m_typeResolver.resolveType(*declaration.type, ctx);
 
         if(declaration.initializer)
-            checkExpression(*declaration.initializer);
+            checkExpression(*declaration.initializer, ctx);
     }
 
 

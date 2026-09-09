@@ -1,14 +1,17 @@
 #pragma once
+#include <span>
+
 #include "constantEvaluator.h"
 #include "typeResolver.h"
+#include "semaContext.h"
 #include "../ast/declarations.h"
-#include "../ast/module.h"
 #include "../ast/statements.h"
 #include "../ast/type.h"
-#include "../ast/typeSyntax.h"
+
 
 namespace ionsl
 {
+
 class SemanticAnalyzer
 {
 public:
@@ -30,40 +33,29 @@ private:
     ConstantEvaluator m_constEval;
     TypeResolver m_typeResolver;
 
-    std::unordered_map<DeclId, TypeId> m_typeSubstitutions;
-
-    ScopeId m_currentScope = 0;
-
-    TypeId checkExpression(Expression& expression);
-    TypeId checkBinaryExpr(BinaryExpr& expression);
-    TypeId checkUnaryExpr(UnaryExpr& expression);
-    TypeId checkCallExpr(CallExpr& expression);
-    TypeId checkIdentifierCall(CallExpr& expression, const IdentifierExpr& identifier);
-    TypeId checkIdentifierExpr(IdentifierExpr& expression) const;
-    TypeId checkIndexExpr(IndexExpr& expression);
+    TypeId checkExpression(Expression& expression, const SemaContext& ctx);
+    TypeId checkBinaryExpr(BinaryExpr& expression, const SemaContext& ctx);
+    TypeId checkUnaryExpr(UnaryExpr& expression, const SemaContext& ctx);
+    TypeId checkCallExpr(CallExpr& expression, const SemaContext& ctx);
+    TypeId checkIdentifierCall(CallExpr& expression, const IdentifierExpr& identifier, const SemaContext& ctx);
+    TypeId checkIdentifierExpr(IdentifierExpr& expression, const SemaContext& ctx) const;
+    TypeId checkIndexExpr(IndexExpr& expression, const SemaContext& ctx);
     TypeId checkLiteralExpr(LiteralExpr& expression) const;
-    TypeId checkFieldAccessExpr(FieldAccessExpr& expression);
+    TypeId checkFieldAccessExpr(FieldAccessExpr& expression, const SemaContext& ctx);
 
-    void checkStatement(Statement& statement);
-    void checkBlockStmt(const BlockStmt& statement);
-    void checkIfStmt(const IfStmt& statement);
-    void checkForStmt(const ForStmt& statement);
-    void checkWhileStmt(const WhileStmt& statement);
-    void checkReturnStmt(const ReturnStmt& statement);
+    void checkStatement(Statement& statement, const SemaContext& ctx);
+    void checkBlockStmt(const BlockStmt& statement, const SemaContext& ctx);
+    void checkIfStmt(const IfStmt& statement, const SemaContext& ctx);
+    void checkForStmt(const ForStmt& statement, const SemaContext& ctx);
+    void checkWhileStmt(const WhileStmt& statement, const SemaContext& ctx);
+    void checkReturnStmt(const ReturnStmt& statement, const SemaContext& ctx);
     void checkBreakContinueStmt();
 
-    void checkDeclaration(Declaration& declaration);
-    void checkDeclSignature(Declaration& declaration);
-
-    void checkFunctionSignature(FunctionDecl& declaration);
-    void checkStructSignature(const StructDecl& declaration);
-    void checkInterfaceSignature(const InterfaceDecl& declaration);
-
-    void checkAliasDecl(const AliasDecl& declaration);
-    void checkFunctionDecl(const FunctionDecl& declaration);
-    void checkStructDecl(const StructDecl& declaration);
-    void checkInterfaceDecl(const InterfaceDecl& declaration);
-    void checkValueDecl(ValueDecl& declaration);
+    void checkDeclaration(Declaration& declaration, const SemaContext& ctx);
+    void checkFunctionDecl(const FunctionDecl& declaration, const SemaContext& ctx);
+    void checkStructDecl(const StructDecl& declaration, const SemaContext& ctx);
+    void checkInterfaceDecl(const InterfaceDecl& declaration, const SemaContext& ctx);
+    void checkValueDecl(ValueDecl& declaration, const SemaContext& ctx);
 
     Expression* makeConversion(Expression* operand, TypeId type) const;
 };

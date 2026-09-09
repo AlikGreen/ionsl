@@ -4,6 +4,8 @@
 
 namespace ionsl
 {
+    constexpr DeclId DeclId::Error   = DeclId(0);
+
     void DeclTable::regenerate(const Module& module)
     {
         m_map.clear();

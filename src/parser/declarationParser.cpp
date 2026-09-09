@@ -147,11 +147,7 @@ namespace ionsl
 
         if(check(TokenKind::LAngle))
         {
-            ScopeId old = m_currentScope;
-            m_currentScope = m_scopeTable.create(m_currentScope);
             decl->genericParams = parseGenericParams();
-            decl->scope = m_currentScope;
-            m_currentScope = old;
         }
 
         expect(TokenKind::Equal);

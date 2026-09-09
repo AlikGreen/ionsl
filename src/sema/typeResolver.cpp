@@ -1,5 +1,6 @@
 #include "typeResolver.h"
 
+#include "semaContext.h"
 #include "../ast/declarations.h"
 #include "../ast/typeSyntax.h"
 
@@ -10,30 +11,30 @@ namespace ionsl
             : m_typeSystem(typeSystem), m_evaluator(evaluator), m_symbols(symbols), m_scopeTable(scopeTable), m_decls(decls)
     { }
 
-    TypeId TypeResolver::resolveType(TypeSyntax& syntax, ScopeId scope, std::unordered_map<DeclId, TypeId>& typeSubstitutions)
+    TypeId TypeResolver::resolveType(TypeSyntax& syntax, const SemaContext& ctx)
     {
         if(auto* namedSyntax = syntax.as<NamedTypeSyntax>())
         {
             if(namedSyntax->name.string(m_symbols) == "vector")
-                return resolveVectorType(*namedSyntax, scope, typeSubstitutions);
+                return resolveVectorType(*namedSyntax, ctx);
             if(namedSyntax->name.string(m_symbols) == "matrix")
-                return resolveMatrixType(*namedSyntax, scope, typeSubstitutions);
+                return resolveMatrixType(*namedSyntax, ctx);
 
-            PrimitiveKind primitiveKind = toPrimitiveKind(namedSyntax->name.string(m_symbols));
+            const PrimitiveKind primitiveKind = toPrimitiveKind(namedSyntax->name.string(m_symbols));
             if(primitiveKind != PrimitiveKind::Unknown)
-                return m_typeSystem.types().getPrimitiveType(primitiveKind);
+                return syntax.resolvedType = m_typeSystem.types().getPrimitiveType(primitiveKind);
 
 
-            return resolveNamedType(*namedSyntax, scope, typeSubstitutions);
+            return syntax.resolvedType = resolveNamedType(*namedSyntax, ctx);
         }
 
         if(auto* arraySyntax = syntax.as<ArrayTypeSyntax>())
-            return resolveArrayType(*arraySyntax, scope, typeSubstitutions);
+            return syntax.resolvedType = resolveArrayType(*arraySyntax, ctx);
 
         return TypeId::Error; // TODO diagnostics
     }
 
-    TypeId TypeResolver::resolveVectorType(NamedTypeSyntax &syntax, ScopeId scope, std::unordered_map<DeclId, TypeId>& typeSubstitutions)
+    TypeId TypeResolver::resolveVectorType(NamedTypeSyntax &syntax, const SemaContext& ctx)
     {
         if(syntax.arguments.size() != 2)
         {
@@ -43,7 +44,7 @@ namespace ionsl
 
 
         auto* elementTypeSyntax = syntax.arguments.at(0)->as<TypeArgumentType>()->type;
-        resolveType(*elementTypeSyntax, scope, typeSubstitutions);
+        resolveType(*elementTypeSyntax, ctx);
 
         const auto res = m_evaluator.evaluate(*syntax.arguments.at(1)->as<TypeArgumentValue>()->expression);
         if(!res) return TypeId::Error; // TODO diagnostics
@@ -53,7 +54,7 @@ namespace ionsl
         return syntax.resolvedType = m_typeSystem.types().getVectorType(elementTypeSyntax->resolvedType, dimension);
     }
 
-    TypeId TypeResolver::resolveMatrixType(NamedTypeSyntax &syntax, ScopeId scope, std::unordered_map<DeclId, TypeId>& typeSubstitutions)
+    TypeId TypeResolver::resolveMatrixType(NamedTypeSyntax &syntax, const SemaContext& ctx)
     {
         if(syntax.arguments.size() != 3)
         {
@@ -62,7 +63,7 @@ namespace ionsl
         }
 
         auto* elementTypeSyntax = syntax.arguments.at(0)->as<TypeArgumentType>()->type;
-        resolveType(*elementTypeSyntax, scope, typeSubstitutions);
+        resolveType(*elementTypeSyntax, ctx);
 
         const auto rowsRes = m_evaluator.evaluate(*syntax.arguments.at(1)->as<TypeArgumentValue>()->expression);
         if(!rowsRes) return TypeId::Error; // TODO diagnostics
@@ -75,9 +76,20 @@ namespace ionsl
         return syntax.resolvedType = m_typeSystem.types().getMatrixType(elementTypeSyntax->resolvedType, rows, columns);
     }
 
-    TypeId TypeResolver::resolveNamedType(NamedTypeSyntax &syntax, ScopeId scope, std::unordered_map<DeclId, TypeId>& typeSubstitutions)
+    TypeId TypeResolver::resolveNamedType(NamedTypeSyntax &syntax, const SemaContext& ctx)
     {
-        const auto decls = m_scopeTable.findDecls(scope, syntax.name);
+        for(const auto* param : ctx.visibleGenericParams)
+        {
+            if(syntax.name.parts.size() != 1 || param->name != syntax.name.parts.back()) continue;
+
+            if(ctx.substitutions)
+                if(const auto it = ctx.substitutions->find(param->id); it != ctx.substitutions->end())
+                    return it->second;
+
+            return TypeId::Error;
+        }
+
+        const auto decls = m_scopeTable.findDecls(ctx.scope, syntax.name);
 
         for(const DeclId id : decls)
         {
@@ -94,26 +106,20 @@ namespace ionsl
             }
             if(const AliasDecl* alias = decl->as<AliasDecl>())
             {
-                return resolveAliasType(syntax, *alias, typeSubstitutions);
-            }
-            if(const TypeGenericParam* param = decl->as<TypeGenericParam>())
-            {
-                if(auto it = typeSubstitutions.find(id); it != typeSubstitutions.end())
-                {
-                    return syntax.resolvedType = it->second;
-                }
-                return TypeId::Error;
+                return resolveAliasType(syntax, *alias, ctx);
             }
         }
 
         return TypeId::Error; // TODO diagnostics
     }
 
-    TypeId TypeResolver::resolveAliasType(NamedTypeSyntax& syntax, const AliasDecl& alias, std::unordered_map<DeclId, TypeId>& typeSubstitutions)
+    TypeId TypeResolver::resolveAliasType(NamedTypeSyntax& syntax, const AliasDecl& alias, const SemaContext& ctx)
     {
 
         if(alias.genericParams.size() != syntax.arguments.size())
             return TypeId::Error; // TODO diagnostics
+
+        std::unordered_map<DeclId, TypeId> typeSubstitutions{};
 
 
         for(size_t i = 0; i < alias.genericParams.size(); ++i)
@@ -131,18 +137,18 @@ namespace ionsl
                     continue;
                 }
 
-                resolveType(*typeArg->type, alias.scope, typeSubstitutions);
+                resolveType(*typeArg->type, ctx);
                 typeSubstitutions[typeParam->id] = typeArg->type->resolvedType;
             }
         }
 
-        resolveType(*alias.targetType, alias.scope, typeSubstitutions);
+        resolveType(*alias.targetType, ctx.forGenericDecl(alias.genericParams, typeSubstitutions));
         return syntax.resolvedType = alias.targetType->resolvedType;
     }
 
-    TypeId TypeResolver::resolveArrayType(ArrayTypeSyntax &syntax, ScopeId scope, std::unordered_map<DeclId, TypeId>& typeSubstitutions)
+    TypeId TypeResolver::resolveArrayType(ArrayTypeSyntax &syntax, const SemaContext& ctx)
     {
-        resolveType(*syntax.elementType, scope, typeSubstitutions);
+        resolveType(*syntax.elementType, ctx);
 
         std::optional<uint32_t> size = std::nullopt;
 
