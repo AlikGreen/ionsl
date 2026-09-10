@@ -2,12 +2,17 @@
 
 namespace ionsl
 {
+    SymbolTable::SymbolTable()
+    {
+        m_names.emplace_back("invalid");
+    }
+
     SymbolId SymbolTable::intern(const std::string &text)
     {
         if(const auto it = m_lookup.find(text); it != m_lookup.end())
             return it->second;
 
-        const SymbolId id = m_names.size();
+        const SymbolId id = SymbolId(m_names.size());
         m_lookup[text] = id;
         m_names.push_back(text);
         return id;
@@ -20,7 +25,7 @@ namespace ionsl
 
     std::string SymbolTable::get(const SymbolId id) const
     {
-        if(id >= m_names.size()) return "";
-        return m_names.at(id);
+        if(id.value() >= m_names.size()) return "";
+        return m_names.at(id.value());
     }
 }

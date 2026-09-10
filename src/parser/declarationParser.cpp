@@ -52,6 +52,8 @@ namespace ionsl
 
         if(check(TokenKind::LBrace))
             decl->body = parseBlockStmt();
+        else
+            expect(TokenKind::Semicolon);
 
         decl->span = SourceSpan::between(start, previous().span);
         return decl;

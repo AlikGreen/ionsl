@@ -46,7 +46,10 @@ namespace ionsl
         for (const auto& [fromId, toId] : std::views::zip(from, to))
         {
             auto cost = conversionCost(fromId, toId);
-            if(!cost) return std::nullopt;
+            if(!cost)
+            {
+                return std::nullopt;
+            }
             conversionSum += *cost;
         }
 
@@ -61,9 +64,12 @@ namespace ionsl
             { { PrimitiveKind::Float16, PrimitiveKind::Float32 }, 1 },
             { { PrimitiveKind::Float16, PrimitiveKind::Float64 }, 2 },
 
+            { { PrimitiveKind::Float32, PrimitiveKind::Float16 }, 1 },
             { { PrimitiveKind::Float32, PrimitiveKind::Float32 }, 0 },
             { { PrimitiveKind::Float32, PrimitiveKind::Float64 }, 1 },
 
+            { { PrimitiveKind::Float64, PrimitiveKind::Float16 }, 2 },
+            { { PrimitiveKind::Float64, PrimitiveKind::Float32 }, 1 },
             { { PrimitiveKind::Float64, PrimitiveKind::Float64 }, 0 },
 
             { { PrimitiveKind::UInt8, PrimitiveKind::UInt8 }, 0 },
@@ -71,13 +77,19 @@ namespace ionsl
             { { PrimitiveKind::UInt8, PrimitiveKind::UInt32 }, 2 },
             { { PrimitiveKind::UInt8, PrimitiveKind::UInt64 }, 3 },
 
+            { { PrimitiveKind::UInt16, PrimitiveKind::UInt8 }, 1 },
             { { PrimitiveKind::UInt16, PrimitiveKind::UInt16 }, 0 },
             { { PrimitiveKind::UInt16, PrimitiveKind::UInt32 }, 1 },
             { { PrimitiveKind::UInt16, PrimitiveKind::UInt64 }, 2 },
 
+            { { PrimitiveKind::UInt32, PrimitiveKind::UInt8 }, 2 },
+            { { PrimitiveKind::UInt32, PrimitiveKind::UInt16 }, 1 },
             { { PrimitiveKind::UInt32, PrimitiveKind::UInt32 }, 0 },
             { { PrimitiveKind::UInt32, PrimitiveKind::UInt64 }, 1 },
 
+            { { PrimitiveKind::UInt64, PrimitiveKind::UInt8 }, 3 },
+            { { PrimitiveKind::UInt64, PrimitiveKind::UInt16 }, 2 },
+            { { PrimitiveKind::UInt64, PrimitiveKind::UInt32 }, 1 },
             { { PrimitiveKind::UInt64, PrimitiveKind::UInt64 }, 0 },
 
             { { PrimitiveKind::Int8, PrimitiveKind::Int8 }, 0 },
@@ -85,16 +97,122 @@ namespace ionsl
             { { PrimitiveKind::Int8, PrimitiveKind::Int32 }, 2 },
             { { PrimitiveKind::Int8, PrimitiveKind::Int64 }, 3 },
 
+            { { PrimitiveKind::Int16, PrimitiveKind::Int8 }, 1 },
             { { PrimitiveKind::Int16, PrimitiveKind::Int16 }, 0 },
             { { PrimitiveKind::Int16, PrimitiveKind::Int32 }, 1 },
             { { PrimitiveKind::Int16, PrimitiveKind::Int64 }, 2 },
 
+            { { PrimitiveKind::Int32, PrimitiveKind::Int8 }, 2 },
+            { { PrimitiveKind::Int32, PrimitiveKind::Int16 }, 1 },
             { { PrimitiveKind::Int32, PrimitiveKind::Int32 }, 0 },
             { { PrimitiveKind::Int32, PrimitiveKind::Int64 }, 1 },
 
+            { { PrimitiveKind::Int64, PrimitiveKind::Int8 }, 3 },
+            { { PrimitiveKind::Int64, PrimitiveKind::Int16 }, 2 },
+            { { PrimitiveKind::Int64, PrimitiveKind::Int32 }, 1 },
             { { PrimitiveKind::Int64, PrimitiveKind::Int64 }, 0 },
 
-            // TODO add other conversions like int to uint and int to float
+            { { PrimitiveKind::UInt8, PrimitiveKind::Int8 }, 4 },
+            { { PrimitiveKind::UInt8, PrimitiveKind::Int16 }, 4 },
+            { { PrimitiveKind::UInt8, PrimitiveKind::Int32 }, 5 },
+            { { PrimitiveKind::UInt8, PrimitiveKind::Int64 }, 6 },
+
+            { { PrimitiveKind::UInt16, PrimitiveKind::Int8 }, 5 },
+            { { PrimitiveKind::UInt16, PrimitiveKind::Int16 }, 4 },
+            { { PrimitiveKind::UInt16, PrimitiveKind::Int32 }, 4 },
+            { { PrimitiveKind::UInt16, PrimitiveKind::Int64 }, 5 },
+
+            { { PrimitiveKind::UInt32, PrimitiveKind::Int8 }, 6 },
+            { { PrimitiveKind::UInt32, PrimitiveKind::Int16 }, 5 },
+            { { PrimitiveKind::UInt32, PrimitiveKind::Int32 }, 4 },
+            { { PrimitiveKind::UInt32, PrimitiveKind::Int64 }, 4 },
+
+            { { PrimitiveKind::UInt64, PrimitiveKind::Int8 }, 7 },
+            { { PrimitiveKind::UInt64, PrimitiveKind::Int16 }, 6 },
+            { { PrimitiveKind::UInt64, PrimitiveKind::Int32 }, 5 },
+            { { PrimitiveKind::UInt64, PrimitiveKind::Int64 }, 4 },
+
+            { { PrimitiveKind::Int8, PrimitiveKind::UInt8 }, 4 },
+            { { PrimitiveKind::Int8, PrimitiveKind::UInt16 }, 4 },
+            { { PrimitiveKind::Int8, PrimitiveKind::UInt32 }, 5 },
+            { { PrimitiveKind::Int8, PrimitiveKind::UInt64 }, 6 },
+
+            { { PrimitiveKind::Int16, PrimitiveKind::UInt8 }, 5 },
+            { { PrimitiveKind::Int16, PrimitiveKind::UInt16 }, 4 },
+            { { PrimitiveKind::Int16, PrimitiveKind::UInt32 }, 4 },
+            { { PrimitiveKind::Int16, PrimitiveKind::UInt64 }, 5 },
+
+            { { PrimitiveKind::Int32, PrimitiveKind::UInt8 }, 6 },
+            { { PrimitiveKind::Int32, PrimitiveKind::UInt16 }, 5 },
+            { { PrimitiveKind::Int32, PrimitiveKind::UInt32 }, 4 },
+            { { PrimitiveKind::Int32, PrimitiveKind::UInt64 }, 4 },
+
+            { { PrimitiveKind::Int64, PrimitiveKind::UInt8 }, 7 },
+            { { PrimitiveKind::Int64, PrimitiveKind::UInt16 }, 6 },
+            { { PrimitiveKind::Int64, PrimitiveKind::UInt32 }, 5 },
+            { { PrimitiveKind::Int64, PrimitiveKind::UInt64 }, 4 },
+
+            { { PrimitiveKind::Int8, PrimitiveKind::Float16 }, 3 },
+            { { PrimitiveKind::Int8, PrimitiveKind::Float32 }, 4 },
+            { { PrimitiveKind::Int8, PrimitiveKind::Float64 }, 5 },
+
+            { { PrimitiveKind::Int16, PrimitiveKind::Float16 }, 4 },
+            { { PrimitiveKind::Int16, PrimitiveKind::Float32 }, 3 },
+            { { PrimitiveKind::Int16, PrimitiveKind::Float64 }, 4 },
+
+            { { PrimitiveKind::Int32, PrimitiveKind::Float16 }, 5 },
+            { { PrimitiveKind::Int32, PrimitiveKind::Float32 }, 3 },
+            { { PrimitiveKind::Int32, PrimitiveKind::Float64 }, 4 },
+
+            { { PrimitiveKind::Int64, PrimitiveKind::Float16 }, 6 },
+            { { PrimitiveKind::Int64, PrimitiveKind::Float32 }, 4 },
+            { { PrimitiveKind::Int64, PrimitiveKind::Float64 }, 3 },
+
+            { { PrimitiveKind::Float16, PrimitiveKind::Int8 }, 3 },
+            { { PrimitiveKind::Float16, PrimitiveKind::Int16 }, 4 },
+            { { PrimitiveKind::Float16, PrimitiveKind::Int32 }, 5 },
+            { { PrimitiveKind::Float16, PrimitiveKind::Int64 }, 6 },
+
+            { { PrimitiveKind::Float32, PrimitiveKind::Int8 }, 4 },
+            { { PrimitiveKind::Float32, PrimitiveKind::Int16 }, 3 },
+            { { PrimitiveKind::Float32, PrimitiveKind::Int32 }, 3 },
+            { { PrimitiveKind::Float32, PrimitiveKind::Int64 }, 4 },
+
+            { { PrimitiveKind::Float64, PrimitiveKind::Int8 }, 5 },
+            { { PrimitiveKind::Float64, PrimitiveKind::Int16 }, 4 },
+            { { PrimitiveKind::Float64, PrimitiveKind::Int32 }, 4 },
+            { { PrimitiveKind::Float64, PrimitiveKind::Int64 }, 3 },
+
+            { { PrimitiveKind::UInt8, PrimitiveKind::Float16 }, 3 },
+            { { PrimitiveKind::UInt8, PrimitiveKind::Float32 }, 4 },
+            { { PrimitiveKind::UInt8, PrimitiveKind::Float64 }, 5 },
+
+            { { PrimitiveKind::UInt16, PrimitiveKind::Float16 }, 4 },
+            { { PrimitiveKind::UInt16, PrimitiveKind::Float32 }, 3 },
+            { { PrimitiveKind::UInt16, PrimitiveKind::Float64 }, 4 },
+
+            { { PrimitiveKind::UInt32, PrimitiveKind::Float16 }, 5 },
+            { { PrimitiveKind::UInt32, PrimitiveKind::Float32 }, 3 },
+            { { PrimitiveKind::UInt32, PrimitiveKind::Float64 }, 4 },
+
+            { { PrimitiveKind::UInt64, PrimitiveKind::Float16 }, 6 },
+            { { PrimitiveKind::UInt64, PrimitiveKind::Float32 }, 4 },
+            { { PrimitiveKind::UInt64, PrimitiveKind::Float64 }, 3 },
+
+            { { PrimitiveKind::Float16, PrimitiveKind::UInt8 }, 3 },
+            { { PrimitiveKind::Float16, PrimitiveKind::UInt16 }, 4 },
+            { { PrimitiveKind::Float16, PrimitiveKind::UInt32 }, 5 },
+            { { PrimitiveKind::Float16, PrimitiveKind::UInt64 }, 6 },
+
+            { { PrimitiveKind::Float32, PrimitiveKind::UInt8 }, 4 },
+            { { PrimitiveKind::Float32, PrimitiveKind::UInt16 }, 3 },
+            { { PrimitiveKind::Float32, PrimitiveKind::UInt32 }, 3 },
+            { { PrimitiveKind::Float32, PrimitiveKind::UInt64 }, 4 },
+
+            { { PrimitiveKind::Float64, PrimitiveKind::UInt8 }, 5 },
+            { { PrimitiveKind::Float64, PrimitiveKind::UInt16 }, 4 },
+            { { PrimitiveKind::Float64, PrimitiveKind::UInt32 }, 4 },
+            { { PrimitiveKind::Float64, PrimitiveKind::UInt64 }, 3 },
         };
 
         if(const auto it = costs.find({from, to}); it != costs.end())

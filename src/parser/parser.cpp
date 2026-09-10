@@ -55,10 +55,10 @@ namespace ionsl
                     // TODO handle error
                     return value;
                 }
-                if(text.contains(".eE"))
+                if (text.contains('.') || text.contains('e') || text.contains('E'))
                 {
                     if(text.ends_with("f"))
-                        text.remove_prefix(1);
+                        text.remove_suffix(1);
 
                     double value;
                     text.remove_prefix(2);
@@ -69,10 +69,10 @@ namespace ionsl
                 if(text.starts_with("-"))
                 {
                     int64_t value;
-                    text.remove_prefix(2);
-                    auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), value, 16);
+                    text.remove_prefix(1);
+                    auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), value);
                     // TODO handle error
-                    return value;
+                    return -value;
                 }
 
                 if(text.ends_with("u"))
@@ -122,15 +122,27 @@ namespace ionsl
 
     AttributeArg Parser::parseAttribArg()
     {
-        if(match(TokenKind::Identifier))
-            return parseName();
+        if(check(TokenKind::Identifier))
+        {
+            auto name = parseName();
+            AttribArgValue value;
+            if(match(TokenKind::Equal))
+            {
+                if(check(TokenKind::Identifier))
+                    return AttributeArg{ name.parts.front(), parseName() };
 
-        return parseLiteral();
+                return AttributeArg{ parseLiteral() };
+            }
+
+            return AttributeArg{ name };
+        }
+
+        return AttributeArg{ parseLiteral() };
     }
 
     void Parser::reportError(const SourceSpan &span, const std::string &message)
     {
-        m_ast.diagnostics.add(message, span, Severity::Error);
+        m_ast.diagnostics.error(span, "{}", message);
     }
 
     ParserState Parser::saveState() const

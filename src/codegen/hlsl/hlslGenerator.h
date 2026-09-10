@@ -19,7 +19,7 @@ private:
     CodeWriter m_writer;
 
     void genDecl(Declaration& decl);
-    void genFunctionDecl(const FunctionDecl& decl);
+    bool genFunctionDecl(const FunctionDecl& decl);
     void genStructDecl(StructDecl& decl);
     void genInterfaceDecl(const InterfaceDecl& decl);
     void genVarDecl(ValueDecl& decl);
@@ -41,7 +41,7 @@ private:
     void genStructType(StructType type);
 
     void genExpr(Expression& expr, bool addParens = false);
-    void genBinaryExpr(BinaryExpr& expr, bool addParens = false);
+    void genBinaryExpr(const BinaryExpr& expr, bool addParens = false);
     void genUnaryExpr(UnaryExpr& expr);
     void genCallExpr(const CallExpr& expr);
     void genConstructExpr(const ConstructExpr& expr);
