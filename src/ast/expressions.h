@@ -78,7 +78,7 @@ class FieldAccessExpr final : public Expression
 {
 public:
     Expression* object{};
-    SymbolId memberName = ~0u;
+    SymbolId memberName = SymbolId::Invalid;
 
     FieldAccessExpr* clone(Arena &arena) const override;
 };

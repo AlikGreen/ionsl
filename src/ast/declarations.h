@@ -20,7 +20,7 @@ class BlockStmt;
 class  Declaration : public AstNode
 {
 public:
-    std::vector<Attribute> attributes{};
+    Attributes attributes{};
     DeclId id{};
     SymbolId name{};
 
@@ -82,6 +82,10 @@ public:
 class ErrorDecl final : public Declaration
 {
 public:
+    ErrorDecl()
+    {
+
+    }
     ErrorDecl* clone(Arena &arena) const override;
 };
 

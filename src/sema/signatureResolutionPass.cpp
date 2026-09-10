@@ -31,7 +31,7 @@ namespace ionsl
 
     void SignatureResolutionPass::checkFunctionDecl(const FunctionDecl &declaration, const SemaContext& ctx)
     {
-        m_typeResolver.resolveType(*declaration.returnType, ctx.withScope(declaration.body->scope));
+        m_typeResolver.resolveType(*declaration.returnType, ctx);
 
         for(const auto param : declaration.params)
             m_typeResolver.resolveType(*param->type, ctx);

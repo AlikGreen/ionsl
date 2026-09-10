@@ -13,8 +13,10 @@ namespace ionsl
 
     void HlslGenerator::genDecl(Declaration &decl)
     {
+        bool emitted = true;
+
         if(const auto funcDecl = decl.as<FunctionDecl>())
-            genFunctionDecl(*funcDecl);
+            emitted = genFunctionDecl(*funcDecl);
         if(const auto interfaceDecl = decl.as<InterfaceDecl>())
             genInterfaceDecl(*interfaceDecl);
         if(const auto structDecl = decl.as<StructDecl>())
@@ -22,12 +24,15 @@ namespace ionsl
         if(const auto valDecl = decl.as<ValueDecl>())
             genVarDecl(*valDecl);
 
-        if(m_writer.getIndent() == 0)
+        if(emitted && m_writer.getIndent() == 0)
             m_writer.newline();
     }
 
-    void HlslGenerator::genFunctionDecl(const FunctionDecl &decl)
+    bool HlslGenerator::genFunctionDecl(const FunctionDecl &decl)
     {
+        if(decl.attributes.contains("hlsl", m_symbols))
+            return false;
+
         genType(decl.returnType->resolvedType);
         m_writer.space();
         m_writer.writeSymbol(decl.name);
@@ -47,7 +52,13 @@ namespace ionsl
         });
 
         m_writer.write(")");
-        genBlockStmt(*decl.body);
+
+        if(decl.body)
+            genBlockStmt(*decl.body);
+        else
+            m_writer.write(";");
+
+        return true;
     }
 
     void HlslGenerator::genStructDecl(StructDecl &decl)
@@ -252,7 +263,7 @@ namespace ionsl
         m_writer.writeSymbol(decl->as<StructDecl>()->name);
     }
 
-    void HlslGenerator::genExpr(Expression &expr, bool addParens)
+    void HlslGenerator::genExpr(Expression &expr, const bool addParens)
     {
         if(const auto binary = expr.as<BinaryExpr>())
             genBinaryExpr(*binary, addParens);
@@ -274,7 +285,7 @@ namespace ionsl
             genIdentifierExpr(*identifier);
     }
 
-    void HlslGenerator::genBinaryExpr(BinaryExpr &expr, bool addParens)
+    void HlslGenerator::genBinaryExpr(const BinaryExpr &expr, const bool addParens)
     {
         if(addParens)
             m_writer.write("(");

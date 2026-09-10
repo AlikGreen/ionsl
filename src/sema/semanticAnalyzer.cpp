@@ -141,7 +141,10 @@ namespace ionsl
                     paramTypes.push_back(param->type->resolvedType);
 
                 auto conversion = m_typeSystem.conversionCost(argumentTypes, paramTypes);
-                if(!conversion) continue;
+                if(!conversion)
+                {
+                    continue;
+                }
 
                 if(bestConversionCost > *conversion)
                 {
@@ -151,7 +154,11 @@ namespace ionsl
             }
         }
 
-        if(bestCandidate == nullptr) return TypeId::Error;
+        if(bestCandidate == nullptr)
+        {
+            m_module.diagnostics.error(expression.span, "no matching function for call to '{}'", identifier.name.string(m_symbols));
+            return TypeId::Error;
+        }
 
         if(auto* funcDecl = bestCandidate->as<FunctionDecl>())
         {
@@ -165,6 +172,9 @@ namespace ionsl
 
 
         // TODO methods and variables
+
+        m_module.diagnostics.error(expression.span, "no matching function for call to '{}'", identifier.name.string(m_symbols));
+
         return TypeId::Error;
     }
 
@@ -331,7 +341,8 @@ namespace ionsl
 
     void SemanticAnalyzer::checkFunctionDecl(const FunctionDecl &declaration, const SemaContext& ctx)
     {
-        checkBlockStmt(*declaration.body, ctx);
+        if(declaration.body)
+            checkBlockStmt(*declaration.body, ctx);
     }
 
     void SemanticAnalyzer::checkStructDecl(const StructDecl &declaration, const SemaContext& ctx)
