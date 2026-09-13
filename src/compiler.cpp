@@ -1,28 +1,54 @@
 #include "compiler.h"
 
+#include <filesystem>
+#include <fstream>
+
 #include "lexer/lexer.h"
 #include "parser/parser.h"
+#include "sema/globalScope.h"
 #include "sema/semanticAnalyzer.h"
 
 namespace ionsl
 {
+    std::optional<std::string> loadFile(const std::string& path)
+    {
+        std::ifstream file{path, std::ios::in | std::ios::binary};
+        if (!file)
+            return std::nullopt;
+
+        std::ostringstream buffer;
+        buffer << file.rdbuf();
+
+        if (file.bad())
+            return std::nullopt;
+
+        return buffer.str();
+    }
+
     Compiler::Compiler()
-        : m_typeSystem(m_typeTable, m_declTable, m_symbolTable)
+        : m_typeSystem(m_typeTable, m_symbolTable)
     {
+        m_stdlib = compile(*loadFile(R"(C:\Users\alikg\CLionProjects\ionsl\std\core.ionsl)"));
     }
 
-    std::vector<Token> Compiler::tokenize(const std::string &source)
+    Module Compiler::compile(const std::string &source)
     {
-        return Lexer::tokenize(source);
+        auto tokens = Lexer::tokenize(source);
+        return Parser::parse(tokens, m_symbolTable, m_scopeTable, m_declAllocator);
     }
 
-    Module Compiler::parse(std::span<Token> tokens)
+    Module Compiler::link(const LinkDescription &desc)
     {
-        return Parser::parse(tokens, m_declAllocator, m_symbolTable, m_scopeTable, m_declTable);
+        Module module{10*1024*1024};
+
+        for(const Module* m : desc.modules)
+            m->clone(module);
+
+        m_stdlib.clone(module);
+
+        SemanticAnalyzer::analyze(module, m_symbolTable, m_typeSystem, m_scopeTable, m_declAllocator);
+
+        return std::move(module);
     }
 
-    void Compiler::link(Module& module)
-    {
-        SemanticAnalyzer::analyze(module, m_symbolTable, m_typeSystem, m_declTable, m_scopeTable);
-    }
 }

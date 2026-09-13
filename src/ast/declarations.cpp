@@ -15,7 +15,10 @@ namespace ionsl
         decl->span = span;
         decl->id = id;
         decl->attributes = attributes;
-        decl->initializer = initializer->clone(arena);
+
+        if(decl->initializer)
+            decl->initializer = initializer->clone(arena);
+
         decl->name = name;
 
         decl->type = type->clone(arena);

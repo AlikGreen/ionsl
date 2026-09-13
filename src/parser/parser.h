@@ -20,19 +20,18 @@ struct ParserState
 class Parser
 {
 public:
-    explicit Parser(std::span<Token> tokens, DeclarationIdAllocator& declAllocator, SymbolTable& symbolTable, ScopeTable& scopeTable, DeclTable& declTable);
-    static Module parse(std::span<Token> tokens, DeclarationIdAllocator& declAllocator, SymbolTable& symbolTable, ScopeTable& scopeTable, DeclTable& declTable);
+    explicit Parser(std::span<Token> tokens, SymbolTable& symbolTable, ScopeTable& scopeTable, DeclAllocator& declAllocator);
+    static Module parse(std::span<Token> tokens, SymbolTable& symbolTable, ScopeTable& scopeTable, DeclAllocator& declAllocator);
 
     Module parse();
 private:
     std::span<Token> m_tokens{};
     uint32_t m_pos{};
     Module m_ast{10*1024*1024}; // 10Mb
-    DeclarationIdAllocator& m_declAllocator;
 
     SymbolTable& m_symbolTable;
     ScopeTable& m_scopeTable;
-    DeclTable& m_declTable;
+    DeclAllocator& m_declAllocator;
 
     ScopeId m_currentScope{};
     std::vector<Attribute> m_pendingAttributes;

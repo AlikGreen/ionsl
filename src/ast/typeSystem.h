@@ -21,7 +21,7 @@ struct UnaryResultType
 class TypeSystem
 {
 public:
-    explicit TypeSystem(TypeTable& typeTable, const DeclTable& declTable, const SymbolTable& symbolTable);
+    explicit TypeSystem(TypeTable& typeTable, const SymbolTable& symbolTable);
 
     [[nodiscard]] std::optional<uint32_t> conversionCost(TypeId from, TypeId to) const;
     [[nodiscard]] std::optional<uint32_t> conversionCost(const std::vector<TypeId> &from, const std::vector<TypeId> &to) const;
@@ -36,7 +36,6 @@ public:
     [[nodiscard]] TypeTable& types() const;
 private:
     TypeTable& m_types;
-    const DeclTable& m_declTable;
     const SymbolTable& m_symbols;
 };
 }

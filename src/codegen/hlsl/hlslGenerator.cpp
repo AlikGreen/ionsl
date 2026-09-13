@@ -23,6 +23,8 @@ namespace ionsl
             genStructDecl(*structDecl);
         if(const auto valDecl = decl.as<ValueDecl>())
             genVarDecl(*valDecl);
+        if(decl.is<ErrorDecl>())
+            emitted = false;
 
         if(emitted && m_writer.getIndent() == 0)
             m_writer.newline();

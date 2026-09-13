@@ -7,8 +7,8 @@
 namespace ionsl
 {
     TypeResolver::TypeResolver(TypeSystem &typeSystem, ConstantEvaluator &evaluator, SymbolTable &symbols,
-        ScopeTable &scopeTable, DeclTable &decls)
-            : m_typeSystem(typeSystem), m_evaluator(evaluator), m_symbols(symbols), m_scopeTable(scopeTable), m_decls(decls)
+        ScopeTable &scopeTable, GlobalScope& globalScope, DeclTable &decls)
+            : m_typeSystem(typeSystem), m_evaluator(evaluator), m_symbols(symbols), m_scopeTable(scopeTable), m_globalScope(globalScope), m_decls(decls)
     { }
 
     TypeId TypeResolver::resolveType(TypeSyntax& syntax, const SemaContext& ctx)
@@ -97,7 +97,10 @@ namespace ionsl
             return TypeId::Error;
         }
 
-        const auto decls = m_scopeTable.findDecls(ctx.scope, syntax.name);
+        // FIXME make sure to match the whole type
+        auto decls = m_scopeTable.find(ctx.scope, syntax.name.parts[0]);
+        if(decls.empty())
+            decls = m_globalScope.find(syntax.name.parts[0]);
 
         for(const DeclId id : decls)
         {

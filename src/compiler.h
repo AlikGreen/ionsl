@@ -6,24 +6,28 @@
 #include "ast/symbolTable.h"
 #include "ast/typeSystem.h"
 #include "codegen/codeGenerator.h"
-#include "lexer/token.h"
 
 namespace ionsl
 {
+struct LinkDescription
+{
+    std::vector<Module*> modules;
+    std::unordered_map<DeclId, std::vector<TypeId>> specializations;
+};
+
 class Compiler
 {
 public:
     Compiler();
 
-    std::vector<Token> tokenize(const std::string &source);
-    Module parse(std::span<Token> tokens);
-    void link(Module& module);
+    Module compile(const std::string &source);
+    Module link(const LinkDescription& desc);
 
     template<typename T>
-    requires std::is_base_of_v<CodeGenerator, T> && std::is_constructible_v<T, const Module&, const SymbolTable&, const TypeTable&, const DeclTable&>
+    requires std::is_base_of_v<CodeGenerator, T> && std::is_constructible_v<T, const Module&, const SymbolTable&, const TypeTable&>
     std::string generate(const Module& module)
     {
-        return T(module, m_symbolTable, m_typeTable, m_declTable).generate();
+        return T(module, m_symbolTable, m_typeTable).generate();
     }
 
     Compiler(const Compiler&) = delete;
@@ -32,11 +36,12 @@ public:
     Compiler(Compiler&&) noexcept = default;
     Compiler& operator=(Compiler&&) noexcept = default;
 private:
-    DeclarationIdAllocator m_declAllocator;
     SymbolTable m_symbolTable;
     TypeTable m_typeTable;
-    DeclTable m_declTable;
     ScopeTable m_scopeTable;
     TypeSystem m_typeSystem;
+    DeclAllocator m_declAllocator;
+
+    Module m_stdlib{0};
 };
 }

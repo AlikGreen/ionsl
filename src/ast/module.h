@@ -16,11 +16,11 @@ class Module
 public:
     Arena arena;
     DiagnosticSink diagnostics;
-    ScopeId scope;
 
     std::vector<Declaration*> declarations;
 
     [[nodiscard]] Module clone() const;
+    void clone(Module& newModule) const;
 
     explicit Module(size_t arenaSize);
 

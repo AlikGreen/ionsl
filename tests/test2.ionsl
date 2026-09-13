@@ -1,24 +1,7 @@
-// alias test
-
-[[hlsl(function = "normalize")]]
-fn normalize(val : vector::<f32, 3>) -> vector::<f32, 3>;
-
-[[hlsl(function = "dot")]]
-fn dot(left : vector::<f32, 3>, right : vector::<f32, 3>) -> f32;
-
-[[hlsl(function = "max")]]
-fn max(left : f32, right : f32) -> f32;
-
-[[hlsl(function = "mul")]]
-fn mul(mat : matrix::<f32, 4, 4>, vec : vector::<f32, 4>) -> matrix::<f32, 4, 4>;
-
-type vec3f = vector::<f32, 3>;
-type vec3<T> = vector::<T, 3>;
-
 struct VertexInput
 {
-    [[semantic("POSITION")]] position : vec3<f32>,
-    [[semantic("NORMAL")]]   normal   : vec3<f32>,
+    [[semantic("POSITION")]] position : vec3f,
+    [[semantic("NORMAL")]]   normal   : vec3f,
     [[semantic("TEXCOORD", 0)]] uv    : vec3f,
 }
 
@@ -31,7 +14,7 @@ struct VertexOutput
 
 struct CameraData
 {
-    viewProj : matrix::<f32, 4, 4>,
+    viewProj : mat4f,
 }
 
 [[shader("vertex")]]
@@ -39,7 +22,7 @@ fn vertexMain(input : VertexInput, [[ion::mutable]] [[ion::constant]] camera : C
 {
     var mut output : VertexOutput;
 
-    output.position = mul(camera.viewProj, vector::<f32, 4>(input.position, 1.0));
+    output.position = mul(camera.viewProj, vec3f(input.position, 1.0));
     output.normal = input.normal;
     output.uv = input.uv;
 
@@ -47,10 +30,10 @@ fn vertexMain(input : VertexInput, [[ion::mutable]] [[ion::constant]] camera : C
 }
 
 [[shader("pixel")]]
-fn fragmentMain(input : VertexOutput) -> vector::<f32, 4>
+fn fragmentMain(input : VertexOutput) -> vec3f
 {
-    var lightDir : vector::<f32, 3> = normalize(vector::<f32, 3>(0.3, -1.0, 0.2));
+    var lightDir : vec3f = normalize(vec3f(0.3, -1.0, 0.2));
     var nDotL : f32 = max(0.0, dot(input.normal, lightDir));
 
-    return vector::<f32, 4>(nDotL, nDotL, nDotL, 1.0);
+    return vec4f(nDotL, nDotL, nDotL, 1.0);
 }

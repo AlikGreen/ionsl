@@ -53,8 +53,7 @@ bool testShaderFile(const std::string& path, ionsl::Compiler& compiler)
         return false;
     }
 
-    auto tokens = compiler.tokenize(*source);
-    auto module = compiler.parse(tokens);
+    auto module = compiler.compile(*source);
     printDiagnostics(module.diagnostics.diagnostics());
 
     if (!module.diagnostics.diagnostics().empty())
@@ -65,16 +64,16 @@ bool testShaderFile(const std::string& path, ionsl::Compiler& compiler)
 
     std::cout << "OK ({} top-level decls)\n" << module.declarations.size() << std::endl;
 
-    compiler.link(module);
+    ionsl::Module linked = compiler.link({ { &module } } );
 
-    printDiagnostics(module.diagnostics.diagnostics());
-    if (!module.diagnostics.diagnostics().empty())
+    printDiagnostics(linked.diagnostics.diagnostics());
+    if (!linked.diagnostics.diagnostics().empty())
     {
         std::cout << "FAILED\n";
         return false;
     }
 
-    std::string hlsl = compiler.generate<ionsl::HlslGenerator>(module);
+    std::string hlsl = compiler.generate<ionsl::HlslGenerator>(linked);
     std::cout << hlsl << std::endl;
 
     return true;

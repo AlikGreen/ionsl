@@ -42,6 +42,7 @@ class FunctionDecl final : public Declaration
 public:
     TypeSyntax* returnType;
     std::vector<ValueDecl*> params;
+    std::vector<GenericParam*> genericParams;
     BlockStmt* body;
 
     FunctionDecl* clone(Arena &arena) const override;
