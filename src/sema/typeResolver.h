@@ -1,5 +1,6 @@
 #pragma once
 #include "constantEvaluator.h"
+#include "globalScope.h"
 #include "../ast/scopeTable.h"
 #include "../ast/type.h"
 #include "../ast/typeSystem.h"
@@ -14,7 +15,7 @@ class NamedTypeSyntax;
 class TypeResolver
 {
 public:
-    TypeResolver(TypeSystem& typeSystem, ConstantEvaluator& evaluator, SymbolTable& symbols, ScopeTable& scopeTable, DeclTable& decls);
+    TypeResolver(TypeSystem& typeSystem, ConstantEvaluator& evaluator, SymbolTable& symbols, ScopeTable& scopeTable, GlobalScope& globalScope, DeclTable& decls);
 
     TypeId resolveType(TypeSyntax& syntax, const SemaContext& ctx);
     TypeId resolveTypeArg(TypeArgument& arg, const SemaContext& ctx);
@@ -23,6 +24,7 @@ private:
     ConstantEvaluator& m_evaluator;
     SymbolTable& m_symbols;
     ScopeTable& m_scopeTable;
+    GlobalScope& m_globalScope;
     DeclTable& m_decls;
 
     TypeId resolveVectorType(NamedTypeSyntax& syntax, const SemaContext& ctx);

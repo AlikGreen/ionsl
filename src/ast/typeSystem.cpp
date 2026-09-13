@@ -12,8 +12,8 @@ namespace ionsl
         }
     };
 
-    TypeSystem::TypeSystem(TypeTable &typeTable, const DeclTable &declTable, const SymbolTable &symbolTable)
-        : m_types(typeTable), m_declTable(declTable), m_symbols(symbolTable)
+    TypeSystem::TypeSystem(TypeTable &typeTable, const SymbolTable &symbolTable)
+        : m_types(typeTable), m_symbols(symbolTable)
     {
     }
 

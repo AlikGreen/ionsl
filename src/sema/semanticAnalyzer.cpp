@@ -13,7 +13,6 @@ namespace ionsl
     void SemanticAnalyzer::analyze()
     {
         SemaContext ctx{};
-        ctx.scope = m_module.scope;
 
         SignatureResolutionPass(m_typeResolver, m_module.declarations).run(ctx);
 
@@ -23,9 +22,9 @@ namespace ionsl
         }
     }
 
-    void SemanticAnalyzer::analyze(Module& module, SymbolTable& symbolTable, TypeSystem& typeSystem, DeclTable& declTable, ScopeTable& scopeTable)
+    void SemanticAnalyzer::analyze(Module& module, SymbolTable& symbolTable, TypeSystem& typeSystem, ScopeTable& scopeTable, DeclAllocator& declAllocator)
     {
-        return SemanticAnalyzer(module, symbolTable, typeSystem, declTable, scopeTable).analyze();
+        return SemanticAnalyzer(module, symbolTable, typeSystem, scopeTable, declAllocator).analyze();
     }
 
     TypeId SemanticAnalyzer::checkExpression(Expression*& expression, const SemaContext& ctx)
@@ -126,7 +125,10 @@ namespace ionsl
             argumentTypes.push_back(type);
         }
 
-        auto candidates = m_scopeTable.findDecls(ctx.scope, identifier.name);
+        auto candidates = m_scopeTable.find(ctx.scope, identifier.name.parts[0]);
+        if(candidates.empty())
+            candidates = m_globalScope.find(identifier.name.parts[0]);
+
         uint32_t bestConversionCost = ~0u;
         Declaration* bestCandidate = nullptr;
 
@@ -141,10 +143,9 @@ namespace ionsl
                     paramTypes.push_back(param->type->resolvedType);
 
                 auto conversion = m_typeSystem.conversionCost(argumentTypes, paramTypes);
+
                 if(!conversion)
-                {
                     continue;
-                }
 
                 if(bestConversionCost > *conversion)
                 {
@@ -180,7 +181,9 @@ namespace ionsl
 
     TypeId SemanticAnalyzer::checkIdentifierExpr(IdentifierExpr &expression, const SemaContext& ctx) const
     {
-        auto candidates = m_scopeTable.findDecls(ctx.scope, expression.name);
+        auto candidates = m_scopeTable.find(ctx.scope, expression.name.parts[0]);
+        if(candidates.empty())
+            candidates = m_globalScope.find(expression.name.parts[0]);
 
         TypeId bestCandidateType  = TypeId::Error;
 

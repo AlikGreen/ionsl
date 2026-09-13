@@ -4,16 +4,15 @@
 
 namespace ionsl
 {
-    Parser::Parser(const std::span<Token> tokens, DeclarationIdAllocator& declAllocator, SymbolTable& symbolTable, ScopeTable& scopeTable, DeclTable& declTable)
-        : m_tokens(tokens), m_declAllocator(declAllocator), m_symbolTable(symbolTable), m_scopeTable(scopeTable), m_declTable(declTable)
+    Parser::Parser(const std::span<Token> tokens, SymbolTable& symbolTable, ScopeTable& scopeTable, DeclAllocator& declAllocator)
+        : m_tokens(tokens), m_symbolTable(symbolTable), m_scopeTable(scopeTable), m_declAllocator(declAllocator)
     {
-        m_currentScope = m_scopeTable.create(ScopeId::Error);
-        m_ast.scope = m_currentScope;
+        m_currentScope = ScopeId::None;
     }
 
-    Module Parser::parse(const std::span<Token> tokens, DeclarationIdAllocator& declAllocator, SymbolTable& symbolTable, ScopeTable& scopeTable, DeclTable& declTable)
+    Module Parser::parse(const std::span<Token> tokens, SymbolTable& symbolTable, ScopeTable& scopeTable, DeclAllocator& declAllocator)
     {
-        Parser parser{tokens, declAllocator, symbolTable, scopeTable, declTable};
+        Parser parser{tokens, symbolTable, scopeTable, declAllocator};
         return parser.parse();
     }
 
@@ -24,7 +23,6 @@ namespace ionsl
             m_ast.declarations.push_back(parseDeclaration());
         }
 
-        m_declTable.regenerate(m_ast);
         return std::move(m_ast); // maybe should clone?
     }
 
@@ -161,7 +159,7 @@ namespace ionsl
 
     bool Parser::atEnd() const
     {
-        return m_tokens[m_pos].kind == TokenKind::EndOfFile || m_pos >= m_tokens.size();
+        return m_pos >= m_tokens.size() || m_tokens[m_pos].kind == TokenKind::EndOfFile;
     }
 
     const Token& Parser::peek() const

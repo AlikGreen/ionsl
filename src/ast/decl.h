@@ -34,25 +34,21 @@ struct std::hash<ionsl::DeclId>
 
 namespace ionsl
 {
-class DeclarationIdAllocator
-{
-public:
-    DeclId allocate()
-    {
-        return DeclId{m_nextId++};
-    }
-
-private:
-    uint32_t m_nextId = 1;
-};
-
 class DeclTable
 {
 public:
-    DeclTable() = default;
-    void regenerate(const Module& module);
+    explicit DeclTable(const Module& module);
     [[nodiscard]] Declaration* get(DeclId id) const;
 private:
     std::unordered_map<DeclId, Declaration*> m_map{};
+};
+
+
+class DeclAllocator
+{
+public:
+    DeclId allocate();
+private:
+    uint32_t m_nextId = 1;
 };
 }

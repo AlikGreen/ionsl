@@ -18,6 +18,8 @@ public:
     TypeId getStructType(DeclId id);
     TypeId getInterfaceType(DeclId id);
 
+    TypeId getGenericType(DeclId id);
+
     [[nodiscard]] TypeInfo getInfo(TypeId id) const;
     [[nodiscard]] bool isIntegral(TypeId id) const;
 private:
@@ -42,5 +44,6 @@ private:
     std::unordered_map<PrimitiveKind, TypeId> m_primitiveTypes;
     std::unordered_map<DeclId, TypeId> m_structTypes;
     std::unordered_map<DeclId, TypeId> m_interfaceTypes;
+    std::unordered_map<DeclId, TypeId> m_genericTypes;
 };
 }

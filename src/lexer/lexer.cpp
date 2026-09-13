@@ -130,17 +130,17 @@ namespace ionsl
         if (peek() == '0' && (peek(1) == 'x' || peek(1) == 'X'))
         {
             advance(); advance(); // consume "0x"
-            while (std::isxdigit(peek())) advance();
+            while (!done() && std::isxdigit(peek())) advance();
 
             // consume suffix eg 'u'
-            while (std::isalpha(peek())) advance();
+            while (!done() && std::isalpha(peek())) advance();
 
             return makeToken(TokenKind::NumberLiteral, startLoc);
         }
 
         if(std::isdigit(peek()) || peek() == '-')
         {
-            while (std::isdigit(peek())) advance();
+            while (!done() && std::isdigit(peek())) advance();
 
             if (peek() == '.' && std::isdigit(peek(1)))
             {
@@ -157,14 +157,14 @@ namespace ionsl
             }
 
             // consume suffix eg 'u'
-            while (std::isalpha(peek())) advance();
+            while (!done() && std::isalpha(peek())) advance();
 
             return makeToken(TokenKind::NumberLiteral, startLoc);
         }
 
         if(std::isalpha(peek()) || peek() == '_')
         {
-            while(std::isalnum(peek()) || peek() =='_')
+            while(!done() && std::isalnum(peek()) || peek() =='_')
                 advance();
 
             const std::string_view text = m_source.substr(startLoc.offset, m_loc.offset - startLoc.offset);

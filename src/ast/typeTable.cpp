@@ -107,6 +107,20 @@ namespace ionsl
         return typeId;
     }
 
+    TypeId TypeTable::getGenericType(DeclId id)
+    {
+        if(const auto it = m_genericTypes.find(id); it != m_genericTypes.end())
+            return it->second;
+
+        TypeInfo info{};
+        info.kind = InterfaceType{id};
+
+        const TypeId typeId = addType(info);
+
+        m_genericTypes[id] = typeId;
+        return typeId;
+    }
+
     TypeInfo TypeTable::getInfo(const TypeId id) const
     {
         return m_types.at(id.value());

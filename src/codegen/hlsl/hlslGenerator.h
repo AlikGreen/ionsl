@@ -10,8 +10,8 @@ namespace ionsl
 class HlslGenerator final : public CodeGenerator
 {
 public:
-    explicit HlslGenerator(const Module &module, const SymbolTable& symbolTable, const TypeTable& typeTable, const DeclTable& declTable)
-        : CodeGenerator(module, symbolTable, typeTable, declTable), m_writer(symbolTable) { }
+    explicit HlslGenerator(const Module &module, const SymbolTable& symbolTable, const TypeTable& typeTable)
+        : CodeGenerator(module, symbolTable, typeTable), m_writer(symbolTable) { }
 
     std::string generate() override;
 

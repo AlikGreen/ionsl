@@ -6,9 +6,8 @@ namespace ionsl
 {
     constexpr DeclId DeclId::Error   = DeclId(0);
 
-    void DeclTable::regenerate(const Module& module)
+    DeclTable::DeclTable(const Module &module)
     {
-        m_map.clear();
         AstWalker walker;
         walker.on([this](Declaration& decl)
         {
@@ -23,5 +22,10 @@ namespace ionsl
             return it->second;
 
         return nullptr;
+    }
+
+    DeclId DeclAllocator::allocate()
+    {
+        return DeclId{m_nextId++};
     }
 }

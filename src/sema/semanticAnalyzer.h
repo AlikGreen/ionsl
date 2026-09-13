@@ -2,6 +2,7 @@
 #include <span>
 
 #include "constantEvaluator.h"
+#include "globalScope.h"
 #include "typeResolver.h"
 #include "semaContext.h"
 #include "../ast/declarations.h"
@@ -15,22 +16,25 @@ namespace ionsl
 class SemanticAnalyzer
 {
 public:
-    SemanticAnalyzer(Module& module, SymbolTable& symbolTable, TypeSystem& typeSystem, DeclTable& declTable, ScopeTable& scopeTable)
-        : m_module(module), m_symbols(symbolTable), m_typeSystem(typeSystem), m_declTable(declTable), m_scopeTable(scopeTable),
-          m_constEval(declTable, m_typeSystem), m_typeResolver(typeSystem, m_constEval, symbolTable, scopeTable, declTable)
+    SemanticAnalyzer(Module& module, SymbolTable& symbolTable, TypeSystem& typeSystem, ScopeTable& scopeTable, DeclAllocator& declAllocator)
+        :   m_module(module), m_symbols(symbolTable), m_typeSystem(typeSystem), m_scopeTable(scopeTable), m_declAllocator(declAllocator),
+            m_declTable(module), m_constEval(m_declTable, m_typeSystem),
+            m_globalScope(module), m_typeResolver(typeSystem, m_constEval, symbolTable, scopeTable, m_globalScope, m_declTable)
     {
     }
 
     void analyze();
-    static void analyze(Module& module, SymbolTable& symbolTable, TypeSystem& typeSystem, DeclTable& declTable, ScopeTable& scopeTable);
+    static void analyze(Module& module, SymbolTable& symbolTable, TypeSystem& typeSystem, ScopeTable& scopeTable, DeclAllocator& declAllocator);
 private:
     Module& m_module;
     const SymbolTable& m_symbols;
 
     TypeSystem& m_typeSystem;
-    DeclTable& m_declTable;
     ScopeTable& m_scopeTable;
+    DeclAllocator& m_declAllocator;
+    DeclTable m_declTable;
     ConstantEvaluator m_constEval;
+    GlobalScope m_globalScope;
     TypeResolver m_typeResolver;
 
     TypeId checkExpression(Expression*& expression, const SemaContext& ctx);
