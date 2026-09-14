@@ -5,14 +5,23 @@
 
 namespace ionsl
 {
-    FunctionDecl* GenericInstantiator::instantiate(const FunctionDecl *genericDecl, const std::vector<TypeArgument*> &typeArgs)
+    FunctionDecl* GenericInstantiator::instantiate(const FunctionDecl& genericDecl, const std::vector<TypeArgument*> &typeArgs)
     {
-        if(typeArgs.size() != genericDecl->genericParams.size())
+        std::vector<TypeId> typeArgTypes{};
+        for(const auto arg : typeArgs)
+            typeArgTypes.push_back(arg->resolvedType);
+
+        return instantiate(genericDecl, typeArgTypes);
+    }
+
+    FunctionDecl * GenericInstantiator::instantiate(const FunctionDecl &genericDecl, const std::vector<TypeId> &typeArgs)
+    {
+        if(typeArgs.size() != genericDecl.genericParams.size())
             return nullptr;
 
-        size_t key = hashFuncInst(genericDecl->id, typeArgs);
+        size_t key = hashFuncInst(genericDecl.id, typeArgs);
 
-        if(auto it = m_cache.find(key); it != m_cache.end())
+        if(const auto it = m_cache.find(key); it != m_cache.end())
             return it->second;
 
 
@@ -24,9 +33,9 @@ namespace ionsl
 
             int index = -1;
 
-            for(int i = 0; i < genericDecl->genericParams.size(); i++)
+            for(int i = 0; i < genericDecl.genericParams.size(); i++)
             {
-                if(genericDecl->genericParams[i]->id == genericType->declId)
+                if(genericDecl.genericParams[i]->id == genericType->declId)
                 {
                     index = i;
                     break;
@@ -35,12 +44,12 @@ namespace ionsl
 
             if(index < 0) return;
 
-            type.resolvedType = typeArgs[index]->resolvedType;
+            type.resolvedType = typeArgs[index];
         });
 
         // TODO resolve expressions
 
-        FunctionDecl* clone = genericDecl->clone(m_arena);
+        FunctionDecl* clone = genericDecl.clone(m_module.arena());
         clone->id = m_declAllocator.allocate();
         clone->genericParams.clear();
         walker.walk(*clone);
@@ -50,11 +59,11 @@ namespace ionsl
         return clone;
     }
 
-    size_t GenericInstantiator::hashFuncInst(DeclId genericId, const std::vector<TypeArgument*>& typeArgs) const
+    size_t GenericInstantiator::hashFuncInst(const DeclId genericId, const std::vector<TypeId>& typeArgs) const
     {
         size_t h = std::hash<DeclId>{}(genericId);
-        for(const TypeArgument* t : typeArgs)
-            hashCombine(h, std::hash<TypeId>{}(t->resolvedType));
+        for(const TypeId t : typeArgs)
+            hashCombine(h, t);
         return h;
     }
 }

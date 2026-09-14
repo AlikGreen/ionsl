@@ -7,7 +7,7 @@ namespace ionsl
 {
     GlobalScope::GlobalScope(const Module &module)
     {
-        for(const auto decl : module.declarations)
+        for(const auto decl : module.declarations())
             registerDecl(decl->name, decl->id);
     }
 

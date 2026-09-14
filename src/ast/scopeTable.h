@@ -11,7 +11,7 @@ class ScopeId
 {
 public:
     ScopeId() = default;
-    explicit ScopeId(const uint32_t val) : m_value(val) { }
+    explicit constexpr ScopeId(const uint32_t val) : m_value(val) { }
 
     [[nodiscard]] uint32_t value() const { return m_value; }
     friend constexpr bool operator==(ScopeId, ScopeId) = default;

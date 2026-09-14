@@ -1,11 +1,13 @@
 #include "hlslGenerator.h"
 
+#include "../../ast/typeTable.h"
+
 
 namespace ionsl
 {
     std::string HlslGenerator::generate()
     {
-        for(const auto decl : m_module.declarations)
+        for(const auto decl : m_module.declarations())
             genDecl(*decl);
 
         return m_writer.string();
@@ -17,13 +19,13 @@ namespace ionsl
 
         if(const auto funcDecl = decl.as<FunctionDecl>())
             emitted = genFunctionDecl(*funcDecl);
-        if(const auto interfaceDecl = decl.as<InterfaceDecl>())
+        else if(const auto interfaceDecl = decl.as<InterfaceDecl>())
             genInterfaceDecl(*interfaceDecl);
-        if(const auto structDecl = decl.as<StructDecl>())
+        else if(const auto structDecl = decl.as<StructDecl>())
             genStructDecl(*structDecl);
-        if(const auto valDecl = decl.as<ValueDecl>())
+        else if(const auto valDecl = decl.as<ValueDecl>())
             genVarDecl(*valDecl);
-        if(decl.is<ErrorDecl>())
+        else
             emitted = false;
 
         if(emitted && m_writer.getIndent() == 0)
@@ -32,7 +34,7 @@ namespace ionsl
 
     bool HlslGenerator::genFunctionDecl(const FunctionDecl &decl)
     {
-        if(decl.attributes.contains("hlsl", m_symbols))
+        if(!decl.genericParams.empty() || decl.attributes.contains("hlsl", m_symbols))
             return false;
 
         genType(decl.returnType->resolvedType);

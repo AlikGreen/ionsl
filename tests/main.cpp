@@ -54,20 +54,27 @@ bool testShaderFile(const std::string& path, ionsl::Compiler& compiler)
     }
 
     auto module = compiler.compile(*source);
-    printDiagnostics(module.diagnostics.diagnostics());
+    printDiagnostics(module.diagnostics().logs());
 
-    if (!module.diagnostics.diagnostics().empty())
+    if (!module.diagnostics().logs().empty())
     {
         std::cout << "FAILED\n";
         return false;
     }
 
-    std::cout << "OK ({} top-level decls)\n" << module.declarations.size() << std::endl;
+    std::cout << "OK ({} top-level decls)\n" << module.declarations().size() << std::endl;
 
-    ionsl::Module linked = compiler.link({ { &module } } );
+    auto epDecl = module.findTopLevelDecl("vertexMain");
+    auto type = module.findType("f32");
 
-    printDiagnostics(linked.diagnostics.diagnostics());
-    if (!linked.diagnostics.diagnostics().empty())
+    ionsl::LinkDescription desc{};
+    desc.modules = { &module };
+    desc.specializations[*epDecl] = { *type };
+
+    ionsl::Module linked = compiler.link(desc);
+
+    printDiagnostics(linked.diagnostics().logs());
+    if (!linked.diagnostics().logs().empty())
     {
         std::cout << "FAILED\n";
         return false;

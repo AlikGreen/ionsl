@@ -12,19 +12,19 @@ namespace ionsl
 {
     void SemanticAnalyzer::analyze()
     {
-        SemaContext ctx{};
+        const SemaContext ctx{};
 
-        SignatureResolutionPass(m_typeResolver, m_module.declarations).run(ctx);
+        SignatureResolutionPass(m_typeResolver, m_module.declarations()).run(ctx);
 
-        for(const auto decl : m_module.declarations)
+        for(const auto decl : m_module.declarations())
         {
             checkDeclaration(*decl, ctx);
         }
     }
 
-    void SemanticAnalyzer::analyze(Module& module, SymbolTable& symbolTable, TypeSystem& typeSystem, ScopeTable& scopeTable, DeclAllocator& declAllocator)
+    void SemanticAnalyzer::analyze(Module& module, SymbolTable& symbolTable, TypeSystem& typeSystem, ScopeTable& scopeTable, DeclAllocator& declAllocator, const std::unordered_map<DeclId, std::vector<TypeId>>& specializations)
     {
-        return SemanticAnalyzer(module, symbolTable, typeSystem, scopeTable, declAllocator).analyze();
+        return SemanticAnalyzer(module, symbolTable, typeSystem, scopeTable, declAllocator, specializations).analyze();
     }
 
     TypeId SemanticAnalyzer::checkExpression(Expression*& expression, const SemaContext& ctx)
@@ -87,7 +87,7 @@ namespace ionsl
         if(!identifier)
             return TypeId::Error; // TODO check non identifier call
 
-        auto* typeSyntax = m_module.arena.create<NamedTypeSyntax>();
+        auto* typeSyntax = m_module.arena().create<NamedTypeSyntax>();
         typeSyntax->name = identifier->name;
         typeSyntax->span = identifier->span;
         typeSyntax->arguments = expression.genericArgs;
@@ -97,7 +97,7 @@ namespace ionsl
 
         if(m_typeResolver.resolveType(*typeSyntax, ctx) != TypeId::Error)
         {
-            auto* construct = m_module.arena.create<ConstructExpr>();
+            auto* construct = m_module.arena().create<ConstructExpr>();
             construct->type = typeSyntax;
             construct->args = expression.args;
             slot = construct;
@@ -157,7 +157,7 @@ namespace ionsl
 
         if(bestCandidate == nullptr)
         {
-            m_module.diagnostics.error(expression.span, "no matching function for call to '{}'", identifier.name.string(m_symbols));
+            m_module.diagnostics().error(expression.span, "no matching function for call to '{}'", identifier.name.string(m_symbols));
             return TypeId::Error;
         }
 
@@ -174,7 +174,7 @@ namespace ionsl
 
         // TODO methods and variables
 
-        m_module.diagnostics.error(expression.span, "no matching function for call to '{}'", identifier.name.string(m_symbols));
+        m_module.diagnostics().error(expression.span, "no matching function for call to '{}'", identifier.name.string(m_symbols));
 
         return TypeId::Error;
     }
@@ -291,7 +291,7 @@ namespace ionsl
         const TypeId conditionType = checkExpression(statement.condition, ctx);
         if(conditionType != TypeId::Bool)
         {
-            m_module.diagnostics.add("condition in an if statement must resolve to a bool", statement.condition->span, Severity::Error);
+            m_module.diagnostics().add("condition in an if statement must resolve to a bool", statement.condition->span, Severity::Error);
             return;
         }
 
@@ -344,8 +344,27 @@ namespace ionsl
 
     void SemanticAnalyzer::checkFunctionDecl(const FunctionDecl &declaration, const SemaContext& ctx)
     {
+        SemaContext newCtx = ctx;
+        std::unordered_map<DeclId, TypeId> subs;
+        if(!declaration.genericParams.empty())
+        {
+            if(const auto it = m_specializations.find(declaration.id); it != m_specializations.end())
+            {
+                for(const auto [param, typeId] : std::ranges::zip_view(declaration.genericParams, it->second))
+                    subs[param->id] = typeId;
+
+                newCtx = ctx.forGenericDecl(declaration.genericParams, subs);
+            }
+        }
+
         if(declaration.body)
-            checkBlockStmt(*declaration.body, ctx);
+            checkBlockStmt(*declaration.body, newCtx);
+
+        if(!declaration.genericParams.empty())
+        {
+            if(const auto it = m_specializations.find(declaration.id); it != m_specializations.end())
+                m_module.declarations().push_back(m_genericInstantiator.instantiate(declaration, it->second));
+        }
     }
 
     void SemanticAnalyzer::checkStructDecl(const StructDecl &declaration, const SemaContext& ctx)
@@ -377,7 +396,7 @@ namespace ionsl
         if(operand->resultType == type)
             return operand;
 
-        auto* expr = m_module.arena.create<ConversionExpr>();
+        auto* expr = m_module.arena().create<ConversionExpr>();
         expr->kind = ConversionKind::Implicit;
         expr->targetType = type;
         expr->operand = operand;

@@ -34,6 +34,12 @@ namespace ionsl
         expect(TokenKind::KwFunction);
         decl->name = m_symbolTable.intern(advance().text);
         m_scopeTable.registerDecl(m_currentScope, decl->name, decl->id);
+
+        if(check(TokenKind::LAngle))
+        {
+            decl->genericParams = parseGenericParams();
+        }
+
         expect(TokenKind::LParen);
 
         if(!check(TokenKind::RParen))

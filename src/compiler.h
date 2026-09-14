@@ -3,6 +3,7 @@
 
 #include "ast/module.h"
 #include "ast/decl.h"
+#include "ast/scopeTable.h"
 #include "ast/symbolTable.h"
 #include "ast/typeSystem.h"
 #include "codegen/codeGenerator.h"
@@ -36,12 +37,15 @@ public:
     Compiler(Compiler&&) noexcept = default;
     Compiler& operator=(Compiler&&) noexcept = default;
 private:
+    friend class Module;
+    friend class Parser;
+
     SymbolTable m_symbolTable;
     TypeTable m_typeTable;
     ScopeTable m_scopeTable;
     TypeSystem m_typeSystem;
     DeclAllocator m_declAllocator;
 
-    Module m_stdlib{0};
+    Module m_stdlib{};
 };
 }

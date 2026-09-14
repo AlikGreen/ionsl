@@ -13,7 +13,7 @@ namespace ionsl
         Scope scope{};
         scope.parent = parent;
 
-        ScopeId id = ScopeId(m_nextScopeId++);
+        auto id = ScopeId(m_nextScopeId++);
         m_scopes.emplace(id, scope);
         return id;
     }
@@ -32,7 +32,7 @@ namespace ionsl
 
     std::span<const DeclId> ScopeTable::find(ScopeId scopeId, const SymbolId name) const
     {
-        while(scopeId != ScopeId::Error)
+        while(scopeId != ScopeId::Error && scopeId != ScopeId::None)
         {
             const Scope& scope = m_scopes.at(scopeId);
 

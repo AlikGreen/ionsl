@@ -115,6 +115,10 @@ namespace ionsl
                 // TODO this probably needs to resolve it to a concrete type
                 return syntax.resolvedType = m_typeSystem.types().getInterfaceType(decl->id);
             }
+            if(decl->is<TypeGenericParam>())
+            {
+                return syntax.resolvedType = m_typeSystem.types().getGenericType(decl->id);
+            }
             if(const AliasDecl* alias = decl->as<AliasDecl>())
             {
                 return resolveAliasType(syntax, *alias, ctx);

@@ -1,4 +1,5 @@
 #pragma once
+#include "genericInstantiator.h"
 #include "semaContext.h"
 #include "typeResolver.h"
 #include "../ast/declarations.h"

@@ -36,6 +36,9 @@ namespace ionsl
 
         decl->returnType = returnType->clone(arena);
 
+        for(const auto* param : genericParams)
+            decl->genericParams.push_back(param->clone(arena));
+
         for(const auto* param : params)
             decl->params.push_back(param->clone(arena));
 

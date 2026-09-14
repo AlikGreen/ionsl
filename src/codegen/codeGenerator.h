@@ -5,6 +5,9 @@
 
 namespace ionsl
 {
+class TypeTable;
+class SymbolTable;
+
 class CodeGenerator
 {
 public:

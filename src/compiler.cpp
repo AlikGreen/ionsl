@@ -34,19 +34,19 @@ namespace ionsl
     Module Compiler::compile(const std::string &source)
     {
         auto tokens = Lexer::tokenize(source);
-        return Parser::parse(tokens, m_symbolTable, m_scopeTable, m_declAllocator);
+        return Parser::parse(tokens, *this);
     }
 
     Module Compiler::link(const LinkDescription &desc)
     {
-        Module module{10*1024*1024};
+        Module module{10*1024*1024, *this};
 
         for(const Module* m : desc.modules)
             m->clone(module);
 
         m_stdlib.clone(module);
 
-        SemanticAnalyzer::analyze(module, m_symbolTable, m_typeSystem, m_scopeTable, m_declAllocator);
+        SemanticAnalyzer::analyze(module, m_symbolTable, m_typeSystem, m_scopeTable, m_declAllocator, desc.specializations);
 
         return std::move(module);
     }

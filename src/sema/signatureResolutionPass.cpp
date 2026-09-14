@@ -1,5 +1,6 @@
 #include "signatureResolutionPass.h"
 
+#include "genericInstantiator.h"
 #include "../ast/statements.h"
 
 namespace ionsl

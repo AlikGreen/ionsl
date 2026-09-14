@@ -2,5 +2,5 @@
 
 namespace ionsl
 {
-    constexpr SymbolId SymbolId::Invalid   = SymbolId(0);
+    constexpr SymbolId SymbolId::Invalid = SymbolId(0);
 }
