@@ -1,4 +1,5 @@
 #pragma once
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -13,6 +14,7 @@ public:
     SymbolTable();
     SymbolId intern(const std::string &text);
     SymbolId intern(std::string_view text);
+    std::optional<SymbolId> find(const std::string &text);
     [[nodiscard]] std::string get(SymbolId id) const;
 private:
     std::vector<std::string> m_names;

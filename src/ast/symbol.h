@@ -1,6 +1,6 @@
 #pragma once
 #include <cstdint>
-#include <xhash>
+#include <functional>
 
 namespace ionsl
 {
@@ -8,7 +8,7 @@ class SymbolId
 {
 public:
     SymbolId() = default;
-    explicit SymbolId(const uint32_t val) : m_value(val) { }
+    explicit constexpr SymbolId(const uint32_t val) : m_value(val) { }
 
     [[nodiscard]] uint32_t value() const { return m_value; }
     friend constexpr bool operator==(SymbolId, SymbolId) = default;

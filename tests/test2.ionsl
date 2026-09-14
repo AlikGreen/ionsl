@@ -18,11 +18,13 @@ struct CameraData
 }
 
 [[shader("vertex")]]
-fn vertexMain(input : VertexInput, [[ion::mutable]] [[ion::constant]] camera : CameraData) -> VertexOutput
+fn vertexMain<T>(input : VertexInput, [[ion::mutable]] [[ion::constant]] camera : CameraData) -> VertexOutput
 {
     var mut output : VertexOutput;
 
-    output.position = mul(camera.viewProj, vec3f(input.position, 1.0));
+    var val : T = 1.0;
+
+    output.position = mul(camera.viewProj, vec3f(input.position, val));
     output.normal = input.normal;
     output.uv = input.uv;
 

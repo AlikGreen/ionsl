@@ -12,7 +12,7 @@ class DeclId
 {
 public:
     DeclId() = default;
-    explicit DeclId(const uint32_t val) : m_value(val) { }
+    explicit constexpr DeclId(const uint32_t val) : m_value(val) { }
 
     [[nodiscard]] uint32_t value() const { return m_value; }
     friend constexpr bool operator==(DeclId, DeclId) = default;
@@ -37,6 +37,7 @@ namespace ionsl
 class DeclTable
 {
 public:
+    DeclTable() = default;
     explicit DeclTable(const Module& module);
     [[nodiscard]] Declaration* get(DeclId id) const;
 private:

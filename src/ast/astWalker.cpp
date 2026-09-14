@@ -35,7 +35,7 @@ namespace ionsl
 
     void AstWalker::walk(const Module& module)
     {
-        for(auto* declaration : module.declarations)
+        for(auto* declaration : module.declarations())
         {
             if(declaration != nullptr)
             {

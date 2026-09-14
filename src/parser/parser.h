@@ -20,14 +20,16 @@ struct ParserState
 class Parser
 {
 public:
-    explicit Parser(std::span<Token> tokens, SymbolTable& symbolTable, ScopeTable& scopeTable, DeclAllocator& declAllocator);
-    static Module parse(std::span<Token> tokens, SymbolTable& symbolTable, ScopeTable& scopeTable, DeclAllocator& declAllocator);
+    explicit Parser(std::span<Token> tokens, Compiler& compiler);
+    static Module parse(std::span<Token> tokens, Compiler& compiler);
 
     Module parse();
 private:
+    friend class Module;
+
     std::span<Token> m_tokens{};
     uint32_t m_pos{};
-    Module m_ast{10*1024*1024}; // 10Mb
+    Module m_ast; // 10Mb
 
     SymbolTable& m_symbolTable;
     ScopeTable& m_scopeTable;
@@ -91,14 +93,14 @@ private:
     requires std::is_constructible_v<T, Args...>
     T* create(Args&&... args)
     {
-        return m_ast.arena.create<T>(std::forward<Args>(args)...);
+        return m_ast.arena().create<T>(std::forward<Args>(args)...);
     }
 
     template<typename T, typename... Args>
     requires std::is_constructible_v<T, Args...> && std::is_base_of_v<Declaration ,T>
     T* createDecl(Args&&... args)
     {
-        T* decl = m_ast.arena.create<T>(std::forward<Args>(args)...);
+        T* decl = m_ast.arena().create<T>(std::forward<Args>(args)...);
         static_cast<Declaration*>(decl)->id = m_declAllocator.allocate();
         return decl;
     }

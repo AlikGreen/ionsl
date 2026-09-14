@@ -65,6 +65,8 @@ namespace ionsl
                 break;
         }
 
+        tokens.push_back({TokenKind::EndOfFile, "end", SourceSpan(m_loc, m_loc)});
+
         return tokens;
     }
 
@@ -210,6 +212,9 @@ namespace ionsl
 
     char Lexer::peek(size_t offset) const
     {
+        if(m_loc.offset + offset >= m_source.size())
+            return '\n';
+
         return m_source.at(m_loc.offset + offset);
     }
 

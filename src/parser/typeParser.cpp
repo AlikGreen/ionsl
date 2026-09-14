@@ -30,7 +30,7 @@ namespace ionsl
 
     NamedTypeSyntax * Parser::parseNamedType(QualifiedName name, const SourceSpan &start)
     {
-        auto* type = m_ast.arena.create<NamedTypeSyntax>();
+        auto* type = m_ast.arena().create<NamedTypeSyntax>();
         type->name = std::move(name);
 
         if(match(TokenKind::LAngle) || match(TokenKind::ColonColonLAngle))
@@ -45,7 +45,7 @@ namespace ionsl
 
     ArrayTypeSyntax * Parser::parseArrayType(TypeSyntax* elementType, const SourceSpan &start)
     {
-        auto* type = m_ast.arena.create<ArrayTypeSyntax>();
+        auto* type = m_ast.arena().create<ArrayTypeSyntax>();
         expect(TokenKind::LBracket);
 
         auto* size = parseExpression();
@@ -118,7 +118,7 @@ namespace ionsl
 
     NamedTypeSyntax* Parser::createVoidType(const SourceSpan &span)
     {
-        auto* type = m_ast.arena.create<NamedTypeSyntax>();
+        auto* type = m_ast.arena().create<NamedTypeSyntax>();
         type->name = QualifiedName::single(m_symbolTable.intern(std::string_view("void")));
         type->span = span;
 

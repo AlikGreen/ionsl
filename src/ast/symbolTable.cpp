@@ -23,6 +23,14 @@ namespace ionsl
         return intern(std::string(text));
     }
 
+    std::optional<SymbolId> SymbolTable::find(const std::string &text)
+    {
+        if(const auto it = m_lookup.find(text); it != m_lookup.end())
+            return it->second;
+
+        return std::nullopt;
+    }
+
     std::string SymbolTable::get(const SymbolId id) const
     {
         if(id.value() >= m_names.size()) return "";

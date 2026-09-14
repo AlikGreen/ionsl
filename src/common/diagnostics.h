@@ -49,8 +49,8 @@ public:
         m_diagnostics.emplace_back(std::format(fmt, std::forward<Args>(args)...), span, Severity::Error);
     }
 
-    std::vector<Diagnostic>& diagnostics() { return m_diagnostics; }
-    [[nodiscard]] const std::vector<Diagnostic>& diagnostics() const { return m_diagnostics; }
+    std::vector<Diagnostic>& logs() { return m_diagnostics; }
+    [[nodiscard]] const std::vector<Diagnostic>& logs() const { return m_diagnostics; }
 private:
     std::vector<Diagnostic> m_diagnostics{};
 };

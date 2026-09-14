@@ -2,17 +2,19 @@
 
 #include <format>
 
+#include "../compiler.h"
+
 namespace ionsl
 {
-    Parser::Parser(const std::span<Token> tokens, SymbolTable& symbolTable, ScopeTable& scopeTable, DeclAllocator& declAllocator)
-        : m_tokens(tokens), m_symbolTable(symbolTable), m_scopeTable(scopeTable), m_declAllocator(declAllocator)
+    Parser::Parser(const std::span<Token> tokens, Compiler& compiler)
+        : m_tokens(tokens), m_ast(10*1024*1024, compiler), m_symbolTable(compiler.m_symbolTable), m_scopeTable(compiler.m_scopeTable), m_declAllocator(compiler.m_declAllocator)
     {
         m_currentScope = ScopeId::None;
     }
 
-    Module Parser::parse(const std::span<Token> tokens, SymbolTable& symbolTable, ScopeTable& scopeTable, DeclAllocator& declAllocator)
+    Module Parser::parse(const std::span<Token> tokens, Compiler& compiler)
     {
-        Parser parser{tokens, symbolTable, scopeTable, declAllocator};
+        Parser parser{tokens, compiler};
         return parser.parse();
     }
 
@@ -20,7 +22,7 @@ namespace ionsl
     {
         while(!atEnd())
         {
-            m_ast.declarations.push_back(parseDeclaration());
+            m_ast.declarations().push_back(parseDeclaration());
         }
 
         return std::move(m_ast); // maybe should clone?
@@ -140,21 +142,21 @@ namespace ionsl
 
     void Parser::reportError(const SourceSpan &span, const std::string &message)
     {
-        m_ast.diagnostics.error(span, "{}", message);
+        m_ast.diagnostics().error(span, "{}", message);
     }
 
     ParserState Parser::saveState() const
     {
         return {
             m_pos,
-            m_ast.diagnostics.diagnostics().size()
+            m_ast.diagnostics().logs().size()
         };
     }
 
     void Parser::restoreState(const ParserState &state)
     {
         m_pos = state.m_tokenIndex;
-        m_ast.diagnostics.diagnostics().resize(state.m_diagnosticCount);
+        m_ast.diagnostics().logs().resize(state.m_diagnosticCount);
     }
 
     bool Parser::atEnd() const
