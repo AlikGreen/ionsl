@@ -46,7 +46,7 @@ namespace ionsl
         return id;
     }
 
-    TypeId TypeTable::getVectorType(TypeId scalarKind, uint32_t dimension)
+    TypeId TypeTable::getVectorType(const PrimitiveKind scalarKind, uint32_t dimension)
     {
         auto type = VectorType{ scalarKind, dimension };
         if(const auto it = m_vectorTypes.find(type); it != m_vectorTypes.end())
@@ -57,7 +57,7 @@ namespace ionsl
         return id;
     }
 
-    TypeId TypeTable::getMatrixType(const TypeId scalarKind, const uint32_t rows, const uint32_t columns)
+    TypeId TypeTable::getMatrixType(const PrimitiveKind scalarKind, const uint32_t rows, const uint32_t columns)
     {
         auto type = MatrixType{ scalarKind, rows, columns };
         if(const auto it = m_matrixTypes.find(type); it != m_matrixTypes.end())

@@ -52,14 +52,18 @@ namespace ionsl
 
 
         auto* elementTypeSyntax = syntax.arguments.at(0)->as<TypeArgumentType>()->type;
-        resolveType(*elementTypeSyntax, ctx);
+        const TypeId elementType = resolveType(*elementTypeSyntax, ctx);
+        const auto primitiveElementType = m_typeSystem.types().getInfo(elementType).as<PrimitiveType>();
+
+        if (!primitiveElementType)
+            return TypeId::Error; // TODO diagnostics
 
         const auto res = m_evaluator.evaluate(*syntax.arguments.at(1)->as<TypeArgumentValue>()->expression);
         if(!res) return TypeId::Error; // TODO diagnostics
 
         const uint32_t dimension = std::get<uint64_t>(res->value);
 
-        return syntax.resolvedType = m_typeSystem.types().getVectorType(elementTypeSyntax->resolvedType, dimension);
+        return syntax.resolvedType = m_typeSystem.types().getVectorType(primitiveElementType->kind, dimension);
     }
 
     TypeId TypeResolver::resolveMatrixType(NamedTypeSyntax &syntax, const SemaContext& ctx)
@@ -71,7 +75,11 @@ namespace ionsl
         }
 
         auto* elementTypeSyntax = syntax.arguments.at(0)->as<TypeArgumentType>()->type;
-        resolveType(*elementTypeSyntax, ctx);
+        const TypeId elementType = resolveType(*elementTypeSyntax, ctx);
+        const auto primitiveElementType = m_typeSystem.types().getInfo(elementType).as<PrimitiveType>();
+
+        if (!primitiveElementType)
+            return TypeId::Error; // TODO diagnostics
 
         const auto rowsRes = m_evaluator.evaluate(*syntax.arguments.at(1)->as<TypeArgumentValue>()->expression);
         if(!rowsRes) return TypeId::Error; // TODO diagnostics
@@ -81,7 +89,7 @@ namespace ionsl
         if(!columnsRes) return TypeId::Error; // TODO diagnostics
         const uint32_t columns = std::get<uint64_t>(columnsRes->value);
 
-        return syntax.resolvedType = m_typeSystem.types().getMatrixType(elementTypeSyntax->resolvedType, rows, columns);
+        return syntax.resolvedType = m_typeSystem.types().getMatrixType(primitiveElementType->kind, rows, columns);
     }
 
     TypeId TypeResolver::resolveNamedType(NamedTypeSyntax &syntax, const SemaContext& ctx)

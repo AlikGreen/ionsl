@@ -7,6 +7,7 @@
 #include "ast/symbolTable.h"
 #include "ast/typeSystem.h"
 #include "codegen/codeGenerator.h"
+#include "reflection/reflection.h"
 
 namespace ionsl
 {
@@ -23,6 +24,7 @@ public:
 
     Module compile(const std::string &source);
     Module link(const LinkDescription& desc);
+    ShaderReflection reflect(const Module& module);
 
     template<typename T>
     requires std::is_base_of_v<CodeGenerator, T> && std::is_constructible_v<T, const Module&, const SymbolTable&, const TypeTable&>

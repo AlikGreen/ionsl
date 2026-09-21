@@ -5,6 +5,7 @@
 
 #include "lexer/lexer.h"
 #include "parser/parser.h"
+#include "reflection/reflector.h"
 #include "sema/globalScope.h"
 #include "sema/semanticAnalyzer.h"
 
@@ -51,4 +52,8 @@ namespace ionsl
         return std::move(module);
     }
 
+    ShaderReflection Compiler::reflect(const Module &module)
+    {
+        return Reflector(m_symbolTable, m_typeTable, module).reflect();
+    }
 }

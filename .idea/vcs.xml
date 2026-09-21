@@ -2,5 +2,9 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/langsvr" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/langsvr/third_party/googletest" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/langsvr/third_party/jsoncpp" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/langsvr/third_party/lsprotocol" vcs="Git" />
   </component>
 </project>

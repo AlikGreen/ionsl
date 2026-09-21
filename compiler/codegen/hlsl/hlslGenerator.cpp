@@ -233,14 +233,14 @@ namespace ionsl
     void HlslGenerator::genVectorType(VectorType &type)
     {
         m_writer.write("vector<");
-        genType(type.scalarType);
+        genPrimitiveType(type.scalarType);
         m_writer.write(", {}>", type.dimension);
     }
 
     void HlslGenerator::genMatrixType(MatrixType &type)
     {
         m_writer.write("matrix<");
-        genType(type.scalarType);
+        genPrimitiveType(type.scalarType);
         m_writer.write(", {}, {}>", type.rows, type.columns);
     }
 

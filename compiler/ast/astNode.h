@@ -22,9 +22,16 @@ public:
 
     template<typename T>
     requires std::is_base_of_v<AstNode, T>
-    bool is()
+    const T* as() const
     {
-        return dynamic_cast<T*>(this) != nullptr;
+        return dynamic_cast<const T*>(this);
+    }
+
+    template<typename T>
+    requires std::is_base_of_v<AstNode, T>
+    [[nodiscard]] bool is() const
+    {
+        return dynamic_cast<const T*>(this) != nullptr;
     }
 };
 }

@@ -23,17 +23,26 @@ struct QualifiedName
         parts.push_back(id);
     }
 
-    std::string string(const SymbolTable& table) const
+    [[nodiscard]] std::string string(const SymbolTable& table) const
     {
         std::string fullName;
 
+        bool first = true;
+
         for(const auto& part : parts)
+        {
+            if (!first)
+                fullName += "::";
+
+            first = false;
+
             fullName += table.get(part);
+        }
 
         return fullName;
     }
 
-    bool matchesStart(const QualifiedName& other) const
+    [[nodiscard]] bool matchesStart(const QualifiedName& other) const
     {
         if(other.parts.size() > parts.size()) return false;
 

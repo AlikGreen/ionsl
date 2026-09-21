@@ -5,7 +5,7 @@
 
 #include <ionsl/ionsl.h>
 
-#include "../src/codegen/hlsl/hlslGenerator.h"
+#include "../compiler/codegen/hlsl/hlslGenerator.h"
 
 
 std::optional<std::string> loadFile(const std::string& path)
@@ -82,6 +82,9 @@ bool testShaderFile(const std::string& path, ionsl::Compiler& compiler)
 
     std::string hlsl = compiler.generate<ionsl::HlslGenerator>(linked);
     std::cout << hlsl << std::endl;
+
+    auto reflection = compiler.reflect(linked);
+    std::cout << reflection.entryPoints.size();
 
     return true;
 }
