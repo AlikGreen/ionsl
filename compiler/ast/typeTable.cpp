@@ -113,7 +113,7 @@ namespace ionsl
             return it->second;
 
         TypeInfo info{};
-        info.kind = InterfaceType{id};
+        info.kind = GenericType{id};
 
         const TypeId typeId = addType(info);
 
@@ -146,6 +146,11 @@ namespace ionsl
             default:
                 return false;
         }
+    }
+
+    bool TypeTable::isFloat(const TypeId id)
+    {
+        return id == TypeId::F16 || id == TypeId::F32 || id == TypeId::F64;
     }
 
     TypeId TypeTable::addType(const TypeInfo info)

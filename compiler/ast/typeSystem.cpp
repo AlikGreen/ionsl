@@ -58,7 +58,7 @@ namespace ionsl
 
     std::optional<uint32_t> TypeSystem::primitiveConversionCost(PrimitiveKind from, PrimitiveKind to) const
     {
-        std::unordered_map<std::pair<PrimitiveKind, PrimitiveKind>, uint32_t, PrimitivePairHash> costs
+        static std::unordered_map<std::pair<PrimitiveKind, PrimitiveKind>, uint32_t, PrimitivePairHash> costs
         {
             { { PrimitiveKind::Float16, PrimitiveKind::Float16 }, 0 },
             { { PrimitiveKind::Float16, PrimitiveKind::Float32 }, 1 },
@@ -361,7 +361,16 @@ namespace ionsl
         }
 
         if(!m_types.isIntegral(operand))
+        {
+            if (op == UnaryOp::Negate && TypeTable::isFloat(operand))
+                return UnaryResultType {
+                    operand,
+                    operand
+                };
+
+
             return std::nullopt;
+        }
 
         return UnaryResultType {
             operand,

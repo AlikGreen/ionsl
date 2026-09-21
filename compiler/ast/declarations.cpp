@@ -16,7 +16,7 @@ namespace ionsl
         decl->id = id;
         decl->attributes = attributes;
 
-        if(decl->initializer)
+        if(initializer)
             decl->initializer = initializer->clone(arena);
 
         decl->name = name;

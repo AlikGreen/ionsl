@@ -22,6 +22,7 @@ public:
 
     [[nodiscard]] TypeInfo getInfo(TypeId id) const;
     [[nodiscard]] bool isIntegral(TypeId id) const;
+    [[nodiscard]] static bool isFloat(TypeId id);
 private:
     TypeId addType(TypeInfo info);
 

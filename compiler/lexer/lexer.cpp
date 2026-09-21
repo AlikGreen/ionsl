@@ -17,7 +17,7 @@ namespace ionsl
         { "break",  TokenKind::KwBreak }, { "continue",  TokenKind::KwContinue },
         { "type", TokenKind::KwType }, { "operator", TokenKind::KwOperator },
         { "cast", TokenKind::KwCast }, { "prefix", TokenKind::KwPrefix },
-        { "postfix", TokenKind::KwPostfix }
+        { "postfix", TokenKind::KwPostfix }, { "enum", TokenKind::KwEnum }
     };
 
     static const std::unordered_map<std::string_view, TokenKind> symbols
@@ -32,6 +32,8 @@ namespace ionsl
         { "-", TokenKind::Minus }, { "+", TokenKind::Plus },
         { "->", TokenKind::Arrow }, { "!", TokenKind::Exclamation },
         { "*", TokenKind::Star }, { "/", TokenKind::Slash },
+        { "&", TokenKind::Amp }, { "|", TokenKind::Pipe },
+        { "^", TokenKind::Caret }, { "~", TokenKind::Tilde },
         { "==", TokenKind::EqualEqual }, { "!=", TokenKind::ExclamationEqual },
         { "<=", TokenKind::LessEqual },{ ">=", TokenKind::GreaterEqual },
         { "&&", TokenKind::AmpAmp }, { "||", TokenKind::PipePipe },
@@ -95,10 +97,18 @@ namespace ionsl
 
                 return std::nullopt;
             }
-            else if(peek(1) == '*')
+            if(peek(1) == '*')
             {
-                while(!done() && !(peek() == '*' && peek(1) == '/'))
+                while(!done())
+                {
                     advance();
+                    if (peek() == '*' && peek(1) == '/')
+                    {
+                        advance();
+                        advance();
+                        break;
+                    }
+                }
 
                 return std::nullopt;
             }
@@ -111,7 +121,8 @@ namespace ionsl
             while(!done() && peek() != '"')
                 advance();
 
-            advance();
+            if (!done())
+                advance();
 
             return makeToken(TokenKind::StringLiteral, startLoc);
         }
@@ -166,7 +177,7 @@ namespace ionsl
 
         if(std::isalpha(peek()) || peek() == '_')
         {
-            while(!done() && std::isalnum(peek()) || peek() =='_')
+            while(!done() && (std::isalnum(peek()) || peek() =='_'))
                 advance();
 
             const std::string_view text = m_source.substr(startLoc.offset, m_loc.offset - startLoc.offset);

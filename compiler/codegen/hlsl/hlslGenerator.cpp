@@ -95,7 +95,8 @@ namespace ionsl
             m_writer.newline();
         }
 
-        m_writer.endBlock();
+        m_writer.unindent();
+        m_writer.writeLine("};");
 
     }
 
@@ -186,8 +187,9 @@ namespace ionsl
     void HlslGenerator::genForStmt(ForStmt &stmt)
     {
         m_writer.write("for(");
-        genStmt(*stmt.init);
+        genStmt(*stmt.init); // FIXME should not generate semicolon or new line in this case
         genExpr(*stmt.condition);
+        m_writer.write(";");
         genExpr(*stmt.increment);
         genBlockStmt(*stmt.body);
     }

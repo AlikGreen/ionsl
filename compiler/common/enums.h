@@ -77,6 +77,10 @@ inline std::optional<BinaryOp> tokenToBinaryOp(const TokenKind type)
         case TokenKind::LAngleLAngleEqual: return BinaryOp::ShiftLeftAssign;
         case TokenKind::RAngleRAngleEqual: return BinaryOp::ShiftRightAssign;
 
+        case TokenKind::Amp: return BinaryOp::BitwiseAnd;
+        case TokenKind::Pipe: return BinaryOp::BitwiseOr;
+        case TokenKind::Caret: return BinaryOp::BitwiseXor;
+
         default:                          return std::nullopt;
     }
 }

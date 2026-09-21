@@ -12,6 +12,7 @@ enum class TokenKind
     Exclamation, Minus, Plus, Star, Slash,
     Equal, PlusEqual, MinusEqual, StarEqual, SlashEqual,
     EqualEqual, ExclamationEqual, LessEqual,
+    Amp, Pipe, Caret, Tilde,
     GreaterEqual, AmpAmp, PipePipe, MinusMinus, PlusPlus,
     AmpEqual, PipeEqual, LAngleLAngle, RAngleRAngle,
     LAngleLAngleEqual, RAngleRAngleEqual, CaretEqual,
@@ -19,7 +20,7 @@ enum class TokenKind
     KwStruct, KwTrue, KwFalse, KwElse, KwBreak, KwContinue,
     KwFunction, KwVar, KwIf, KwWhile, KwFor, KwReturn, KwMut,
     KwInterface, KwType, KwOperator, KwPrefix, KwPostfix,
-    KwCast,
+    KwCast, KwEnum,
     EndOfFile, Unknown
 };
 
@@ -61,6 +62,11 @@ constexpr std::string_view tokenKindDisplayName(const TokenKind kind)
         case TokenKind::Plus:                  return "'+'";
         case TokenKind::Star:                  return "'*'";
         case TokenKind::Slash:                 return "'/'";
+
+        case TokenKind::Amp:                   return "'&'";
+        case TokenKind::Pipe:                  return "'|'";
+        case TokenKind::Caret:                 return "'^'";
+        case TokenKind::Tilde:                 return "'~'";
 
         case TokenKind::Equal:                 return "'='";
         case TokenKind::PlusEqual:              return "'+='";
@@ -107,6 +113,7 @@ constexpr std::string_view tokenKindDisplayName(const TokenKind kind)
         case TokenKind::KwPrefix:               return "'prefix'";
         case TokenKind::KwPostfix:              return "'postfix'";
         case TokenKind::KwCast:                 return "'cast'";
+        case TokenKind::KwEnum:                 return "'enum'";
 
         case TokenKind::EndOfFile:               return "end of file";
         case TokenKind::Unknown:                 return "an unknown token";

@@ -1,4 +1,4 @@
-#include "AstWalker.h"
+#include "astWalker.h"
 
 #include "declarations.h"
 #include "statements.h"
@@ -105,6 +105,21 @@ namespace ionsl
                 walk(*field);
             }
 
+            for(auto* field : structure->methods)
+            {
+                walk(*field);
+            }
+
+            return;
+        }
+
+        if(auto* interface = declaration.as<InterfaceDecl>())
+        {
+            for(auto* field : interface->methods)
+            {
+                walk(*field);
+            }
+
             return;
         }
 
@@ -173,6 +188,22 @@ namespace ionsl
                 walk(*returnStatement->expr);
             }
 
+            return;
+        }
+
+        if(auto* whileStmt = statement.as<WhileStmt>())
+        {
+            walk(*whileStmt->condition);
+            walk(*whileStmt->body);
+            return;
+        }
+
+        if(auto* forStmt = statement.as<ForStmt>())
+        {
+            walk(*forStmt->condition);
+            walk(*forStmt->increment);
+            walk(*forStmt->init);
+            walk(*forStmt->body);
             return;
         }
     }
@@ -249,6 +280,20 @@ namespace ionsl
                 walk(*index->index);
             }
 
+            return;
+        }
+
+        if(const auto* construct = expression.as<ConstructExpr>())
+        {
+            walk(*construct->type);
+            for (const auto arg : construct->args)
+                walk(*arg);
+            return;
+        }
+
+        if(const auto* conversion = expression.as<ConversionExpr>())
+        {
+            walk(*conversion->operand);
             return;
         }
     }
