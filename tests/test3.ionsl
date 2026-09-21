@@ -1,0 +1,51 @@
+enum Access
+{
+    ReadOnly, WriteOnly, ReadWrite,
+}
+
+attribute Access
+{
+    access : Access,
+}
+
+struct VertexInput
+{
+    position : vec3f,
+    normal : vec3f,
+    uv : vec3f,
+}
+
+struct VertexOutput
+{
+    [[sv_position]] position : vec3f,
+    normal   : vec3f,
+    uv       : vec3f,
+}
+
+struct CameraData
+{
+    viewProj : mat4f,
+}
+
+[[shader("vertex")]]
+fn vertexMain<T>(input : VertexInput, [[ion::mutable]] [[constant]] [[access(Access::ReadOnly)]] camera : CameraData) -> VertexOutput
+{
+    var mut output : VertexOutput;
+
+    var val : T = 1.0;
+
+    output.position = mul(camera.viewProj, vec3f(input.position, val));
+    output.normal = input.normal;
+    output.uv = input.uv;
+
+    return output;
+}
+
+[[shader("pixel")]]
+fn fragmentMain(input : VertexOutput) -> vec3f
+{
+    var lightDir : vec3f = normalize(vec3f(0.3, -1.0, 0.2));
+    var nDotL : f32 = max(0.0, dot(input.normal, lightDir));
+
+    return vec4f(nDotL, nDotL, nDotL, 1.0);
+}

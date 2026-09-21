@@ -18,7 +18,7 @@ namespace ionsl
         auto* newStmt = arena.create<IfStmt>();
         newStmt->condition = condition->clone(arena);
         newStmt->thenBranch = thenBranch->clone(arena);
-        if(newStmt->elseBranch) newStmt->elseBranch = elseBranch->clone(arena);
+        if(elseBranch) newStmt->elseBranch = elseBranch->clone(arena);
         return newStmt;
     }
 
@@ -43,7 +43,10 @@ namespace ionsl
     ReturnStmt* ReturnStmt::clone(Arena &arena) const
     {
         auto* newStmt = arena.create<ReturnStmt>();
-        newStmt->expr = expr->clone(arena);
+
+        if (expr)
+            newStmt->expr = expr->clone(arena);
+
         return newStmt;
     }
 

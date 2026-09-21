@@ -208,21 +208,24 @@ namespace ionsl
         {
             case TokenKind::Exclamation:
                 op = UnaryOp::LogicalNot;
-            break;
+                break;
+            case TokenKind::Tilde:
+                op = UnaryOp::BitwiseNot;
+                break;
             case TokenKind::Minus:
                 op = UnaryOp::Negate;
-            break;
+                break;
             case TokenKind::MinusMinus:
                 op = UnaryOp::PreDecrement;
-            break;
+                break;
             case TokenKind::PlusPlus:
                 op = UnaryOp::PreIncrement;
-            break;
+                break;
             default:
                 return create<ErrorExpr>(); // TODO diagnostics
         }
 
-        UnaryExpr* expr = create<UnaryExpr>();
+        auto* expr = create<UnaryExpr>();
         expr->op = op;
         expr->operand = operand;
         expr->span = SourceSpan::between(operatorToken.span, previous().span);

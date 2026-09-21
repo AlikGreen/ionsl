@@ -61,7 +61,6 @@ namespace ionsl
                         text.remove_suffix(1);
 
                     double value;
-                    text.remove_prefix(2);
                     auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), value, std::chars_format::general);
                     // TODO handle error
                     return value;

@@ -51,6 +51,7 @@ namespace ionsl
 
     void CodeWriter::unindent()
     {
+        if (m_indent == 0) return;
         m_indent--;
     }
 
