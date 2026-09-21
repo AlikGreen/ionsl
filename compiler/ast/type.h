@@ -69,7 +69,7 @@ struct ArrayType
 
 struct VectorType
 {
-    TypeId scalarType;
+    PrimitiveKind scalarType;
     uint32_t dimension;
 
     bool operator==(const VectorType&) const = default;
@@ -77,7 +77,7 @@ struct VectorType
 
 struct MatrixType
 {
-    TypeId scalarType;
+    PrimitiveKind scalarType;
     uint32_t rows;
     uint32_t columns;
 

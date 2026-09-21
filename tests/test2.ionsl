@@ -18,7 +18,7 @@ struct CameraData
 }
 
 [[shader("vertex")]]
-fn vertexMain<T>(input : VertexInput, [[ion::mutable]] [[ion::constant]] camera : CameraData) -> VertexOutput
+fn vertexMain<T>(input : VertexInput, [[ion::mutable]] [[constant]] camera : CameraData) -> VertexOutput
 {
     var mut output : VertexOutput;
 

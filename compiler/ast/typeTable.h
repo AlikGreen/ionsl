@@ -11,8 +11,8 @@ public:
     TypeTable();
     TypeId getPrimitiveType(PrimitiveKind kind);
 
-    TypeId getVectorType(TypeId scalarKind, uint32_t dimension);
-    TypeId getMatrixType(TypeId scalarKind, uint32_t rows, uint32_t columns);
+    TypeId getVectorType(PrimitiveKind scalarKind, uint32_t dimension);
+    TypeId getMatrixType(PrimitiveKind scalarKind, uint32_t rows, uint32_t columns);
     TypeId getArrayType(TypeId elementType, std::optional<uint32_t> size);
 
     TypeId getStructType(DeclId id);
