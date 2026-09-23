@@ -20,7 +20,7 @@ enum class TokenKind
     KwStruct, KwTrue, KwFalse, KwElse, KwBreak, KwContinue,
     KwFunction, KwVar, KwIf, KwWhile, KwFor, KwReturn, KwMut,
     KwInterface, KwType, KwOperator, KwPrefix, KwPostfix,
-    KwCast, KwEnum,
+    KwCast, KwEnum, KwAttribute,
     EndOfFile, Unknown
 };
 
@@ -114,6 +114,7 @@ constexpr std::string_view tokenKindDisplayName(const TokenKind kind)
         case TokenKind::KwPostfix:              return "'postfix'";
         case TokenKind::KwCast:                 return "'cast'";
         case TokenKind::KwEnum:                 return "'enum'";
+        case TokenKind::KwAttribute:            return "'attribute'";
 
         case TokenKind::EndOfFile:               return "end of file";
         case TokenKind::Unknown:                 return "an unknown token";

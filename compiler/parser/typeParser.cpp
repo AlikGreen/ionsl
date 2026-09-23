@@ -48,7 +48,10 @@ namespace ionsl
         auto* type = m_ast.arena().create<ArrayTypeSyntax>();
         expect(TokenKind::LBracket);
 
-        auto* size = parseExpression();
+        Expression* size{};
+
+        if (!check(TokenKind::RBracket))
+            size = parseExpression();
 
         if(!expect(TokenKind::RBracket))
             return nullptr;
@@ -101,7 +104,7 @@ namespace ionsl
 
         if(check(TokenKind::RAngle))
         {
-            reportError(peek().span, "expected generic argument");
+            error(peek().span, "expected generic argument");
             return {};
         }
 

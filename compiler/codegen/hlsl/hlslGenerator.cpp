@@ -13,7 +13,7 @@ namespace ionsl
         return m_writer.string();
     }
 
-    void HlslGenerator::genDecl(Declaration &decl)
+    void HlslGenerator::genDecl(const Declaration &decl)
     {
         bool emitted = true;
 
@@ -25,6 +25,8 @@ namespace ionsl
             genStructDecl(*structDecl);
         else if(const auto valDecl = decl.as<ValueDecl>())
             genVarDecl(*valDecl);
+        else if(const auto enumDecl = decl.as<EnumDecl>())
+            genEnumDecl(*enumDecl);
         else
             emitted = false;
 
@@ -65,7 +67,7 @@ namespace ionsl
         return true;
     }
 
-    void HlslGenerator::genStructDecl(StructDecl &decl)
+    void HlslGenerator::genStructDecl(const StructDecl &decl)
     {
         for(auto interface : decl.resolvedInterfaces)
         {
@@ -107,7 +109,7 @@ namespace ionsl
         m_writer.newline();
     }
 
-    void HlslGenerator::genVarDecl(ValueDecl &decl)
+    void HlslGenerator::genVarDecl(const ValueDecl &decl)
     {
         genType(decl.type->resolvedType);
         m_writer.space();
@@ -121,6 +123,19 @@ namespace ionsl
 
         m_writer.write(";");
         m_writer.newline();
+    }
+
+    void HlslGenerator::genEnumDecl(const EnumDecl &decl)
+    {
+        m_writer.writeLine("enum {}", m_symbols.get(decl.name));
+        m_writer.beginBlock();
+
+        for (const auto member : decl.members)
+        {
+            m_writer.writeLine("{} = {},", m_symbols.get(member.name), constantIntToString(member.value));
+        }
+
+        m_writer.endBlock();
     }
 
     void HlslGenerator::genStmt(Statement &stmt)
@@ -168,12 +183,12 @@ namespace ionsl
     {
         m_writer.write("if(");
         genExpr(*stmt.condition);
-        genBlockStmt(*stmt.thenBranch);
+        genStmt(*stmt.thenBranch);
 
         if(stmt.elseBranch)
         {
             m_writer.writeLine("else");
-            genBlockStmt(*stmt.elseBranch);
+            genStmt(*stmt.elseBranch);
         }
     }
 
@@ -354,10 +369,16 @@ namespace ionsl
 
     void HlslGenerator::genConversionExpr(const ConversionExpr& expr)
     {
-        m_writer.write("(");
-        genType(expr.targetType);
-        m_writer.write(")");
+        if (expr.kind == ConversionKind::Explicit)
+        {
+            m_writer.write("(");
+            genType(expr.targetType);
+            m_writer.write(")");
+            m_writer.write("(");
+        }
         genExpr(*expr.operand, true);
+        if (expr.kind == ConversionKind::Explicit)
+            m_writer.write(")");
     }
 
     void HlslGenerator::genIndexExpr(const IndexExpr &expr)
@@ -374,12 +395,20 @@ namespace ionsl
         {
             using T = std::decay_t<decltype(arg)>;
 
-            if constexpr(std::is_same_v<T, uint64_t>)
-                m_writer.write("{}", arg);
-            if constexpr(std::is_same_v<T, int64_t>)
-                m_writer.write("{}", arg);
-            if constexpr(std::is_same_v<T, double>)
-                m_writer.write("{}", arg);
+            if constexpr(std::is_same_v<T, ConstantInt>)
+            {
+                if (arg.kind == IntKind::Unsigned)
+                    m_writer.write("{}", arg.value);
+                else
+                    m_writer.write("{}", static_cast<int64_t>(arg.value));
+            }
+            if constexpr(std::is_same_v<T, ConstantFloat>)
+            {
+                if (arg.kind == FloatKind::Double)
+                    m_writer.write("{}", arg.value);
+                else
+                    m_writer.write("{}", static_cast<float>(arg.value));
+            }
             if constexpr(std::is_same_v<T, std::string>)
                 m_writer.write("{}", arg);
             if constexpr(std::is_same_v<T, bool>)
@@ -390,7 +419,7 @@ namespace ionsl
                     m_writer.write("false");
             }
 
-        }, expr.literal);
+        }, expr.value);
     }
 
     void HlslGenerator::genFieldAccessExpr(FieldAccessExpr &expr)
@@ -489,6 +518,14 @@ namespace ionsl
 
             default:                     return "";
         }
+    }
+
+    std::string HlslGenerator::constantIntToString(ConstantInt op)
+    {
+        if (op.kind == IntKind::Unsigned)
+            return std::to_string(op.value);
+
+        return std::to_string(static_cast<int64_t>(op.value));
     }
 
     bool HlslGenerator::isPostfixOp(const UnaryOp op)

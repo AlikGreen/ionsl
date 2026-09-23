@@ -1,0 +1,69 @@
+// Attribute declarations
+attribute range(min : f32, max : f32 = 1.0);
+attribute color();
+attribute displayName(name : string);
+attribute binding(slot : u32, set : u32 = 0u);
+
+var MAX_LIGHTS : u32 = 4u;
+
+struct MaterialProperties
+{
+    [[displayName("Roughness"), range(0.0, 1.0)]]
+    roughness : f32 = 0.5,
+    [[displayName("Base Color"), color]]
+    baseColor : vec3f = vec3f(0.8, 0.8, 0.8),
+}
+
+struct PointLight
+{
+    position : vec3f,
+    intensity: vec3f,
+    radius   : f32,
+    fn attenuation(distSq : f32) -> f32
+    {
+        var radiusSq : f32 = radius * radius;
+        if (distSq >= radiusSq)
+        {
+            return 0.0;
+        }
+        return 1.0 - distSq / radiusSq;
+    }
+}
+
+struct LightRig
+{
+    count  : u32,
+    lights : PointLight[MAX_LIGHTS],
+}
+
+struct VertexOutput
+{
+    [[sv_position]] position : vec4f,
+    worldPos : vec3f,
+    normal   : vec3f,
+}
+
+[[shader("pixel")]]
+fn fragmentMain(
+    input : VertexOutput,
+    [[constant]] material : MaterialProperties,
+    [[constant]] rig : LightRig
+) -> vec4f
+{
+    var mut totalLight : vec3f = vec3f(0.0, 0.0, 0.0);
+    for (var mut i : u32 = 0u; i < rig.count; i += 1u)
+    {
+        var light : PointLight = rig.lights[i];
+        var toLight : vec3f = light.position - input.worldPos;
+        var distSq : f32 = dot(toLight, toLight);
+        var atten : f32 = light.attenuation(distSq);
+        if (atten > 0.0)
+        {
+            var lightDir : vec3f = normalize(toLight);
+            var nDotL : f32 = max(0.0, dot(input.normal, lightDir));
+            totalLight += light.intensity * (nDotL * atten);
+        }
+    }
+    var finalColor : vec3f = material.baseColor * totalLight;
+    return vec4f(finalColor, 1.0);
+}

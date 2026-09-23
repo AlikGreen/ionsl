@@ -111,6 +111,37 @@ namespace ionsl
         return decl;
     }
 
+    EnumDecl* EnumDecl::clone(Arena &arena) const
+    {
+        auto* decl = arena.create<EnumDecl>();
+        decl->span = span;
+        decl->name = name;
+        decl->id = id;
+        decl->attributes = attributes;
+
+        decl->underlyingType = underlyingType->clone(arena);
+        decl->members = members;
+        for (auto& member : decl->members)
+        {
+            member.initializer = member.initializer->clone(arena);
+        }
+        return decl;
+    }
+
+    AttributeDecl* AttributeDecl::clone(Arena &arena) const
+    {
+        auto* decl = arena.create<AttributeDecl>();
+        decl->span = span;
+        decl->id = id;
+        decl->attributes = attributes;
+        decl->name = name;
+
+        for(const auto* field : fields)
+            decl->fields.push_back(field->clone(arena));
+
+        return decl;
+    }
+
     ErrorDecl* ErrorDecl::clone(Arena &arena) const
     {
         auto* decl = arena.create<ErrorDecl>();

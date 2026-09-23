@@ -36,9 +36,6 @@ namespace ionsl
 
     std::optional<ConstantValue> ConstantEvaluator::evaluateLiteralExpr(const LiteralExpr &expr)
     {
-        ConstantValue constVal{};
-        constVal.value = expr.literal;
-        constVal.type = expr.resultType;
-        return constVal;
+        return expr.value;
     }
 }

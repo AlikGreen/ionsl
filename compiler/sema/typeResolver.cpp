@@ -1,6 +1,7 @@
 #include "typeResolver.h"
 
 #include "semaContext.h"
+#include "../ast/constantValue.h"
 #include "../ast/declarations.h"
 #include "../ast/typeSyntax.h"
 
@@ -61,7 +62,7 @@ namespace ionsl
         const auto res = m_evaluator.evaluate(*syntax.arguments.at(1)->as<TypeArgumentValue>()->expression);
         if(!res) return TypeId::Error; // TODO diagnostics
 
-        const uint32_t dimension = std::get<uint64_t>(res->value);
+        const uint32_t dimension = std::get<ConstantInt>(*res).value; // TODO check signedness
 
         return syntax.resolvedType = m_typeSystem.types().getVectorType(primitiveElementType->kind, dimension);
     }
@@ -83,11 +84,11 @@ namespace ionsl
 
         const auto rowsRes = m_evaluator.evaluate(*syntax.arguments.at(1)->as<TypeArgumentValue>()->expression);
         if(!rowsRes) return TypeId::Error; // TODO diagnostics
-        const uint32_t rows = std::get<uint64_t>(rowsRes->value);
+        const uint32_t rows =std::get<ConstantInt>(*rowsRes).value; // TODO check signedness
 
         const auto columnsRes = m_evaluator.evaluate(*syntax.arguments.at(2)->as<TypeArgumentValue>()->expression);
         if(!columnsRes) return TypeId::Error; // TODO diagnostics
-        const uint32_t columns = std::get<uint64_t>(columnsRes->value);
+        const uint32_t columns = std::get<ConstantInt>(*columnsRes).value; // TODO check signedness
 
         return syntax.resolvedType = m_typeSystem.types().getMatrixType(primitiveElementType->kind, rows, columns);
     }
@@ -179,7 +180,7 @@ namespace ionsl
         {
             const auto sizeRes = m_evaluator.evaluate(*syntax.size);
             if(!sizeRes) return TypeId::Error; // TODO diagnostics
-            size = std::get<uint64_t>(sizeRes->value);
+            size = std::get<ConstantInt>(*sizeRes).value; // TODO check signedness
         }
 
         return syntax.resolvedType = m_typeSystem.types().getArrayType(syntax.elementType->resolvedType, size);

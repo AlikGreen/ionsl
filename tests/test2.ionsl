@@ -1,41 +1,55 @@
-struct VertexInput
+struct ComputeParams
 {
-    [[semantic("POSITION")]] position : vec3f,
-    [[semantic("NORMAL")]]   normal   : vec3f,
-    [[semantic("TEXCOORD", 0)]] uv    : vec3f,
+    count       : u32,
+    multiplier  : u32,
+    threshold   : f32,
 }
 
-struct VertexOutput
+fn classify(val : f32) -> i32
 {
-    [[semantic("SV_Position")]] position : vec3f,
-    [[semantic("TEXCOORD", 1)]] normal   : vec3f,
-    [[semantic("TEXCOORD", 2)]] uv       : vec3f,
+    if (val < 0.0)
+    {
+        return -1;
+    }
+    else if (val == 0.0)
+    {
+        return 0;
+    }
+    return 1;
 }
 
-struct CameraData
+[[shader("compute")]]
+[[numthreads(64, 1, 1)]]
+fn computeMain(
+    [[sv_dispatchthreadid]] id : vec3<u32>,
+    [[constant]] params : ComputeParams,
+    [[storage]] [[access(readwrite)]] outputBuffer : u32[]
+)
 {
-    viewProj : mat4f,
-}
-
-[[shader("vertex")]]
-fn vertexMain<T>(input : VertexInput, [[ion::mutable]] [[constant]] camera : CameraData) -> VertexOutput
-{
-    var mut output : VertexOutput;
-
-    var val : T = 1.0;
-
-    output.position = mul(camera.viewProj, vec3f(input.position, val));
-    output.normal = input.normal;
-    output.uv = input.uv;
-
-    return output;
-}
-
-[[shader("pixel")]]
-fn fragmentMain(input : VertexOutput) -> vec3f
-{
-    var lightDir : vec3f = normalize(vec3f(0.3, -1.0, 0.2));
-    var nDotL : f32 = max(0.0, dot(input.normal, lightDir));
-
-    return vec4f(nDotL, nDotL, nDotL, 1.0);
+    if (id.x >= params.count)
+    {
+        return;
+    }
+    var mut accumulator : u32 = id.x * params.multiplier;
+    for (var mut i : i32 = 0; i < 16; i += 1)
+    {
+        if (i % 2 == 0)
+        {
+            continue;
+        }
+        if (i > 10)
+        {
+            break;
+        }
+        accumulator += u32(i);
+    }
+    var mut step : u32 = 0u;
+    while (step < 4u)
+    {
+        accumulator = (accumulator << 1u) ^ 0x0Fu;
+        step += 1u;
+    }
+    accumulator &= 0xFFFFu;
+    accumulator |= 0x0100u;
+    outputBuffer[id.x] = accumulator;
 }

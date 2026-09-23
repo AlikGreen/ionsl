@@ -18,11 +18,12 @@ public:
 private:
     CodeWriter m_writer;
 
-    void genDecl(Declaration& decl);
+    void genDecl(const Declaration& decl);
     bool genFunctionDecl(const FunctionDecl& decl);
-    void genStructDecl(StructDecl& decl);
+    void genStructDecl(const StructDecl& decl);
     void genInterfaceDecl(const InterfaceDecl& decl);
-    void genVarDecl(ValueDecl& decl);
+    void genVarDecl(const ValueDecl& decl);
+    void genEnumDecl(const EnumDecl& decl);
 
     void genStmt(Statement& stmt);
     void genExprStmt(ExprStmt& stmt);
@@ -53,6 +54,7 @@ private:
 
     std::string opToString(BinaryOp op);
     std::string opToString(UnaryOp op);
+    std::string constantIntToString(ConstantInt op);
     bool isPostfixOp(UnaryOp op);
     bool isAssignment(BinaryOp op);
 };

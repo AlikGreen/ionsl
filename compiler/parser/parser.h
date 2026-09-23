@@ -1,4 +1,5 @@
 #pragma once
+#include <expected>
 #include <span>
 #include <unordered_set>
 
@@ -15,6 +16,12 @@ struct ParserState
 {
     size_t m_tokenIndex;
     size_t m_diagnosticCount;
+};
+
+class ParseError
+{
+public:
+    Diagnostic diagnostic;
 };
 
 class Parser
@@ -45,6 +52,8 @@ private:
     ValueDecl* parseVarDecl();
     ValueDecl* parseValueDecl();
     AliasDecl* parseAliasDecl();
+    EnumDecl* parseEnumDecl();
+    AttributeDecl* parseAttributeDecl();
 
     GenericParam* parseGenericParam();
     std::vector<GenericParam*> parseGenericParams();
@@ -81,7 +90,7 @@ private:
     [[nodiscard]] bool startsUnambiguousConst() const;
 
     QualifiedName parseName();
-    LiteralValue parseLiteral();
+    ConstantValue parseLiteral();
 
     void parseAttributes();
     std::vector<Attribute> takeAttributes();
@@ -105,7 +114,13 @@ private:
         return decl;
     }
 
-    void reportError(const SourceSpan& span, const std::string &message);
+    template<typename ... Args>
+    [[noreturn]] void error(SourceSpan span, std::format_string<Args...> fmt, Args &&... args)
+    {
+        throw ParseError{
+            Diagnostic::error(span, fmt, std::forward<Args>(args)...)
+        };
+    }
 
     [[nodiscard]] ParserState saveState() const;
     void restoreState(const ParserState& state);
@@ -119,6 +134,7 @@ private:
     [[nodiscard]] bool check(TokenKind kind) const;
     bool match(TokenKind kind);
     bool expect(TokenKind kind);
-    const Token& consume(TokenKind kind, std::string_view message = "");
+
+    const Token &consume(TokenKind kind, std::string_view message = "");
 };
 }

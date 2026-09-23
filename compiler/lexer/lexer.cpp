@@ -17,7 +17,8 @@ namespace ionsl
         { "break",  TokenKind::KwBreak }, { "continue",  TokenKind::KwContinue },
         { "type", TokenKind::KwType }, { "operator", TokenKind::KwOperator },
         { "cast", TokenKind::KwCast }, { "prefix", TokenKind::KwPrefix },
-        { "postfix", TokenKind::KwPostfix }, { "enum", TokenKind::KwEnum }
+        { "postfix", TokenKind::KwPostfix }, { "enum", TokenKind::KwEnum },
+        { "attribute", TokenKind::KwAttribute }
     };
 
     static const std::unordered_map<std::string_view, TokenKind> symbols

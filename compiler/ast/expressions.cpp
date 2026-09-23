@@ -25,7 +25,7 @@ namespace ionsl
     {
         auto* newExpr = arena.create<LiteralExpr>();
         newExpr->span = span;
-        newExpr->literal = literal;
+        newExpr->value = value;
         return newExpr;
     }
 

@@ -1,51 +1,74 @@
-enum Access
+enum CullMode
 {
-    ReadOnly, WriteOnly, ReadWrite,
+    None,
+    Front,
+    Back,
 }
 
-attribute Access
+enum ShadingModel
 {
-    access : Access,
+    Unlit      = 0u,
+    Lit        = 1u,
+    Subsurface = 2u,
 }
 
-struct VertexInput
+[[flags]]
+enum ChannelMask
 {
-    position : vec3f,
-    normal : vec3f,
-    uv : vec3f,
+    None  = 0x00u,
+    Red   = 0x01u,
+    Green = 0x02u,
+    Blue  = 0x04u,
+    Alpha = 0x08u,
+    RGB   = 0x07u,
+    All   = 0x0Fu,
+}
+
+struct PipelineConfig
+{
+    shading : ShadingModel = ShadingModel::Lit,
+    cull    : CullMode     = CullMode::Back,
+    mask    : ChannelMask  = ChannelMask::All,
 }
 
 struct VertexOutput
 {
-    [[sv_position]] position : vec3f,
+    [[sv_position]] position : vec4f,
     normal   : vec3f,
-    uv       : vec3f,
+    uv       : vec2f,
 }
 
-struct CameraData
+fn applyChannelMask(color : vec4f, mask : ChannelMask) -> vec4f
 {
-    viewProj : mat4f,
+    var r : f32 = ((mask & ChannelMask::Red)   != ChannelMask::None) ? color.x : 0.0;
+    var g : f32 = ((mask & ChannelMask::Green) != ChannelMask::None) ? color.y : 0.0;
+    var b : f32 = ((mask & ChannelMask::Blue)  != ChannelMask::None) ? color.z : 0.0;
+    var a : f32 = ((mask & ChannelMask::Alpha) != ChannelMask::None) ? color.w : 1.0;
+    return vec4f(r, g, b, a);
 }
 
-[[shader("vertex")]]
-fn vertexMain<T>(input : VertexInput, [[ion::mutable]] [[constant]] [[access(Access::ReadOnly)]] camera : CameraData) -> VertexOutput
+fn shadeSurface(model : ShadingModel, baseColor : vec3f, normal : vec3f, lightDir : vec3f) -> vec3f
 {
-    var mut output : VertexOutput;
-
-    var val : T = 1.0;
-
-    output.position = mul(camera.viewProj, vec3f(input.position, val));
-    output.normal = input.normal;
-    output.uv = input.uv;
-
-    return output;
+    if (model == ShadingModel::Unlit)
+    {
+        return baseColor;
+    }
+    var nDotL : f32 = max(0.0, dot(normal, lightDir));
+    return baseColor * nDotL;
 }
 
 [[shader("pixel")]]
-fn fragmentMain(input : VertexOutput) -> vec3f
+fn fragmentMain(input : VertexOutput, [[constant]] config : PipelineConfig) -> vec4f
 {
-    var lightDir : vec3f = normalize(vec3f(0.3, -1.0, 0.2));
-    var nDotL : f32 = max(0.0, dot(input.normal, lightDir));
-
-    return vec4f(nDotL, nDotL, nDotL, 1.0);
+    var lightDir : vec3f = normalize(vec3f(0.5, 1.0, 0.2));
+    var lit : vec3f = shadeSurface(config.shading, vec3f(0.8, 0.2, 0.2), input.normal, lightDir);
+    var rawCode : u32 = cast::<u32>(config.shading);
+    if (rawCode == 0u)
+    {
+        return vec4f(lit, 1.0);
+    }
+    var mut activeMask : ChannelMask = config.mask;
+    activeMask &= ~ChannelMask::Alpha;
+    activeMask |= ChannelMask::Red;
+    return applyChannelMask(vec4f(lit, 1.0), activeMask);
 }

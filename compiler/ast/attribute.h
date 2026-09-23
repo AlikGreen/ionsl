@@ -3,12 +3,12 @@
 #include <utility>
 #include <variant>
 
-#include "literalValue.h"
+#include "constantValue.h"
 #include "qualifiedName.h"
 
 namespace ionsl
 {
-using AttribArgValue = std::variant<QualifiedName, LiteralValue>;
+using AttribArgValue = std::variant<QualifiedName, ConstantValue>;
 
 struct AttributeArg
 {
