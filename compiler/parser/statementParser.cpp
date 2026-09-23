@@ -93,10 +93,10 @@ namespace ionsl
         expect(TokenKind::LParen);
         stmt->condition = parseExpression();
         expect(TokenKind::RParen);
-        stmt->thenBranch = parseBlockStmt();
+        stmt->thenBranch = parseStatement();
 
         if(match(TokenKind::KwElse))
-            stmt->elseBranch = parseBlockStmt();
+            stmt->elseBranch = parseStatement();
 
         stmt->span = SourceSpan::between(start, previous().span);
 

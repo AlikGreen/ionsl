@@ -36,12 +36,19 @@ struct Diagnostic
     std::string message;
     SourceSpan sourceSpan;
     Severity severity;
+
+    template<typename... Args>
+    static Diagnostic error(SourceSpan span, std::format_string<Args...> fmt, Args&&... args)
+    {
+        return Diagnostic{std::format(fmt, std::forward<Args>(args)...), span, Severity::Error};
+    }
 };
 
 class DiagnosticSink
 {
 public:
     void add(const std::string& message, SourceSpan span, Severity severity) { m_diagnostics.emplace_back(message, span, severity); }
+    void add(const Diagnostic& diagnostic) { m_diagnostics.emplace_back(diagnostic); }
 
     template<typename... Args>
     void error(SourceSpan span, std::format_string<Args...> fmt, Args&&... args)

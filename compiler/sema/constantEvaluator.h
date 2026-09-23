@@ -4,12 +4,6 @@
 
 namespace ionsl
 {
-struct ConstantValue
-{
-    TypeId   type;
-    LiteralValue value;
-};
-
 class ConstantEvaluator
 {
 public:

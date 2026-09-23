@@ -31,8 +31,8 @@ class IfStmt final : public Statement
 {
 public:
     Expression* condition{};
-    BlockStmt* thenBranch{};
-    BlockStmt* elseBranch{}; // can be nullptr
+    Statement* thenBranch{};
+    Statement* elseBranch{}; // can be nullptr
 
     IfStmt* clone(Arena &arena) const override;
 };

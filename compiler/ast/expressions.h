@@ -1,7 +1,7 @@
 #pragma once
 #include "astNode.h"
 #include "decl.h"
-#include "literalValue.h"
+#include "constantValue.h"
 #include "qualifiedName.h"
 #include "symbol.h"
 #include "type.h"
@@ -41,7 +41,7 @@ public:
 class LiteralExpr final : public Expression
 {
 public:
-    LiteralValue literal;
+    ConstantValue value;
 
     LiteralExpr* clone(Arena &arena) const override;
 };
@@ -110,6 +110,7 @@ public:
 
 class ErrorExpr final : public Expression
 {
+public:
     ErrorExpr* clone(Arena &arena) const override;
 };
 }

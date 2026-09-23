@@ -69,8 +69,6 @@ public:
     StructDecl* clone(Arena &arena) const override;
 };
 
-
-// e.g. type vec3<T> = vector<T, 3>
 class AliasDecl final : public Declaration
 {
 public:
@@ -78,6 +76,30 @@ public:
     TypeSyntax* targetType = nullptr;
 
     AliasDecl* clone(Arena &arena) const override;
+};
+
+struct EnumMember
+{
+    SymbolId name;
+    Expression* initializer{};
+    ConstantInt value;
+};
+
+class EnumDecl final : public Declaration
+{
+public:
+    TypeSyntax* underlyingType;
+    std::vector<EnumMember> members;
+
+    EnumDecl* clone(Arena &arena) const override;
+};
+
+class AttributeDecl final : public Declaration
+{
+public:
+    std::vector<ValueDecl*> fields;
+
+    AttributeDecl* clone(Arena &arena) const override;
 };
 
 class ErrorDecl final : public Declaration

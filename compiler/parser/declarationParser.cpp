@@ -4,25 +4,37 @@ namespace ionsl
 {
     Declaration* Parser::parseDeclaration()
     {
-        parseAttributes();
-
-        switch (peek().kind)
+        try
         {
-            case TokenKind::KwStruct:
-                return parseStructDecl();
-            case TokenKind::KwInterface:
-                return parseInterfaceDecl();
-            case TokenKind::KwFunction:
-                return parseFunctionDecl();
-            case TokenKind::KwVar:
-                return parseVarDecl();
-            case TokenKind::KwType:
-                return parseAliasDecl();
-            default:
+            parseAttributes();
+
+            switch (peek().kind)
             {
-                advance();
-                return create<ErrorDecl>();
+                case TokenKind::KwStruct:
+                    return parseStructDecl();
+                case TokenKind::KwInterface:
+                    return parseInterfaceDecl();
+                case TokenKind::KwFunction:
+                    return parseFunctionDecl();
+                case TokenKind::KwVar:
+                    return parseVarDecl();
+                case TokenKind::KwType:
+                    return parseAliasDecl();
+                case TokenKind::KwEnum:
+                    return parseEnumDecl();
+                case TokenKind::KwAttribute:
+                    return parseAttributeDecl();
+                default:
+                {
+                    advance();
+                    return create<ErrorDecl>();
+                }
             }
+        }
+        catch (const ParseError& e)
+        {
+            // TODO sync
+            return create<ErrorDecl>();
         }
     }
 
@@ -67,6 +79,8 @@ namespace ionsl
 
     StructDecl* Parser::parseStructDecl()
     {
+        const SourceSpan start = peek().span;
+
         auto* decl = createDecl<StructDecl>();
         decl->attributes = takeAttributes();
         expect(TokenKind::KwStruct);
@@ -98,11 +112,15 @@ namespace ionsl
             }
         }
 
+        decl->span = SourceSpan::between(start, previous().span);
+
         return decl;
     }
 
     InterfaceDecl* Parser::parseInterfaceDecl()
     {
+        const SourceSpan start = peek().span;
+
         auto* decl = createDecl<InterfaceDecl>();
         decl->attributes = takeAttributes();
         expect(TokenKind::KwInterface);
@@ -116,24 +134,30 @@ namespace ionsl
             decl->methods.push_back(parseFunctionDecl());
         }
 
+        decl->span = SourceSpan::between(start, previous().span);
+
         return decl;
     }
 
     ValueDecl* Parser::parseVarDecl()
     {
+        const SourceSpan start = peek().span;
         expect(TokenKind::KwVar);
         match(TokenKind::KwMut); // FIXME
         auto* var = parseValueDecl();
         expect(TokenKind::Semicolon);
+
+        var->span = SourceSpan::between(start, previous().span);
         return var;
     }
 
     ValueDecl* Parser::parseValueDecl()
     {
+        const SourceSpan start = peek().span;
         parseAttributes();
         auto* decl = createDecl<ValueDecl>();
         decl->attributes = takeAttributes();
-        decl->name = m_symbolTable.intern(advance().text);
+        decl->name = m_symbolTable.intern(consume(TokenKind::Identifier).text);
         m_scopeTable.registerDecl(m_currentScope, decl->name, decl->id);
         expect(TokenKind::Colon);
         decl->type = parseType();
@@ -141,11 +165,14 @@ namespace ionsl
         if(match(TokenKind::Equal))
             decl->initializer = parseExpression();
 
+        decl->span = SourceSpan::between(start, previous().span);
+
         return decl;
     }
 
     AliasDecl* Parser::parseAliasDecl()
     {
+        const SourceSpan start = peek().span;
         expect(TokenKind::KwType);
         auto* decl = createDecl<AliasDecl>();
 
@@ -164,10 +191,70 @@ namespace ionsl
 
         expect(TokenKind::Semicolon);
 
+        decl->span = SourceSpan::between(start, previous().span);
+
         return decl;
     }
 
-    GenericParam * Parser::parseGenericParam()
+    EnumDecl* Parser::parseEnumDecl()
+    {
+        const SourceSpan start = peek().span;
+        expect(TokenKind::KwEnum);
+
+        auto* decl = createDecl<EnumDecl>();
+        decl->name = m_symbolTable.intern(consume(TokenKind::Identifier).text);
+
+        if (match(TokenKind::Colon))
+        {
+            decl->underlyingType = parseType();
+        }
+
+        expect(TokenKind::LBrace);
+
+        do
+        {
+            EnumMember member{};
+            member.name = m_symbolTable.intern(consume(TokenKind::Identifier).text);
+
+            if (match(TokenKind::Equal))
+                member.initializer = parseExpression();
+
+            decl->members.push_back(member);
+        }
+        while (!match(TokenKind::Comma));
+
+        expect(TokenKind::RBrace);
+
+        decl->span = SourceSpan::between(start, previous().span);
+
+        return decl;
+    }
+
+    AttributeDecl* Parser::parseAttributeDecl()
+    {
+        const SourceSpan start = peek().span;
+        expect(TokenKind::KwAttribute);
+
+        auto* decl = createDecl<AttributeDecl>();
+        decl->name = m_symbolTable.intern(consume(TokenKind::Identifier).text);
+
+        expect(TokenKind::LParen);
+
+        bool first = true;
+
+        while (!match(TokenKind::RParen))
+        {
+            if (!first) expect(TokenKind::Comma);
+            first = false;
+            decl->fields.push_back(parseValueDecl());
+        }
+
+        decl->span = SourceSpan::between(start, previous().span);
+
+        return decl;
+    }
+
+    GenericParam* Parser::parseGenericParam()
     {
         // TODO implement value type params
         // TODO implement requirements eg interfaces

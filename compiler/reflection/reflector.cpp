@@ -43,11 +43,11 @@ namespace ionsl
 
         const auto arg = shaderAttrib->args.at(0).value;
 
-        if (!std::holds_alternative<LiteralValue>(arg) || !std::holds_alternative<std::string>(std::get<LiteralValue>(arg)))
+        if (!std::holds_alternative<ConstantValue>(arg) || !std::holds_alternative<std::string>(std::get<ConstantValue>(arg)))
             return;
 
         ReflectedEntryPoint ep;
-        ep.stage = convertStage(std::get<std::string>(std::get<LiteralValue>(arg)));
+        ep.stage = convertStage(std::get<std::string>(std::get<ConstantValue>(arg)));
 
         for (const auto* param : declaration.params)
         {

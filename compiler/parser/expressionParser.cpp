@@ -194,8 +194,7 @@ namespace ionsl
             default:
             {
                 advance();
-                reportError(previous().span, std::format("expected an expression found {}", tokenKindDisplayName(previous().kind)));
-                return create<ErrorExpr>();
+                error(previous().span, "expected an expression found {}", tokenKindDisplayName(previous().kind));
             }
         }
     }
@@ -237,7 +236,7 @@ namespace ionsl
     LiteralExpr* Parser::parseLiteralExpr()
     {
         auto* expr = create<LiteralExpr>();
-        expr->literal = parseLiteral();
+        expr->value = parseLiteral();
         return expr;
     }
 

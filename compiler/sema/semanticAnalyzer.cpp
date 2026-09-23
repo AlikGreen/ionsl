@@ -223,18 +223,29 @@ namespace ionsl
 
             if constexpr (std::is_same_v<T, bool>)
                 return TypeId::Bool;
-            if constexpr (std::is_same_v<T, uint64_t>)
-                return TypeId::U64;
-            if constexpr (std::is_same_v<T, int64_t>)
+            if constexpr (std::is_same_v<T, ConstantInt>)
+            {
+                if (arg.kind == IntKind::Unsigned)
+                    return TypeId::U64;
+
                 return TypeId::I64;
-            if constexpr (std::is_same_v<T, double>)
+            }
+            if constexpr (std::is_same_v<T, ConstantFloat>)
+            {
+                if (arg.kind == FloatKind::Half)
+                    return TypeId::F16;
+
+                if (arg.kind == FloatKind::Float)
+                    return TypeId::F32;
+
                 return TypeId::F64;
+            }
             if constexpr (std::is_same_v<T, std::string>)
                 return TypeId::String;
 
             return TypeId::Error;
 
-        }, expression.literal);
+        }, expression.value);
 
         expression.resultType = typeId;
         return typeId;
@@ -295,10 +306,10 @@ namespace ionsl
             return;
         }
 
-        checkBlockStmt(*statement.thenBranch, ctx);
+        checkStatement(*statement.thenBranch, ctx);
 
         if(statement.elseBranch)
-            checkBlockStmt(*statement.elseBranch, ctx);
+            checkStatement(*statement.elseBranch, ctx);
     }
 
     void SemanticAnalyzer::checkForStmt(ForStmt &statement, const SemaContext& ctx)

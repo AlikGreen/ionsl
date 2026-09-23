@@ -40,7 +40,7 @@ namespace ionsl
         return qualified;
     }
 
-    LiteralValue Parser::parseLiteral()
+    ConstantValue Parser::parseLiteral()
     {
         switch (advance().kind)
         {
@@ -53,17 +53,21 @@ namespace ionsl
                     text.remove_prefix(2);
                     auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), value, 16);
                     // TODO handle error
-                    return value;
+                    return ConstantInt{value, IntKind::Unsigned};
                 }
                 if (text.contains('.') || text.contains('e') || text.contains('E'))
                 {
+                    FloatKind kind = FloatKind::Double;
                     if(text.ends_with("f"))
+                    {
                         text.remove_suffix(1);
+                        kind = FloatKind::Float;
+                    }
 
                     double value;
                     auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), value, std::chars_format::general);
                     // TODO handle error
-                    return value;
+                    return ConstantFloat{value, kind};
                 }
                 if(text.starts_with("-"))
                 {
@@ -71,7 +75,7 @@ namespace ionsl
                     text.remove_prefix(1);
                     auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), value);
                     // TODO handle error
-                    return -value;
+                    return ConstantInt{static_cast<uint64_t>(-value), IntKind::Signed};
                 }
 
                 if(text.ends_with("u"))
@@ -80,7 +84,7 @@ namespace ionsl
                 uint64_t value;
                 auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), value, 10);
                 // TODO handle error
-                return value;
+                return ConstantInt{value, IntKind::Unsigned};
             }
             case TokenKind::StringLiteral:
                 return std::string(previous().text);
@@ -89,7 +93,7 @@ namespace ionsl
             case TokenKind::KwFalse:
                 return false;
             default:
-                return (uint64_t)0;
+                return ConstantInt{0, IntKind::Unsigned};
         }
     }
 
@@ -137,11 +141,6 @@ namespace ionsl
         }
 
         return AttributeArg{ parseLiteral() };
-    }
-
-    void Parser::reportError(const SourceSpan &span, const std::string &message)
-    {
-        m_ast.diagnostics().error(span, "{}", message);
     }
 
     ParserState Parser::saveState() const
@@ -198,7 +197,7 @@ namespace ionsl
         advance();
 
         if(previous().kind != kind)
-            reportError(peek().span, std::format("Expected '{}' found '{}'", tokenKindDisplayName(kind), tokenKindDisplayName(previous().kind)));
+            error(previous().span, "Expected '{}' found '{}'", tokenKindDisplayName(kind), tokenKindDisplayName(previous().kind));
 
         return previous().kind == kind;
     }
@@ -208,7 +207,7 @@ namespace ionsl
         advance();
 
         if(previous().kind != kind)
-            reportError(peek().span, std::format("Expected '{}' found '{}': {}", tokenKindDisplayName(kind), tokenKindDisplayName(previous().kind), message));
+            error(peek().span, "Expected '{}' found '{}': {}", tokenKindDisplayName(kind), tokenKindDisplayName(previous().kind), message);
 
         return previous();
     }

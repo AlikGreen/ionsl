@@ -1,0 +1,132 @@
+attribute binding(slot : u32, set : u32 = 0u);
+attribute range(min : f32, max : f32 = 1.0);
+attribute flags();
+
+enum TonemapMode : u32
+{
+    Linear   = 0u,
+    Reinhard = 1u,
+    ACES     = 2u,
+}
+
+[[flags]]
+enum SurfaceFlags : u32
+{
+    None           = 0x00u,
+    ReceivesShadow = 0x01u,
+    HasAO          = 0x02u,
+}
+
+struct SurfaceMaterial
+{
+    albedo    : vec3f = vec3f(0.8, 0.8, 0.8),
+    [[range(0.04, 1.0)]]
+    roughness : f32   = 0.4,
+    [[range(0.0, 1.0)]]
+    metallic  : f32   = 0.0,
+    flags     : SurfaceFlags = SurfaceFlags::ReceivesShadow,
+}
+
+struct LightData
+{
+    position  : vec3f,
+    intensity : vec3f,
+    radius    : f32,
+}
+
+struct SceneGlobals
+{
+    cameraPosition : vec3f,
+    lightCount     : u32,
+    tonemap        : TonemapMode,
+}
+
+struct VertexOutput
+{
+    [[sv_position]] position : vec4f,
+    worldPos : vec3f,
+    normal   : vec3f,
+}
+
+interface IBRDF
+{
+    fn evaluate(normal : vec3f, viewDir : vec3f, lightDir : vec3f, roughness : f32) -> vec3f;
+}
+
+struct SimpleSpecularBRDF : IBRDF
+{
+    fn evaluate(normal : vec3f, viewDir : vec3f, lightDir : vec3f, roughness : f32) -> vec3f
+    {
+        var halfway : vec3f = normalize(viewDir + lightDir);
+        var nDotH : f32 = max(0.0, dot(normal, halfway));
+        var power : f32 = max(1.0, (1.0 - roughness) * 64.0);
+        var spec : f32 = pow(nDotH, power);
+        return vec3f(spec, spec, spec);
+    }
+}
+
+fn evaluateLighting<B : IBRDF>(
+    brdf : B,
+    normal : vec3f,
+    viewDir : vec3f,
+    lightDir : vec3f,
+    roughness : f32,
+    lightColor : vec3f
+) -> vec3f
+{
+    var nDotL : f32 = max(0.0, dot(normal, lightDir));
+    if (nDotL <= 0.0)
+    {
+        return vec3f(0.0, 0.0, 0.0);
+    }
+    var specular : vec3f = brdf.evaluate(normal, viewDir, lightDir, roughness);
+    return lightColor * (specular + vec3f(1.0, 1.0, 1.0)) * nDotL;
+}
+
+fn applyTonemap(color : vec3f, mode : TonemapMode) -> vec3f
+{
+    if (mode == TonemapMode::Reinhard)
+    {
+        return color / (color + vec3f(1.0, 1.0, 1.0));
+    }
+    else if (mode == TonemapMode::ACES)
+    {
+        var a : f32 = 2.51;
+        var b : f32 = 0.03;
+        var c : f32 = 2.43;
+        var d : f32 = 0.59;
+        var e : f32 = 0.14;
+        return clamp((color * (color * a + b)) / (color * (color * c + d) + e), 0.0, 1.0);
+    }
+    return color;
+}
+
+[[shader("pixel")]]
+fn fragmentMain(
+    input : VertexOutput,
+    [[constant]] scene : SceneGlobals,
+    [[constant]] material : SurfaceMaterial,
+    [[storage]] lights : StructuredBuffer<LightData>
+) -> vec4f
+{
+    var viewDir : vec3f = normalize(scene.cameraPosition - input.worldPos);
+    var mut totalLight : vec3f = vec3f(0.0, 0.0, 0.0);
+    var brdf : SimpleSpecularBRDF;
+    for (var mut i : u32 = 0u; i < scene.lightCount; i += 1u)
+    {
+        var light : LightData = lights[i];
+        var toLight : vec3f = light.position - input.worldPos;
+        var distSq : f32 = dot(toLight, toLight);
+        var radiusSq : f32 = light.radius * light.radius;
+        if (distSq < radiusSq)
+        {
+            var lightDir : vec3f = normalize(toLight);
+            var atten : f32 = 1.0 - distSq / radiusSq;
+            var incoming : vec3f = light.intensity * atten;
+            totalLight += evaluateLighting(brdf, input.normal, viewDir, lightDir, material.roughness, incoming);
+        }
+    }
+    var hdrColor : vec3f = material.albedo * totalLight;
+    var ldrColor : vec3f = applyTonemap(hdrColor, scene.tonemap);
+    return vec4f(ldrColor, 1.0);
+}
