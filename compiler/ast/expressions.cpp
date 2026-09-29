@@ -73,6 +73,15 @@ namespace ionsl
         return newExpr;
     }
 
+    SwizzleExpr* SwizzleExpr::clone(Arena &arena) const
+    {
+        auto* newExpr = arena.create<SwizzleExpr>();
+        newExpr->span = span;
+        newExpr->object = object->clone(arena);
+        newExpr->indices = indices;
+        return newExpr;
+    }
+
     IndexExpr* IndexExpr::clone(Arena &arena) const
     {
         auto* newExpr = arena.create<IndexExpr>();

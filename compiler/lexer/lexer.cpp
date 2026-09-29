@@ -34,6 +34,7 @@ namespace ionsl
         { "->", TokenKind::Arrow }, { "!", TokenKind::Exclamation },
         { "*", TokenKind::Star }, { "/", TokenKind::Slash },
         { "&", TokenKind::Amp }, { "|", TokenKind::Pipe },
+        { "?", TokenKind::QuestionMark },
         { "^", TokenKind::Caret }, { "~", TokenKind::Tilde },
         { "==", TokenKind::EqualEqual }, { "!=", TokenKind::ExclamationEqual },
         { "<=", TokenKind::LessEqual },{ ">=", TokenKind::GreaterEqual },

@@ -12,7 +12,7 @@ enum class TokenKind
     Exclamation, Minus, Plus, Star, Slash,
     Equal, PlusEqual, MinusEqual, StarEqual, SlashEqual,
     EqualEqual, ExclamationEqual, LessEqual,
-    Amp, Pipe, Caret, Tilde,
+    Amp, Pipe, Caret, Tilde, QuestionMark,
     GreaterEqual, AmpAmp, PipePipe, MinusMinus, PlusPlus,
     AmpEqual, PipeEqual, LAngleLAngle, RAngleRAngle,
     LAngleLAngleEqual, RAngleRAngleEqual, CaretEqual,
@@ -67,6 +67,7 @@ constexpr std::string_view tokenKindDisplayName(const TokenKind kind)
         case TokenKind::Pipe:                  return "'|'";
         case TokenKind::Caret:                 return "'^'";
         case TokenKind::Tilde:                 return "'~'";
+        case TokenKind::QuestionMark:          return "'?'";
 
         case TokenKind::Equal:                 return "'='";
         case TokenKind::PlusEqual:              return "'+='";

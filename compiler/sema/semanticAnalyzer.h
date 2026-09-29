@@ -49,7 +49,7 @@ private:
     TypeId checkIdentifierExpr(IdentifierExpr& expression, const SemaContext& ctx) const;
     TypeId checkIndexExpr(IndexExpr& expression, const SemaContext& ctx);
     TypeId checkLiteralExpr(LiteralExpr& expression) const;
-    TypeId checkFieldAccessExpr(FieldAccessExpr& expression, const SemaContext& ctx);
+    TypeId checkFieldAccessExpr(Expression*&, FieldAccessExpr& expression, const SemaContext& ctx);
 
     void checkStatement(Statement& statement, const SemaContext& ctx);
     void checkBlockStmt(const BlockStmt& statement, const SemaContext& ctx);
@@ -66,5 +66,7 @@ private:
     void checkValueDecl(ValueDecl& declaration, const SemaContext& ctx);
 
     Expression* makeConversion(Expression* operand, TypeId type) const;
+
+    uint8_t componentIndex(char c);
 };
 }

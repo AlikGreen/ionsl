@@ -83,6 +83,15 @@ public:
     FieldAccessExpr* clone(Arena &arena) const override;
 };
 
+class SwizzleExpr final : public Expression
+{
+public:
+    Expression* object{};
+    std::vector<uint8_t> indices;
+
+    SwizzleExpr* clone(Arena &arena) const override;
+};
+
 class IndexExpr final : public Expression
 {
 public:

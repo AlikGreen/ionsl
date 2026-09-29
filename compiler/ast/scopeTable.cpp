@@ -1,6 +1,5 @@
 #include "scopeTable.h"
 
-#include <stack>
 #include <unordered_set>
 
 namespace ionsl
