@@ -39,16 +39,35 @@ namespace ionsl
         if(!decl.genericParams.empty() || decl.attributes.contains("hlsl", m_symbols))
             return false;
 
+        std::vector<ValueDecl*> nonResourceParams{};
+        for (auto* param : decl.params)
+        {
+            if (isResourceDecl(*param))
+                genResourceDecl(*param);
+            else
+                nonResourceParams.push_back(param);
+        }
+
         genType(decl.returnType->resolvedType);
         m_writer.space();
         m_writer.writeSymbol(decl.name);
         m_writer.write("(");
 
-        m_writer.writeSeparated(decl.params, ", ", [this](const ValueDecl* param)
+        m_writer.writeSeparated(nonResourceParams, ", ", [this](const ValueDecl* param)
         {
             genType(param->type->resolvedType);
             m_writer.space();
             m_writer.writeSymbol(param->name);
+
+            for (const auto& attrib : param->attributes.attributes())
+            {
+                std::string hlslName = convertAttribute(attrib);
+                if (!hlslName.empty())
+                {
+                    m_writer.write(" : {}", hlslName);
+                    break;
+                }
+            }
 
             if(param->initializer)
             {
@@ -109,7 +128,7 @@ namespace ionsl
         m_writer.newline();
     }
 
-    void HlslGenerator::genVarDecl(const ValueDecl &decl)
+    void HlslGenerator::genVarDeclHeader(const ValueDecl &decl)
     {
         genType(decl.type->resolvedType);
         m_writer.space();
@@ -121,6 +140,11 @@ namespace ionsl
             genExpr(*decl.initializer);
         }
 
+    }
+
+    void HlslGenerator::genVarDecl(const ValueDecl &decl)
+    {
+        genVarDeclHeader(decl);
         m_writer.write(";");
         m_writer.newline();
     }
@@ -136,6 +160,50 @@ namespace ionsl
         }
 
         m_writer.endBlock();
+    }
+
+    void HlslGenerator::genResourceDecl(const ValueDecl &decl)
+    {
+        if (decl.attributes.contains("constant", m_symbols))
+        {
+            m_writer.write("ConstantBuffer<");
+            genType(decl.type->resolvedType);
+            m_writer.write("> ");
+            m_writer.writeSymbol(decl.name);
+            m_writer.write(";"); // TODO generate binding
+        }
+        else if (decl.attributes.contains("storage", m_symbols))
+        {
+            auto arrayType = m_typeTable.getInfo(decl.type->resolvedType).as<ArrayType>();
+            if (!arrayType) return;
+
+            // TODO if the type is byte array then use ByteAddressBuffer
+            if (auto access = decl.attributes.find("access", m_symbols))
+            {
+                // TODO if it is writable prepend "RW"
+            }
+
+            m_writer.write("StructuredBuffer<");
+            genType(arrayType->elementType);
+            m_writer.write("> ");
+            m_writer.writeSymbol(decl.name);
+            m_writer.write(";"); // TODO generate binding
+        }
+
+        m_writer.newline();
+    }
+
+    void HlslGenerator::genForStmtStmt(Statement &stmt)
+    {
+        if(const auto expr = stmt.as<ExprStmt>())
+            genExprStmt(*expr);
+        if(const auto decl = stmt.as<DeclStmt>())
+        {
+            if (const auto var = decl->decl->as<ValueDecl>())
+            {
+                genVarDeclHeader(*var);
+            }
+        }
     }
 
     void HlslGenerator::genStmt(Statement &stmt)
@@ -183,11 +251,12 @@ namespace ionsl
     {
         m_writer.write("if(");
         genExpr(*stmt.condition);
+        m_writer.write(")");
         genStmt(*stmt.thenBranch);
 
         if(stmt.elseBranch)
         {
-            m_writer.writeLine("else");
+            m_writer.write("else ");
             genStmt(*stmt.elseBranch);
         }
     }
@@ -196,16 +265,20 @@ namespace ionsl
     {
         m_writer.write("while(");
         genExpr(*stmt.condition);
+        m_writer.write(")");
         genBlockStmt(*stmt.body);
     }
 
     void HlslGenerator::genForStmt(ForStmt &stmt)
     {
         m_writer.write("for(");
-        genStmt(*stmt.init); // FIXME should not generate semicolon or new line in this case
+        genForStmtStmt(*stmt.init);
+        m_writer.write("; ");
         genExpr(*stmt.condition);
-        m_writer.write(";");
+        m_writer.write("; ");
         genExpr(*stmt.increment);
+        m_writer.write(")");
+
         genBlockStmt(*stmt.body);
     }
 
@@ -244,7 +317,9 @@ namespace ionsl
         if(const auto matrix = info.as<MatrixType>())
             genMatrixType(*matrix);
         if(const auto structure = info.as<StructType>())
-            genStructType(*structure);;
+            genStructType(*structure);
+        if(const auto array = info.as<ArrayType>())
+            genArrayType(*array);
     }
 
     void HlslGenerator::genVectorType(VectorType &type)
@@ -278,10 +353,19 @@ namespace ionsl
             m_writer.write("unknown_type");
     }
 
-    void HlslGenerator::genStructType(const StructType type)
+    void HlslGenerator::genStructType(StructType& type)
     {
         auto decl = m_declTable.get(type.declId);
         m_writer.writeSymbol(decl->as<StructDecl>()->name);
+    }
+
+    void HlslGenerator::genArrayType(ArrayType &type)
+    {
+        genType(type.elementType);
+        m_writer.write("[");
+        if (type.size)
+            m_writer.write(*type.size);
+        m_writer.write("]");
     }
 
     void HlslGenerator::genExpr(Expression &expr, const bool addParens)
@@ -304,6 +388,8 @@ namespace ionsl
             genFieldAccessExpr(*fieldAccess);
         if(const auto identifier = expr.as<IdentifierExpr>())
             genIdentifierExpr(*identifier);
+        if(const auto swizzle = expr.as<SwizzleExpr>())
+            genSwizzleExpr(*swizzle);
     }
 
     void HlslGenerator::genBinaryExpr(const BinaryExpr &expr, const bool addParens)
@@ -398,7 +484,7 @@ namespace ionsl
             if constexpr(std::is_same_v<T, ConstantInt>)
             {
                 if (arg.kind == IntKind::Unsigned)
-                    m_writer.write("{}", arg.value);
+                    m_writer.write("{}u", arg.value);
                 else
                     m_writer.write("{}", static_cast<int64_t>(arg.value));
             }
@@ -435,6 +521,15 @@ namespace ionsl
         {
             m_writer.writeSymbol(id);
         });
+    }
+
+    void HlslGenerator::genSwizzleExpr(SwizzleExpr &expr)
+    {
+        genExpr(*expr.object, true);
+        m_writer.write(".");
+
+        for (const uint8_t index : expr.indices)
+            m_writer.write(componentIndexToChar(index));
     }
 
     std::string HlslGenerator::opToString(const BinaryOp op)
@@ -552,5 +647,53 @@ namespace ionsl
             default:
                 return false;
         }
+    }
+
+    std::string HlslGenerator::convertAttribute(const Attribute &attribute)
+    {
+        const std::string name = attribute.name.string(m_symbols);
+
+        if(name == "sv_dispatchthreadid")     return "SV_DispatchThreadID";
+        if(name == "sv_groupid")              return "SV_GroupID";
+        if(name == "sv_groupthreadid")        return "SV_GroupThreadID";
+        if(name == "sv_groupindex")           return "SV_GroupIndex";
+        if(name == "sv_position")             return "SV_Position";
+        if(name == "sv_vertexid")             return "SV_VertexID";
+        if(name == "sv_instanceid")           return "SV_InstanceID";
+        if(name == "sv_target")               return "SV_Target";
+        if(name == "sv_depth")                return "SV_Depth";
+        if(name == "sv_isfrontface")          return "SV_IsFrontFace";
+        if(name == "sv_primitiveid")          return "SV_PrimitiveID";
+        if(name == "sv_outputcontrolpointid") return "SV_OutputControlPointID";
+        if(name == "sv_domainlocation")       return "SV_DomainLocation";
+        if(name == "sv_tessfactor")           return "SV_TessFactor";
+        if(name == "sv_insidetessfactor")     return "SV_InsideTessFactor";
+
+        return "";
+    }
+
+    char HlslGenerator::componentIndexToChar(uint8_t index)
+    {
+        switch (index)
+        {
+            case 0: return 'x';
+            case 1: return 'y';
+            case 2: return 'z';
+            case 3: return 'w';
+            default: return '~';
+        }
+    }
+
+    bool HlslGenerator::isResourceDecl(const ValueDecl &decl)
+    {
+        if (decl.attributes.contains("constant", m_symbols) ||
+            decl.attributes.contains("storage", m_symbols))
+        {
+            return true;
+        }
+
+        // TODO texture type
+
+        return false;
     }
 }

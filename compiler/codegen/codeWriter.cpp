@@ -22,6 +22,15 @@ namespace ionsl
         m_atLineStart = false;
     }
 
+    void CodeWriter::write(char text)
+    {
+        if(m_atLineStart)
+            writeIndent();
+
+        m_output << text;
+        m_atLineStart = false;
+    }
+
     void CodeWriter::writeLine(std::string_view text)
     {
         if(!m_atLineStart)
@@ -36,6 +45,7 @@ namespace ionsl
     void CodeWriter::space()
     {
         m_output << ' ';
+        m_atLineStart = false;
     }
 
     void CodeWriter::newline()

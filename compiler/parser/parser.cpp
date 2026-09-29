@@ -79,7 +79,7 @@ namespace ionsl
                 }
 
                 if(text.ends_with("u"))
-                    text.remove_prefix(1);
+                    text.remove_suffix(1);
 
                 uint64_t value;
                 auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), value, 10);
@@ -197,7 +197,7 @@ namespace ionsl
         advance();
 
         if(previous().kind != kind)
-            error(previous().span, "Expected '{}' found '{}'", tokenKindDisplayName(kind), tokenKindDisplayName(previous().kind));
+            error(previous().span, "Expected {} found {}", tokenKindDisplayName(kind), tokenKindDisplayName(previous().kind));
 
         return previous().kind == kind;
     }
@@ -207,7 +207,12 @@ namespace ionsl
         advance();
 
         if(previous().kind != kind)
-            error(peek().span, "Expected '{}' found '{}': {}", tokenKindDisplayName(kind), tokenKindDisplayName(previous().kind), message);
+        {
+            if (message.empty())
+                error(peek().span, "Expected {} found {}", tokenKindDisplayName(kind), tokenKindDisplayName(previous().kind));
+            else
+                error(peek().span, "Expected {} found {}: {}", tokenKindDisplayName(kind), tokenKindDisplayName(previous().kind), message);
+        }
 
         return previous();
     }

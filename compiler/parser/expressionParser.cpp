@@ -236,14 +236,18 @@ namespace ionsl
     LiteralExpr* Parser::parseLiteralExpr()
     {
         auto* expr = create<LiteralExpr>();
+        const SourceSpan startSpan = peek().span;
         expr->value = parseLiteral();
+        expr->span = SourceSpan::between(startSpan, previous().span);
         return expr;
     }
 
     IdentifierExpr * Parser::parseIdentifierExpr()
     {
         auto* expr = create<IdentifierExpr>();
+        const SourceSpan startSpan = peek().span;
         expr->name = parseName();
+        expr->span = SourceSpan::between(startSpan, previous().span);
         return expr;
     }
 }

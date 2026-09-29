@@ -14,6 +14,7 @@ public:
     void writeSymbol(SymbolId symbol);
 
     void write(std::string_view text);
+    void write(char text);
 
     template<typename... Args>
     void write(std::format_string<Args...> fmt, Args&&... args)

@@ -22,8 +22,10 @@ private:
     bool genFunctionDecl(const FunctionDecl& decl);
     void genStructDecl(const StructDecl& decl);
     void genInterfaceDecl(const InterfaceDecl& decl);
+    void genVarDeclHeader(const ValueDecl& decl);
     void genVarDecl(const ValueDecl& decl);
     void genEnumDecl(const EnumDecl& decl);
+    void genResourceDecl(const ValueDecl& decl);
 
     void genStmt(Statement& stmt);
     void genExprStmt(ExprStmt& stmt);
@@ -31,6 +33,7 @@ private:
     void genIfStmt(IfStmt& stmt);
     void genWhileStmt(WhileStmt& stmt);
     void genForStmt(ForStmt& stmt);
+    void genForStmtStmt(Statement &stmt);
     void genReturnStmt(ReturnStmt& stmt);
     void genBreakStmt(BreakStmt& stmt);
     void genContinueStmt(ContinueStmt& stmt);
@@ -39,7 +42,8 @@ private:
     void genVectorType(VectorType& type);
     void genMatrixType(MatrixType& type);
     void genPrimitiveType(PrimitiveKind kind);
-    void genStructType(StructType type);
+    void genStructType(StructType& type);
+    void genArrayType(ArrayType& type);
 
     void genExpr(Expression& expr, bool addParens = false);
     void genBinaryExpr(const BinaryExpr& expr, bool addParens = false);
@@ -51,11 +55,18 @@ private:
     void genLiteralExpr(LiteralExpr& expr);
     void genFieldAccessExpr(FieldAccessExpr& expr);
     void genIdentifierExpr(IdentifierExpr& expr);
+    void genSwizzleExpr(SwizzleExpr& expr);
 
     std::string opToString(BinaryOp op);
     std::string opToString(UnaryOp op);
     std::string constantIntToString(ConstantInt op);
     bool isPostfixOp(UnaryOp op);
     bool isAssignment(BinaryOp op);
+
+    std::string convertAttribute(const Attribute& attribute);
+
+    char componentIndexToChar(uint8_t index);
+
+    bool isResourceDecl(const ValueDecl& decl);
 };
 }

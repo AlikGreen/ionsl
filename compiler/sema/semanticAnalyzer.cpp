@@ -42,7 +42,7 @@ namespace ionsl
         if(auto* literalExpr = expression->as<LiteralExpr>())
             return checkLiteralExpr(*literalExpr);
         if(auto* fieldAccessExpr = expression->as<FieldAccessExpr>())
-            return checkFieldAccessExpr(*fieldAccessExpr, ctx);
+            return checkFieldAccessExpr(expression, *fieldAccessExpr, ctx);
 
         return TypeId::Error;
     }
@@ -100,6 +100,7 @@ namespace ionsl
             auto* construct = m_module.arena().create<ConstructExpr>();
             construct->type = typeSyntax;
             construct->args = expression.args;
+            construct->span = expression.span;
             slot = construct;
             return typeSyntax->resolvedType;
         }
@@ -209,6 +210,9 @@ namespace ionsl
         checkExpression(expression.index, ctx);
         const TypeId arrayTypeId = checkExpression(expression.array, ctx);
 
+        if (arrayTypeId == TypeId::Error)
+            return TypeId::Error;
+
         TypeInfo arrayType = m_typeSystem.types().getInfo(arrayTypeId);
 
         // TODO validation
@@ -251,7 +255,7 @@ namespace ionsl
         return typeId;
     }
 
-    TypeId SemanticAnalyzer::checkFieldAccessExpr(FieldAccessExpr &expression, const SemaContext& ctx)
+    TypeId SemanticAnalyzer::checkFieldAccessExpr(Expression*& slot, FieldAccessExpr &expression, const SemaContext& ctx)
     {
         const TypeId objTypeId = checkExpression(expression.object, ctx);
 
@@ -260,11 +264,41 @@ namespace ionsl
 
         TypeInfo objType = m_typeSystem.types().getInfo(objTypeId);
         // TODO validation and interfaces
-        const DeclId structDeclId = objType.as<StructType>()->declId;
-        const StructDecl& structDecl = *m_declTable.get(structDeclId)->as<StructDecl>();
-        const ValueDecl& field = *structDecl.findField(expression.memberName);
-        expression.resultType = field.type->resolvedType;
-        return expression.resultType;
+        if (const auto structType = objType.as<StructType>())
+        {
+            const StructDecl& structDecl = *m_declTable.get(structType->declId)->as<StructDecl>();
+            // TODO methods
+            const ValueDecl& field = *structDecl.findField(expression.memberName);
+            expression.resultType = field.type->resolvedType;
+            return expression.resultType;
+        }
+        if (const auto vectorType = objType.as<VectorType>())
+        {
+            // TODO allow for other vector operations like .length
+            std::string fieldName = m_symbols.get(expression.memberName);
+
+            std::vector<uint8_t> swizzleIndices{};
+            for (const char c : fieldName)
+            {
+                const uint8_t index = componentIndex(c);
+                if (index >= vectorType->dimension)
+                    return TypeId::Error;
+                swizzleIndices.push_back(index);
+            }
+
+            auto* newExpr = m_module.arena().create<SwizzleExpr>();
+            newExpr->span = expression.span;
+            newExpr->object = expression.object;
+            newExpr->indices = swizzleIndices;
+            slot = newExpr;
+
+            if (fieldName.size() > 1)
+                return m_typeSystem.types().getVectorType(vectorType->scalarType, fieldName.size());
+
+            return m_typeSystem.types().getPrimitiveType(vectorType->scalarType);
+        }
+
+        return TypeId::Error;
     }
 
     void SemanticAnalyzer::checkStatement(Statement &statement, const SemaContext& ctx)
@@ -408,9 +442,22 @@ namespace ionsl
             return operand;
 
         auto* expr = m_module.arena().create<ConversionExpr>();
+        expr->span = operand->span;
         expr->kind = ConversionKind::Implicit;
         expr->targetType = type;
         expr->operand = operand;
         return expr;
+    }
+
+    uint8_t SemanticAnalyzer::componentIndex(char c)
+    {
+        switch(c)
+        {
+            case 'x': case 'r': return 0;
+            case 'y': case 'g': return 1;
+            case 'z': case 'b': return 2;
+            case 'w': case 'a': return 3;
+            default: return -1;
+        }
     }
 }

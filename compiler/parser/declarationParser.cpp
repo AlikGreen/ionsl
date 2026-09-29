@@ -34,6 +34,7 @@ namespace ionsl
         catch (const ParseError& e)
         {
             // TODO sync
+            m_ast.diagnostics().add(e.diagnostic);
             return create<ErrorDecl>();
         }
     }
@@ -55,11 +56,14 @@ namespace ionsl
         expect(TokenKind::LParen);
 
         if(!check(TokenKind::RParen))
+        {
+            m_currentScope = m_scopeTable.create(m_currentScope);
             do
             {
                 decl->params.push_back(parseValueDecl());
             }
             while(match(TokenKind::Comma));
+        }
 
         expect(TokenKind::RParen);
 
@@ -211,7 +215,7 @@ namespace ionsl
 
         expect(TokenKind::LBrace);
 
-        do
+        while (!match(TokenKind::RBrace))
         {
             EnumMember member{};
             member.name = m_symbolTable.intern(consume(TokenKind::Identifier).text);
@@ -220,10 +224,10 @@ namespace ionsl
                 member.initializer = parseExpression();
 
             decl->members.push_back(member);
-        }
-        while (!match(TokenKind::Comma));
 
-        expect(TokenKind::RBrace);
+            expect(TokenKind::Comma);
+        }
+
 
         decl->span = SourceSpan::between(start, previous().span);
 
