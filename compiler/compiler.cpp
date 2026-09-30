@@ -40,7 +40,7 @@ namespace ionsl
 
     Module Compiler::link(const LinkDescription &desc)
     {
-        Module module{10*1024*1024, *this};
+        Module module{*this};
 
         for(const Module* m : desc.modules)
             m->clone(module);

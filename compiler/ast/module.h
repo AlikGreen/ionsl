@@ -19,7 +19,7 @@ class Module
 {
 public:
     Module() = default;
-    explicit Module(size_t arenaSize, Compiler& compiler);
+    explicit Module(Compiler& compiler);
 
     [[nodiscard]] Module clone() const;
     void clone(Module& newModule) const;

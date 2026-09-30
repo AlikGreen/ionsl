@@ -8,9 +8,9 @@ var MAX_LIGHTS : u32 = 4u;
 
 struct MaterialProperties
 {
-    [[displayName("Roughness"), range(0.0, 1.0)]]
+    // [[displayName("Roughness"), range(0.0, 1.0)]]
     roughness : f32 = 0.5,
-    [[displayName("Base Color"), color]]
+    // [[displayName("Base Color"), color]]
     baseColor : vec3f = vec3f(0.8, 0.8, 0.8),
 }
 

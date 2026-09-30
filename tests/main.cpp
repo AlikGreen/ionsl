@@ -93,9 +93,10 @@ bool testShaderFile(const std::string& path, ionsl::Compiler& compiler)
 int main()
 {
     const std::vector<std::string> standaloneShaders = {
-        // "test1.ionsl",
+        "test1.ionsl",
         "test2.ionsl",
         // "test3.ionsl",
+        "test4.ionsl",
     };
 
     ionsl::Compiler compiler;

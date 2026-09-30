@@ -11,7 +11,7 @@ namespace ionsl
 {
     Module Module::clone() const
     {
-        Module newModule{m_arena->capacity(), *m_compiler};
+        Module newModule{*m_compiler};
         clone(newModule);
         return std::move(newModule);
     }
@@ -22,8 +22,8 @@ namespace ionsl
             newModule.m_declarations.push_back(decl->clone(*newModule.m_arena));
     }
 
-    Module::Module(const size_t arenaSize, Compiler& compiler)
-        : m_arena(std::make_unique<Arena>(arenaSize)), m_compiler(&compiler)
+    Module::Module(Compiler& compiler)
+        : m_arena(std::make_unique<Arena>()), m_compiler(&compiler)
     {
 
     }
