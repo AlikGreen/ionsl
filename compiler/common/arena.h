@@ -1,5 +1,6 @@
 #pragma once
 #include <functional>
+#include <iostream>
 #include <vector>
 
 namespace ionsl
@@ -43,20 +44,23 @@ public:
 
         size_t space = m_pages.back().space();
         if (space < size)
+        {
             m_pages.emplace_back();
+            std::cout << "page count: " << m_pages.size() << "\n";
+        }
 
         Page& page = m_pages.back();
 
         space = page.space();
-        const size_t offset = page.data().capacity();
+        const size_t offset = page.offset;
         const size_t alignedOffset = (offset + alignment - 1) & ~(alignment - 1);
 
         if (space < offset - alignedOffset + size)
             throw std::bad_alloc();
 
-        page.data().resize(alignedOffset + size);
+        page.offset = alignedOffset + size;
 
-        return &page.data()[alignedOffset];
+        return &page.data[alignedOffset];
     }
 
     void reset()
@@ -67,16 +71,14 @@ public:
         m_pages.clear();
     }
 private:
-    class Page
+    struct Page
     {
-    public:
-        static constexpr size_t kPageSize = 64*1024;
+        static constexpr size_t kPageSize = 32*1024;
 
-        explicit Page() { m_data.reserve(kPageSize); }
-        [[nodiscard]] size_t space() const { return m_data.capacity() - m_data.size(); }
-        std::vector<std::byte>& data() { return m_data; }
-    private:
-        std::vector<std::byte> m_data;
+        [[nodiscard]] size_t space() const { return kPageSize - offset; }
+
+        size_t offset = 0;
+        std::array<std::byte, kPageSize> data{};
     };
 
     std::vector<Page> m_pages;
