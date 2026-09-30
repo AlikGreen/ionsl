@@ -17,5 +17,6 @@ private:
     std::optional<ConstantValue> evaluateBinaryExpr(const BinaryExpr& expr);
     std::optional<ConstantValue> evaluateUnaryExpr(UnaryExpr& expr);
     std::optional<ConstantValue> evaluateLiteralExpr(const LiteralExpr& expr);
+    std::optional<ConstantValue> evaluateIdentifierExpr(const IdentifierExpr& expr);
 };
 }

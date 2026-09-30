@@ -40,7 +40,7 @@ namespace ionsl
         auto* newType = arena.create<ArrayTypeSyntax>();
         newType->span = span;
 
-        if (newType->size)
+        if (size)
             newType->size = size->clone(arena);
 
         newType->elementType = elementType->clone(arena);

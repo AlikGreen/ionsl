@@ -11,21 +11,23 @@ struct SemaContext;
 class AliasDecl;
 class ArrayTypeSyntax;
 class NamedTypeSyntax;
+class SemanticAnalyzer;
 
 class TypeResolver
 {
 public:
-    TypeResolver(TypeSystem& typeSystem, ConstantEvaluator& evaluator, SymbolTable& symbols, ScopeTable& scopeTable, GlobalScope& globalScope, DeclTable& decls);
+    explicit TypeResolver(SemanticAnalyzer& semanticAnalyzer);
 
     TypeId resolveType(TypeSyntax& syntax, const SemaContext& ctx);
     TypeId resolveTypeArg(TypeArgument& arg, const SemaContext& ctx);
 private:
     TypeSystem& m_typeSystem;
     ConstantEvaluator& m_evaluator;
-    SymbolTable& m_symbols;
+    const SymbolTable& m_symbols;
     ScopeTable& m_scopeTable;
     GlobalScope& m_globalScope;
     DeclTable& m_decls;
+    SemanticAnalyzer& m_analyzer;
 
     TypeId resolveVectorType(NamedTypeSyntax& syntax, const SemaContext& ctx);
     TypeId resolveMatrixType(NamedTypeSyntax& syntax, const SemaContext& ctx);

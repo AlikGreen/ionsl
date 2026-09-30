@@ -1,12 +1,14 @@
 #include "signatureResolutionPass.h"
 
 #include "genericInstantiator.h"
+#include "semanticAnalyzer.h"
+#include "../ast/module.h"
 #include "../ast/statements.h"
 
 namespace ionsl
 {
-    SignatureResolutionPass::SignatureResolutionPass(TypeResolver &typeResolver, std::vector<Declaration*>& declarations)
-        : m_typeResolver(typeResolver), m_declarations(declarations)
+    SignatureResolutionPass::SignatureResolutionPass(SemanticAnalyzer& analyzer)
+        : m_typeResolver(analyzer.m_typeResolver), m_declarations(analyzer.m_module.declarations()), m_analyzer(analyzer)
     {
     }
 
@@ -20,6 +22,8 @@ namespace ionsl
 
     void SignatureResolutionPass::checkDeclaration(Declaration &declaration, const SemaContext& ctx)
     {
+        if(const auto valueDecl = declaration.as<ValueDecl>())
+            m_analyzer.checkValueDecl(*valueDecl, ctx);
         if(const auto funcDecl = declaration.as<FunctionDecl>())
             checkFunctionDecl(*funcDecl, ctx);
         if(const auto structDecl = declaration.as<StructDecl>())

@@ -1,5 +1,7 @@
 #include "constantEvaluator.h"
 
+#include "../ast/declarations.h"
+
 namespace ionsl
 {
     ConstantEvaluator::ConstantEvaluator(const DeclTable &declTable, const TypeSystem& typeSystem)
@@ -13,6 +15,8 @@ namespace ionsl
             return evaluateUnaryExpr(*unary);
         if(auto* literal = expr.as<LiteralExpr>())
             return evaluateLiteralExpr(*literal);
+        if(auto* identifier = expr.as<IdentifierExpr>())
+            return evaluateIdentifierExpr(*identifier);
 
         return std::nullopt;
     }
@@ -26,16 +30,23 @@ namespace ionsl
 
         TypeId resultType = expr.resultType;
 
-        return std::nullopt; // FIXME
+        throw std::runtime_error("not implemented");
     }
 
     std::optional<ConstantValue> ConstantEvaluator::evaluateUnaryExpr(UnaryExpr &expr)
     {
-        return std::nullopt; // FIXME
+        throw std::runtime_error("not implemented");
     }
 
     std::optional<ConstantValue> ConstantEvaluator::evaluateLiteralExpr(const LiteralExpr &expr)
     {
         return expr.value;
+    }
+
+    std::optional<ConstantValue> ConstantEvaluator::evaluateIdentifierExpr(const IdentifierExpr &expr)
+    {
+        const auto var = m_declTable.get(expr.decl)->as<ValueDecl>();
+        if (!var || !var->initializer) return std::nullopt;
+        return evaluate(*var->initializer);
     }
 }
