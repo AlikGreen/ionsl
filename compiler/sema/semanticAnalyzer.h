@@ -20,7 +20,7 @@ public:
     SemanticAnalyzer(Module& module, SymbolTable& symbolTable, TypeSystem& typeSystem, ScopeTable& scopeTable, DeclAllocator& declAllocator, const std::unordered_map<DeclId, std::vector<TypeId>>& specializations)
         :   m_module(module), m_symbols(symbolTable), m_typeSystem(typeSystem), m_scopeTable(scopeTable), m_declAllocator(declAllocator),
             m_declTable(module), m_constEval(m_declTable, m_typeSystem),
-            m_globalScope(module), m_typeResolver(typeSystem, m_constEval, symbolTable, scopeTable, m_globalScope, m_declTable),
+            m_globalScope(module), m_typeResolver(*this),
             m_genericInstantiator(m_typeSystem, m_declAllocator, m_module), m_specializations(specializations)
     {
     }
@@ -28,6 +28,10 @@ public:
     void analyze();
     static void analyze(Module& module, SymbolTable& symbolTable, TypeSystem& typeSystem, ScopeTable& scopeTable, DeclAllocator& declAllocator, const std::unordered_map<DeclId, std::vector<TypeId>>& specializations);
 private:
+    friend class TypeResolver;
+    friend class SignatureResolutionPass;
+    friend class Module;
+
     Module& m_module;
     const SymbolTable& m_symbols;
 

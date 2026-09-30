@@ -1,15 +1,16 @@
 #include "typeResolver.h"
 
 #include "semaContext.h"
+#include "semanticAnalyzer.h"
 #include "../ast/constantValue.h"
 #include "../ast/declarations.h"
 #include "../ast/typeSyntax.h"
 
 namespace ionsl
 {
-    TypeResolver::TypeResolver(TypeSystem &typeSystem, ConstantEvaluator &evaluator, SymbolTable &symbols,
-        ScopeTable &scopeTable, GlobalScope& globalScope, DeclTable &decls)
-            : m_typeSystem(typeSystem), m_evaluator(evaluator), m_symbols(symbols), m_scopeTable(scopeTable), m_globalScope(globalScope), m_decls(decls)
+    TypeResolver::TypeResolver(SemanticAnalyzer& semanticAnalyzer)
+            : m_typeSystem(semanticAnalyzer.m_typeSystem), m_evaluator(semanticAnalyzer.m_constEval), m_symbols(semanticAnalyzer.m_symbols), m_scopeTable(semanticAnalyzer.m_scopeTable),
+                m_globalScope(semanticAnalyzer.m_globalScope), m_decls(semanticAnalyzer.m_declTable), m_analyzer(semanticAnalyzer)
     { }
 
     TypeId TypeResolver::resolveType(TypeSyntax& syntax, const SemaContext& ctx)
@@ -178,6 +179,7 @@ namespace ionsl
 
         if(syntax.size)
         {
+            m_analyzer.checkExpression(syntax.size, ctx);
             const auto sizeRes = m_evaluator.evaluate(*syntax.size);
             if(!sizeRes) return TypeId::Error; // TODO diagnostics
             size = std::get<ConstantInt>(*sizeRes).value; // TODO check signedness

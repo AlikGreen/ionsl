@@ -69,7 +69,6 @@ private:
     DeclStmt* parseDeclStmt();
     ExprStmt* parseExprStmt();
 
-
     Expression* parseExpression(uint32_t minBindingPower = 0, const std::unordered_set<TokenKind>& stopTokens = {});
     Expression* parseInfixExpr(Expression* left, TokenKind opKind);
     Expression* parsePrefixExpr();

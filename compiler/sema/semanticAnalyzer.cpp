@@ -14,7 +14,7 @@ namespace ionsl
     {
         const SemaContext ctx{};
 
-        SignatureResolutionPass(m_typeResolver, m_module.declarations()).run(ctx);
+        SignatureResolutionPass(*this).run(ctx);
 
         for(const auto decl : m_module.declarations())
         {
@@ -186,22 +186,33 @@ namespace ionsl
         if(candidates.empty())
             candidates = m_globalScope.find(expression.name.parts[0]);
 
-        TypeId bestCandidateType  = TypeId::Error;
+        TypeId bestCandidateType = TypeId::Error;
+        DeclId bestCandidateDecl = DeclId::Error;
 
         for(const auto& id : candidates)
         {
             const auto decl = m_declTable.get(id);
             if(const auto value = decl->as<ValueDecl>())
+            {
                 bestCandidateType = value->type->resolvedType;
+                bestCandidateDecl = id;
+            }
             if(const auto struc = decl->as<StructDecl>())
+            {
                 bestCandidateType = m_typeSystem.types().getStructType(struc->id);
+                bestCandidateDecl = id;
+            }
             if(const auto interface = decl->as<InterfaceDecl>())
+            {
                 bestCandidateType = m_typeSystem.types().getInterfaceType(interface->id);
+                bestCandidateDecl = id;
+            }
             // TODO other decl types
         }
 
         // TODO diagnostics if no candidates
 
+        expression.decl = bestCandidateDecl;
         return expression.resultType = bestCandidateType;
     }
 

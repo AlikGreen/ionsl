@@ -255,6 +255,8 @@ namespace ionsl
 
         decl->span = SourceSpan::between(start, previous().span);
 
+        expect(TokenKind::Semicolon);
+
         return decl;
     }
 

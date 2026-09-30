@@ -1,18 +1,21 @@
 #pragma once
-#include "genericInstantiator.h"
+
 #include "semaContext.h"
 #include "typeResolver.h"
 #include "../ast/declarations.h"
 
 namespace ionsl
 {
+
+
 class SignatureResolutionPass
 {
 public:
-    SignatureResolutionPass(TypeResolver& typeResolver, std::vector<Declaration*>& declarations);
+    explicit SignatureResolutionPass(SemanticAnalyzer& analyzer);
     void run(const SemaContext& ctx);
 private:
     TypeResolver& m_typeResolver;
+    SemanticAnalyzer& m_analyzer;
     std::vector<Declaration*>& m_declarations;
 
     void checkDeclaration(Declaration& declaration, const SemaContext& ctx);

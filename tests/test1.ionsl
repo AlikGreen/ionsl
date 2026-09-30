@@ -20,7 +20,6 @@ struct CameraData
 [[shader("vertex")]]
 fn vertexMain(input : VertexInput, [[constant]] camera : CameraData) -> VertexOutput
 {
-    var mut array : u32[10];
     var mut output : VertexOutput;
     output.position = mul(camera.viewProj, vec4f(input.position, 1.0));
     output.normal = input.normal;

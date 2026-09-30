@@ -6,6 +6,7 @@
 #include "../parser/parser.h"
 #include "../sema/semaContext.h"
 #include "../sema/typeResolver.h"
+#include "../sema/semanticAnalyzer.h"
 
 namespace ionsl
 {
@@ -42,16 +43,18 @@ namespace ionsl
 
     std::optional<TypeId> Module::findType(const std::string &name) const
     {
+        // FIXME PLEASE
         auto tokens = Lexer::tokenize(name);
         Parser parser{tokens, *m_compiler};
         auto type = parser.parseType();
 
         DeclTable declTable{};
 
-        ConstantEvaluator eval{declTable, m_compiler->m_typeSystem};
         GlobalScope globalScope{*this};
 
-        TypeResolver resolver{m_compiler->m_typeSystem, eval, m_compiler->m_symbolTable, m_compiler->m_scopeTable, globalScope, declTable};
-        return resolver.resolveType(*type, SemaContext{});
+        Module m{};
+        DeclAllocator d{};
+        SemanticAnalyzer analyzer{m, m_compiler->m_symbolTable, m_compiler->m_typeSystem, m_compiler->m_scopeTable, d, {}};
+        return analyzer.m_typeResolver.resolveType(*type, SemaContext{});
     }
 }
