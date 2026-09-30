@@ -1,4 +1,5 @@
 #pragma once
+#include <functional>
 #include <vector>
 
 namespace ionsl
@@ -13,10 +14,9 @@ concept Initializable = requires(Args&&... args)
 class Arena
 {
 public:
-    explicit Arena(const size_t size)
+    explicit Arena()
     {
-        m_buffer.clear();
-        m_buffer.reserve(size);
+        m_pages.emplace_back();
     }
 
     template<typename T, typename... Args>
@@ -25,35 +25,62 @@ public:
     {
         // TODO record destructors and destruct correctly
         void* allocation = allocate(sizeof(T), alignof(T));
-        return new (allocation) T(std::forward<Args>(args)...);
+
+        T* obj = new (allocation) T(std::forward<Args>(args)...);
+
+        m_dtors.emplace_back([&obj]()
+        {
+            delete obj;
+        });
+
+        return obj;
     }
 
     void* allocate(const size_t size, const size_t alignment)
     {
-        const size_t space = m_buffer.capacity() - m_buffer.size();
-        const size_t offset = m_buffer.size();
+        if (size > Page::kPageSize)
+            throw std::bad_alloc();
+
+        size_t space = m_pages.back().space();
+        if (space < size)
+            m_pages.emplace_back();
+
+        Page& page = m_pages.back();
+
+        space = page.space();
+        const size_t offset = page.data().capacity();
         const size_t alignedOffset = (offset + alignment - 1) & ~(alignment - 1);
 
         if (space < offset - alignedOffset + size)
             throw std::bad_alloc();
 
-        m_buffer.resize(alignedOffset + size);
+        page.data().resize(alignedOffset + size);
 
-        return &m_buffer[alignedOffset];
-    }
-
-    [[nodiscard]] size_t capacity() const
-    {
-        return m_buffer.capacity();
+        return &page.data()[alignedOffset];
     }
 
     void reset()
     {
-        // TODO call destructors
-        m_buffer.clear();
+        for (const auto& dtor : m_dtors)
+            dtor();
+
+        m_pages.clear();
     }
 private:
-    std::vector<std::byte> m_buffer;
+    class Page
+    {
+    public:
+        static constexpr size_t kPageSize = 64*1024;
+
+        explicit Page() { m_data.reserve(kPageSize); }
+        [[nodiscard]] size_t space() const { return m_data.capacity() - m_data.size(); }
+        std::vector<std::byte>& data() { return m_data; }
+    private:
+        std::vector<std::byte> m_data;
+    };
+
+    std::vector<Page> m_pages;
+    std::vector<std::function<void()>> m_dtors;
 
 };
 }

@@ -363,8 +363,8 @@ namespace ionsl
     {
         genType(type.elementType);
         m_writer.write("[");
-        if (type.size)
-            m_writer.write(*type.size);
+        if (type.size.has_value())
+            m_writer.write("{}", *type.size);
         m_writer.write("]");
     }
 

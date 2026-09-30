@@ -7,7 +7,7 @@
 namespace ionsl
 {
     Parser::Parser(const std::span<Token> tokens, Compiler& compiler)
-        : m_tokens(tokens), m_ast(10*1024*1024, compiler), m_symbolTable(compiler.m_symbolTable), m_scopeTable(compiler.m_scopeTable), m_declAllocator(compiler.m_declAllocator)
+        : m_tokens(tokens), m_ast(compiler), m_symbolTable(compiler.m_symbolTable), m_scopeTable(compiler.m_scopeTable), m_declAllocator(compiler.m_declAllocator)
     {
         m_currentScope = ScopeId::None;
     }
