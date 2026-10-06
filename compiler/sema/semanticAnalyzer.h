@@ -4,7 +4,6 @@
 #include "constantEvaluator.h"
 #include "genericInstantiator.h"
 #include "globalScope.h"
-#include "typeResolver.h"
 #include "semaContext.h"
 #include "../ast/declarations.h"
 #include "../ast/statements.h"
@@ -17,19 +16,16 @@ namespace ionsl
 class SemanticAnalyzer
 {
 public:
-    SemanticAnalyzer(Module& module, SymbolTable& symbolTable, TypeSystem& typeSystem, ScopeTable& scopeTable, DeclAllocator& declAllocator, const std::unordered_map<DeclId, std::vector<TypeId>>& specializations)
+    SemanticAnalyzer(Module& module, SymbolTable& symbolTable, TypeSystem& typeSystem, ScopeTable& scopeTable, DeclAllocator& declAllocator, const std::unordered_map<DeclId, std::vector<TypeId>>& specializations = {})
         :   m_module(module), m_symbols(symbolTable), m_typeSystem(typeSystem), m_scopeTable(scopeTable), m_declAllocator(declAllocator),
-            m_declTable(module), m_constEval(m_declTable, m_typeSystem),
-            m_globalScope(module), m_typeResolver(*this),
-            m_genericInstantiator(m_typeSystem, m_declAllocator, m_module), m_specializations(specializations)
+            m_declTable(module), m_evaluator(m_declTable, m_typeSystem),
+            m_globalScope(module), m_genericInstantiator(m_typeSystem, m_declAllocator, m_module), m_specializations(specializations)
     {
     }
 
     void analyze();
     static void analyze(Module& module, SymbolTable& symbolTable, TypeSystem& typeSystem, ScopeTable& scopeTable, DeclAllocator& declAllocator, const std::unordered_map<DeclId, std::vector<TypeId>>& specializations);
 private:
-    friend class TypeResolver;
-    friend class SignatureResolutionPass;
     friend class Module;
 
     Module& m_module;
@@ -39,11 +35,10 @@ private:
     ScopeTable& m_scopeTable;
     DeclAllocator& m_declAllocator;
     DeclTable m_declTable;
-    ConstantEvaluator m_constEval;
+    ConstantEvaluator m_evaluator;
     GlobalScope m_globalScope;
-    TypeResolver m_typeResolver;
     GenericInstantiator m_genericInstantiator;
-    std::unordered_map<DeclId, std::vector<TypeId>> m_specializations;
+    std::unordered_map<DeclId, std::vector<TypeId>> m_specializations{};
 
     TypeId checkExpression(Expression*& expression, const SemaContext& ctx);
     TypeId checkBinaryExpr(BinaryExpr& expression, const SemaContext& ctx);
@@ -68,6 +63,24 @@ private:
     void checkStructDecl(const StructDecl& declaration, const SemaContext& ctx);
     void checkInterfaceDecl(const InterfaceDecl& declaration, const SemaContext& ctx);
     void checkValueDecl(ValueDecl& declaration, const SemaContext& ctx);
+    void checkEnumDecl(EnumDecl& declaration, const SemaContext& ctx);
+    void checkAttributeDecl(const AttributeDecl& declaration, const SemaContext& ctx);
+
+    void checkDeclarationSignature(Declaration& declaration, const SemaContext& ctx);
+    void checkFunctionDeclSignature(const FunctionDecl& declaration, const SemaContext& ctx);
+    void checkStructDeclSignature(const StructDecl& declaration, const SemaContext& ctx);
+    void checkInterfaceDeclSignature(const InterfaceDecl& declaration, const SemaContext& ctx);
+
+    TypeId resolveType(TypeSyntax& syntax, const SemaContext& ctx);
+    TypeId resolveTypeArg(TypeArgument& arg, const SemaContext& ctx);
+
+    TypeId resolveVectorType(NamedTypeSyntax& syntax, const SemaContext& ctx);
+    TypeId resolveMatrixType(NamedTypeSyntax& syntax, const SemaContext& ctx);
+    TypeId resolveNamedType(NamedTypeSyntax& syntax, const SemaContext& ctx);
+    TypeId resolveAliasType(NamedTypeSyntax& syntax, const AliasDecl& alias, const SemaContext& ctx);
+    TypeId resolveArrayType(ArrayTypeSyntax& syntax, const SemaContext& ctx);
+
+    static PrimitiveKind toPrimitiveKind(const std::string &name);
 
     Expression* makeConversion(Expression* operand, TypeId type) const;
 

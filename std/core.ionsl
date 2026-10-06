@@ -31,6 +31,9 @@ fn max(left : f32, right : f32) -> f32;
 [[hlsl(function = "mul")]]
 fn mul(mat : mat4f, vec : vec4f) -> mat4f;
 
+[[hlsl(function = "pow")]]
+fn pow(base : f32, power : f32) -> f32;
+
 // [[hlsl(expr = "$lhs + $rhs")]]
 // operator +(lhs : f32, rhs : f32) -> f32;
 

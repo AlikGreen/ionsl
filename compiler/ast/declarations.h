@@ -121,6 +121,8 @@ public:
 class TypeGenericParam final : public GenericParam
 {
 public:
+    std::vector<QualifiedName> constraints{};
+
     TypeGenericParam* clone(Arena& arena) const override;
 };
 

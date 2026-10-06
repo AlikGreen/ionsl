@@ -84,20 +84,10 @@ struct MatrixType
     bool operator==(const MatrixType&) const = default;
 };
 
-struct StructType
-{
-    DeclId declId{};
-};
-
-struct InterfaceType
-{
-    DeclId declId{};
-};
-
-struct GenericType
-{
-    DeclId declId{};
-};
+struct StructType { DeclId declId{}; };
+struct InterfaceType { DeclId declId{}; };
+struct EnumType { DeclId declId{}; };
+struct GenericType { DeclId declId{}; };
 
 struct AutoType { };
 struct ErrorType { };
@@ -109,6 +99,7 @@ using TypeKind = std::variant<
     ArrayType,
     StructType,
     InterfaceType,
+    EnumType,
     AutoType,
     GenericType,
     ErrorType

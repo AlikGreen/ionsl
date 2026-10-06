@@ -1,6 +1,7 @@
 #pragma once
 #include <functional>
 #include <iostream>
+#include <memory>
 #include <vector>
 
 namespace ionsl
@@ -17,7 +18,7 @@ class Arena
 public:
     explicit Arena()
     {
-        m_pages.emplace_back();
+        m_pages.emplace_back(std::make_unique<Page>());
     }
 
     template<typename T, typename... Args>
@@ -42,14 +43,14 @@ public:
         if (size > Page::kPageSize)
             throw std::bad_alloc();
 
-        size_t space = m_pages.back().space();
+        size_t space = m_pages.back()->space();
         if (space < size)
         {
-            m_pages.emplace_back();
+            m_pages.emplace_back(std::make_unique<Page>());
             std::cout << "page count: " << m_pages.size() << "\n";
         }
 
-        Page& page = m_pages.back();
+        Page& page = *m_pages.back();
 
         space = page.space();
         const size_t offset = page.offset;
@@ -81,7 +82,7 @@ private:
         std::array<std::byte, kPageSize> data{};
     };
 
-    std::vector<Page> m_pages;
+    std::vector<std::unique_ptr<Page>> m_pages;
     std::vector<std::function<void()>> m_dtors;
 
 };

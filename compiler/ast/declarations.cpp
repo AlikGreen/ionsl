@@ -158,6 +158,7 @@ namespace ionsl
         decl->span = span;
         decl->name = name;
         decl->attributes = attributes;
+        decl->constraints = constraints;
         return decl;
     }
 

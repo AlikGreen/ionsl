@@ -107,7 +107,21 @@ namespace ionsl
         return typeId;
     }
 
-    TypeId TypeTable::getGenericType(DeclId id)
+    TypeId TypeTable::getEnumType(const DeclId id)
+    {
+        if(const auto it = m_enumTypes.find(id); it != m_enumTypes.end())
+            return it->second;
+
+        TypeInfo info{};
+        info.kind = EnumType{id};
+
+        const TypeId typeId = addType(info);
+
+        m_enumTypes[id] = typeId;
+        return typeId;
+    }
+
+    TypeId TypeTable::getGenericType(const DeclId id)
     {
         if(const auto it = m_genericTypes.find(id); it != m_genericTypes.end())
             return it->second;

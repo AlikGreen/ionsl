@@ -5,7 +5,6 @@
 #include "../lexer/lexer.h"
 #include "../parser/parser.h"
 #include "../sema/semaContext.h"
-#include "../sema/typeResolver.h"
 #include "../sema/semanticAnalyzer.h"
 
 namespace ionsl
@@ -54,7 +53,7 @@ namespace ionsl
 
         Module m{};
         DeclAllocator d{};
-        SemanticAnalyzer analyzer{m, m_compiler->m_symbolTable, m_compiler->m_typeSystem, m_compiler->m_scopeTable, d, {}};
-        return analyzer.m_typeResolver.resolveType(*type, SemaContext{});
+        SemanticAnalyzer analyzer{m, m_compiler->m_symbolTable, m_compiler->m_typeSystem, m_compiler->m_scopeTable, d};
+        return analyzer.resolveType(*type, SemaContext{});
     }
 }

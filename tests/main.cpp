@@ -96,7 +96,8 @@ int main()
         // "test1.ionsl",
         // "test2.ionsl",
         // "test3.ionsl",
-        "test4.ionsl",
+        // "test4.ionsl",
+        "test5.ionsl"
     };
 
     ionsl::Compiler compiler;

@@ -263,15 +263,27 @@ namespace ionsl
     GenericParam* Parser::parseGenericParam()
     {
         // TODO implement value type params
-        // TODO implement requirements eg interfaces
+        // TODO implement constraints eg interfaces
 
         auto* decl = createDecl<TypeGenericParam>();
+        const SourceSpan startSpan = peek().span;
+        decl->attributes = takeAttributes();
 
-        decl->span = peek().span;
         decl->name = m_symbolTable.intern(peek().text);
         expect(TokenKind::Identifier);
 
         m_scopeTable.registerDecl(m_currentScope, decl->name, decl->id);
+
+        if (match(TokenKind::Colon))
+        {
+            do
+            {
+                decl->constraints.push_back(parseName());
+            }
+            while (match(TokenKind::Amp));
+        }
+
+        decl->span = SourceSpan::between(startSpan, previous().span);
 
         return decl;
     }

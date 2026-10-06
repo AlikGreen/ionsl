@@ -17,6 +17,7 @@ public:
 
     TypeId getStructType(DeclId id);
     TypeId getInterfaceType(DeclId id);
+    TypeId getEnumType(DeclId id);
 
     TypeId getGenericType(DeclId id);
 
@@ -45,6 +46,7 @@ private:
     std::unordered_map<PrimitiveKind, TypeId> m_primitiveTypes;
     std::unordered_map<DeclId, TypeId> m_structTypes;
     std::unordered_map<DeclId, TypeId> m_interfaceTypes;
+    std::unordered_map<DeclId, TypeId> m_enumTypes;
     std::unordered_map<DeclId, TypeId> m_genericTypes;
 };
 }
