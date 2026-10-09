@@ -37,7 +37,17 @@ namespace ionsl
     bool HlslGenerator::genFunctionDecl(const FunctionDecl &decl)
     {
         if(!decl.genericParams.empty() || decl.attributes.contains("hlsl", m_symbols))
-            return false;
+        {
+            if (decl.instances.empty())
+                return false;
+
+            for (const auto& instance : decl.instances)
+            {
+                genFunctionDecl(*instance.decl);
+            }
+
+            return true;
+        }
 
         std::vector<ValueDecl*> nonResourceParams{};
         for (auto* param : decl.params)
@@ -113,6 +123,12 @@ namespace ionsl
                 genExpr(*field->initializer);
             }
 
+            m_writer.newline();
+        }
+
+        for(const auto method : decl.methods)
+        {
+            genFunctionDecl(*method);
             m_writer.newline();
         }
 
@@ -318,12 +334,32 @@ namespace ionsl
             genMatrixType(*matrix);
         if(const auto structure = info.as<StructType>())
             genStructType(*structure);
+        if(const auto enumeration = info.as<EnumType>())
+            genEnumType(*enumeration);
         if(const auto array = info.as<ArrayType>())
             genArrayType(*array);
     }
 
     void HlslGenerator::genVectorType(VectorType &type)
     {
+        if (type.scalarType == PrimitiveKind::Float32)
+        {
+            switch (type.dimension)
+            {
+                case 2:
+                    m_writer.write("float2");
+                    return;
+                case 3:
+                    m_writer.write("float3");
+                    return;
+                case 4:
+                    m_writer.write("float4");
+                    return;
+                default:
+                    break;
+            }
+        }
+
         m_writer.write("vector<");
         genPrimitiveType(type.scalarType);
         m_writer.write(", {}>", type.dimension);
@@ -351,6 +387,12 @@ namespace ionsl
             m_writer.write(it->second);
         else
             m_writer.write("unknown_type");
+    }
+
+    void HlslGenerator::genEnumType(EnumType &type)
+    {
+        auto decl = m_declTable.get(type.declId);
+        m_writer.writeSymbol(decl->as<EnumDecl>()->name);
     }
 
     void HlslGenerator::genStructType(StructType& type)
@@ -422,11 +464,11 @@ namespace ionsl
 
         if(!expr.genericArgs.empty())
         {
-            m_writer.write("<");
+            // m_writer.write("<");
 
-            // TODO need resolved generic args
+            // TODO need to call the concrete version of the function
 
-            m_writer.write(">");
+            // m_writer.write(">");
         }
 
         m_writer.write("(");

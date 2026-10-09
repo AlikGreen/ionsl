@@ -42,6 +42,9 @@ namespace ionsl
         for(const auto* param : params)
             decl->params.push_back(param->clone(arena));
 
+        for(const auto& instance : instances)
+            decl->instances.emplace_back(instance.args, instance.decl->clone(arena));
+
         if(body)
             decl->body = body->clone(arena);
 
@@ -157,6 +160,7 @@ namespace ionsl
         auto* decl = arena.create<TypeGenericParam>();
         decl->span = span;
         decl->name = name;
+        decl->id = id;
         decl->attributes = attributes;
         decl->constraints = constraints;
         return decl;
@@ -167,6 +171,7 @@ namespace ionsl
         auto* decl = arena.create<ValueGenericParam>();
         decl->span = span;
         decl->name = name;
+        decl->id = id;
         decl->type = type->clone(arena);
         decl->resolvedType = resolvedType;
         decl->attributes = attributes;

@@ -108,15 +108,14 @@ namespace ionsl
             return typeSyntax->resolvedType;
         }
 
-        return checkIdentifierCall(expression, *identifier, ctx);
-    }
-
-    TypeId SemanticAnalyzer::checkIdentifierCall(CallExpr &expression, const IdentifierExpr &identifier, const SemaContext& ctx)
-    {
         // TODO check non identifier calls eg
         // var func = () -> { return 2; };
         // var x = func()
+        return checkIdentifierCall(expression, *identifier, ctx);
+    }
 
+    TypeId SemanticAnalyzer::checkIdentifierCall(CallExpr& expression, const IdentifierExpr& identifier, const SemaContext& ctx)
+    {
         std::vector<TypeId> argumentTypes;
 
         for(auto& argument : expression.args)
@@ -133,8 +132,14 @@ namespace ionsl
         if(candidates.empty())
             candidates = m_globalScope.find(identifier.name.parts[0]);
 
-        uint32_t bestConversionCost = ~0u;
-        Declaration* bestCandidate = nullptr;
+        struct Candidate
+        {
+            uint32_t conversionCost = ~0u;
+            Declaration* decl{};
+            std::vector<TypeId> paramTypes;
+        };
+
+        Candidate bestCandidate{};
 
         for(const auto candidate : candidates)
         {
@@ -144,29 +149,81 @@ namespace ionsl
             {
                 std::vector<TypeId> paramTypes;
                 for(const auto* param : funcDecl->params)
-                    paramTypes.push_back(param->type->resolvedType);
+                {
+                    auto info = m_typeSystem.types().getInfo(param->type->resolvedType);
+                    if (const auto* genericType = info.as<GenericType>())
+                    {
+                        // find the corresponding generic param and substitute it
+                        for (auto [genericParam, genericArg] : std::views::zip(funcDecl->genericParams, expression.genericArgs))
+                        {
+                            if (genericType->declId == genericParam->id)
+                            {
+                                paramTypes.push_back(genericArg->resolvedType);
+                                break;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        paramTypes.push_back(param->type->resolvedType);
+                    }
+                }
 
                 auto conversion = m_typeSystem.conversionCost(argumentTypes, paramTypes);
 
                 if(!conversion)
                     continue;
 
-                if(bestConversionCost > *conversion)
+                if(bestCandidate.conversionCost > *conversion)
                 {
-                    bestConversionCost = *conversion;
-                    bestCandidate = decl;
+                    bestCandidate.conversionCost = *conversion;
+                    bestCandidate.decl = decl;
+                    bestCandidate.paramTypes = paramTypes;
                 }
             }
         }
 
-        if(bestCandidate == nullptr)
+        if(bestCandidate.decl == nullptr)
         {
             m_module.diagnostics().error(expression.span, "no matching function for call to '{}'", identifier.name.string(m_symbols));
             return TypeId::Error;
         }
 
-        if(auto* funcDecl = bestCandidate->as<FunctionDecl>())
+        if(auto* funcDecl = bestCandidate.decl->as<FunctionDecl>())
         {
+            if (!funcDecl->genericParams.empty())
+            {
+                std::optional<FunctionInstance> instance{};
+                for (const auto& inst : funcDecl->instances)
+                {
+                    bool same = false;
+                    for (const auto [requiredType, providedType] : std::views::zip(inst.args, expression.genericArgs))
+                    {
+                        if (requiredType != providedType->resolvedType)
+                        {
+                            same = true;
+                            break;
+                        }
+                    }
+
+                    if (same)
+                    {
+                        instance = inst;
+                        break;
+                    }
+                }
+
+                if (!instance)
+                {
+                    instance = FunctionInstance{};
+                    instance->decl = m_genericInstantiator.instantiate(*funcDecl, expression.genericArgs);
+                    instance->args = bestCandidate.paramTypes;
+                    funcDecl->instances.push_back(*instance);
+                }
+
+                funcDecl = instance->decl;
+            }
+
             for(const auto& [arg, param] : std::views::zip(expression.args, funcDecl->params))
             {
                 arg = makeConversion(arg, param->type->resolvedType);
@@ -210,9 +267,9 @@ namespace ionsl
                 bestCandidateType = m_typeSystem.types().getInterfaceType(interface->id);
                 bestCandidateDecl = id;
             }
-            if(const auto interface = decl->as<EnumDecl>())
+            if(const auto enumeration = decl->as<EnumDecl>())
             {
-                bestCandidateType = m_typeSystem.types().getEnumType(interface->id);
+                bestCandidateType = m_typeSystem.types().getEnumType(enumeration->id);
                 bestCandidateDecl = id;
             }
             // TODO other decl types
@@ -409,6 +466,8 @@ namespace ionsl
             checkStructDecl(*structDecl, ctx);
         if(const auto valDecl = declaration.as<ValueDecl>())
             checkValueDecl(*valDecl, ctx);
+        if(const auto enumDecl = declaration.as<EnumDecl>())
+            checkEnumDecl(*enumDecl, ctx);
     }
 
     void SemanticAnalyzer::checkFunctionDecl(const FunctionDecl &declaration, const SemaContext& ctx)
@@ -464,6 +523,8 @@ namespace ionsl
         if (declaration.underlyingType)
             resolveType(*declaration.underlyingType, ctx); // TODO ensure type is an integer type
 
+        uint64_t nextValue = 0;
+
         for (auto& member : declaration.members)
         {
             if (member.initializer)
@@ -474,6 +535,10 @@ namespace ionsl
                     continue; // TODO diagnostics
 
                 member.value = std::get<ConstantInt>(*val);
+                nextValue = member.value.value + 1;
+            }else
+            {
+                member.value = ConstantInt{ nextValue++ , IntKind::Signed };
             }
         }
 
@@ -503,8 +568,10 @@ namespace ionsl
     {
         resolveType(*declaration.returnType, ctx);
 
+        auto genericCtx = ctx.forGenericDecl(declaration.genericParams, {});
+
         for(const auto param : declaration.params)
-            resolveType(*param->type, ctx);
+            resolveType(*param->type, genericCtx);
     }
 
     void SemanticAnalyzer::checkStructDeclSignature(const StructDecl &declaration, const SemaContext &ctx)
@@ -613,7 +680,7 @@ namespace ionsl
                 if(const auto it = ctx.substitutions->find(param->id); it != ctx.substitutions->end())
                     return it->second;
 
-            return TypeId::Error;
+            return m_typeSystem.types().getGenericType(param->id);
         }
 
         // FIXME make sure to match the whole type

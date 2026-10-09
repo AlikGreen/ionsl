@@ -42,6 +42,7 @@ private:
     void genVectorType(VectorType& type);
     void genMatrixType(MatrixType& type);
     void genPrimitiveType(PrimitiveKind kind);
+    void genEnumType(EnumType& type);
     void genStructType(StructType& type);
     void genArrayType(ArrayType& type);
 

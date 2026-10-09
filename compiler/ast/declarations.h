@@ -37,6 +37,14 @@ public:
     ValueDecl* clone(Arena &arena) const override;
 };
 
+class FunctionDecl;
+
+struct FunctionInstance
+{
+    std::vector<TypeId> args;
+    FunctionDecl* decl;
+};
+
 class FunctionDecl final : public Declaration
 {
 public:
@@ -44,6 +52,7 @@ public:
     std::vector<ValueDecl*> params;
     std::vector<GenericParam*> genericParams;
     BlockStmt* body;
+    std::vector<FunctionInstance> instances;
 
     FunctionDecl* clone(Arena &arena) const override;
 };

@@ -17,6 +17,9 @@ namespace ionsl
     SemaContext SemaContext::forGenericDecl(const std::span<GenericParam * const> params,
         const std::unordered_map<DeclId, TypeId> &subs) const
     {
+        if (params.empty() && subs.empty())
+            return *this;
+
         auto c = *this;
         c.visibleGenericParams = params;
         c.substitutions = &subs;
