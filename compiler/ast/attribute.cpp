@@ -28,15 +28,15 @@ namespace ionsl
         return attrib;
     }
 
-    const AttributeArg& Attribute::getArgOr(const SymbolId argName, const AttributeArg &val) const
+    const AttributeArg* Attribute::getArg(const std::string &argName, const SymbolTable& symbols) const
     {
         for (const auto arg : args)
         {
-            if (arg->name == argName)
-                return *arg;
+            if (symbols.get(arg->name) == argName)
+                return arg;
         }
 
-        return val;
+        return nullptr;
     }
 
     bool Attributes::contains(const QualifiedName &name) const

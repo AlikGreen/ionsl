@@ -106,7 +106,7 @@ fn fragmentMain(
     input : VertexOutput,
     [[constant]] scene : SceneGlobals,
     [[constant]] material : SurfaceMaterial,
-    [[storage]] lights : LightData[]
+    [[access("write")]] [[storage]] lights : LightData[]
 ) -> vec4f
 {
     var viewDir : vec3f = normalize(scene.cameraPosition - input.worldPos);

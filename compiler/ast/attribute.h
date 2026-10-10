@@ -35,7 +35,7 @@ public:
     std::vector<AttributeArg*> args;
     DeclId decl = DeclId::Error;
 
-    const AttributeArg& getArgOr(SymbolId argName, const AttributeArg& val) const;
+    const AttributeArg* getArg(const std::string &argName, const SymbolTable& symbols) const;
 };
 
 class Attributes : public AstNode

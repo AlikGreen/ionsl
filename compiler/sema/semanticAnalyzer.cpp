@@ -455,11 +455,10 @@ namespace ionsl
 
     void SemanticAnalyzer::checkDeclaration(Declaration &declaration, const SemaContext& ctx)
     {
-        if (declaration.attributes)
-            for (const auto attrib : declaration.attributes->attributes)
-            {
-                checkAttribute(*attrib, ctx);
-            }
+        for (const auto attrib : declaration.attributes->attributes)
+        {
+            checkAttribute(*attrib, ctx);
+        }
 
         if(const auto funcDecl = declaration.as<FunctionDecl>())
             checkFunctionDecl(*funcDecl, ctx);
@@ -565,6 +564,11 @@ namespace ionsl
 
     void SemanticAnalyzer::checkDeclarationSignature(Declaration &declaration, const SemaContext &ctx)
     {
+        for (const auto attrib : declaration.attributes->attributes)
+        {
+            checkAttribute(*attrib, ctx);
+        }
+
         if(const auto valueDecl = declaration.as<ValueDecl>())
             checkValueDecl(*valueDecl, ctx);
         if(const auto funcDecl = declaration.as<FunctionDecl>())
@@ -584,13 +588,13 @@ namespace ionsl
         auto genericCtx = ctx.forGenericDecl(declaration.genericParams, {});
 
         for(const auto param : declaration.params)
-            resolveType(*param->type, genericCtx);
+            checkDeclarationSignature(*param, genericCtx);
     }
 
     void SemanticAnalyzer::checkStructDeclSignature(const StructDecl &declaration, const SemaContext &ctx)
     {
         for(const auto field : declaration.fields)
-            resolveType(*field->type, ctx);
+            checkDeclarationSignature(*field, ctx);
 
         for(const auto method : declaration.methods)
             checkFunctionDeclSignature(*method, ctx);
@@ -613,7 +617,7 @@ namespace ionsl
 
         // TODO check this is a valid target
 
-        std::vector<std::optional<ConstantValue>> fieldValues(decl->fields.size());
+        std::vector<AttributeArg*> foundArgs(decl->fields.size());
         size_t nextPositional = 0;
         bool sawNamed = false;
 
@@ -628,7 +632,7 @@ namespace ionsl
                     return;
                 }
 
-                if(nextPositional >= fieldValues.size())
+                if(nextPositional >= foundArgs.size())
                 {
                     error(arg->span, "too many arguments");
                     return;
@@ -648,7 +652,7 @@ namespace ionsl
 
                 idx = it - decl->fields.begin();
 
-                if(fieldValues[idx])
+                if(foundArgs[idx])
                 {
                     error(arg->span, "parameter already supplied", m_symbols.get(arg->name));
                     return;
@@ -663,14 +667,21 @@ namespace ionsl
                 error(arg->span, "attribute arguments must be constant");
                 return;
             }
-            fieldValues[idx] = *arg->value;
+            foundArgs[idx] = arg;
         }
 
-        for(size_t i = 0; i < fieldValues.size(); ++i)
+        for(size_t i = 0; i < foundArgs.size(); ++i)
         {
-            if(fieldValues[i]) continue;
-
             const ValueDecl& p = *decl->fields[i];
+
+            if(foundArgs[i])
+            {
+                if (foundArgs[i]->name == SymbolId::Invalid)
+                    foundArgs[i]->name = p.name;
+
+                continue;
+            }
+
             if(!p.initializer) { error(decl->fields[i]->span, "missing required argument '{}'", m_symbols.get(decl->fields[i]->name)); return; }
 
             const auto def = m_evaluator.evaluate(*p.initializer);

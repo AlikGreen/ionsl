@@ -187,24 +187,40 @@ namespace ionsl
             genType(decl.type->resolvedType);
             m_writer.write("> ");
             m_writer.writeSymbol(decl.name);
-            m_writer.write(";"); // TODO generate binding
+
+            m_writer.write(" : register(b");
+            m_writer.write("{}", m_bindingIndices['b']++);
+            m_writer.write(");");
         }
         else if (decl.attributes->contains("storage", m_symbols))
         {
             auto arrayType = m_typeTable.getInfo(decl.type->resolvedType).as<ArrayType>();
             if (!arrayType) return;
 
+            char bindingPrefix = 't';
+            std::string resourceTypePrefix;
+
             // TODO if the type is byte array then use ByteAddressBuffer
             if (auto access = decl.attributes->find("access", m_symbols))
             {
-                // TODO if it is writable prepend "RW"
+                auto accessType = access->getArg("access", m_symbols);
+                // TODO change to using enums
+                if (accessType && accessType->value && std::holds_alternative<std::string>(*accessType->value))
+                {
+                    auto accessString = std::get<std::string>(*accessType->value);
+                    if (accessString == "write" || accessString == "read-write")
+                    {
+                        resourceTypePrefix = "RW";
+                        bindingPrefix = 'u';
+                    }
+                }
             }
 
-            m_writer.write("StructuredBuffer<");
+            m_writer.write("{}StructuredBuffer<", resourceTypePrefix);
             genType(arrayType->elementType);
             m_writer.write("> ");
             m_writer.writeSymbol(decl.name);
-            m_writer.write(";"); // TODO generate binding
+            m_writer.write(" : register({}{});", bindingPrefix, m_bindingIndices[bindingPrefix]++);
         }
 
         m_writer.newline();

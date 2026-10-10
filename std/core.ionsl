@@ -3,8 +3,15 @@
 // [[target(hlsl, "RWStructuredBuffer")]] type RWStructuredBuffer<T>;
 // [[target(hlsl, "SamplerState")]]     type SamplerState;
 
+attribute constant();
+attribute storage();
+attribute sv_position();
+
 attribute hlsl(function : string);
 attribute shader(shaderType : string);
+
+attribute binding(slot : u32, set : u32 = 0u);
+attribute access(access : string);
 
 type vec2<T> = vector::<T, 2>;
 type vec3<T> = vector::<T, 3>;

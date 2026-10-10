@@ -88,7 +88,7 @@ namespace ionsl
                 return ConstantInt{value, IntKind::Unsigned};
             }
             case TokenKind::StringLiteral:
-                return std::string(previous().text);
+                return std::string(previous().text.substr(1, previous().text.size()-2));
             case TokenKind::KwTrue:
                 return true;
             case TokenKind::KwFalse:

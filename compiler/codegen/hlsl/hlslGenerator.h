@@ -17,6 +17,7 @@ public:
 
 private:
     CodeWriter m_writer;
+    std::unordered_map<char, uint32_t> m_bindingIndices;
 
     void genDecl(const Declaration& decl);
     bool genFunctionDecl(const FunctionDecl& decl);
