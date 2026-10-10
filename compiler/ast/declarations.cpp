@@ -14,8 +14,7 @@ namespace ionsl
         auto* decl = arena.create<ValueDecl>();
         decl->span = span;
         decl->id = id;
-        if (decl->attributes)
-            decl->attributes = attributes->clone(arena);
+        decl->attributes = attributes->clone(arena);
 
         if(initializer)
             decl->initializer = initializer->clone(arena);
@@ -32,8 +31,7 @@ namespace ionsl
         auto* decl = arena.create<FunctionDecl>();
         decl->span = span;
         decl->id = id;
-        if (decl->attributes)
-            decl->attributes = attributes->clone(arena);
+        decl->attributes = attributes->clone(arena);
         decl->name = name;
 
         decl->returnType = returnType->clone(arena);
@@ -58,8 +56,7 @@ namespace ionsl
         auto* decl = arena.create<InterfaceDecl>();
         decl->span = span;
         decl->id = id;
-        if (decl->attributes)
-            decl->attributes = attributes->clone(arena);
+        decl->attributes = attributes->clone(arena);
         decl->name = name;
 
         for(const auto* method : methods)
@@ -84,8 +81,7 @@ namespace ionsl
         auto* decl = arena.create<StructDecl>();
         decl->span = span;
         decl->id = id;
-        if (decl->attributes)
-            decl->attributes = attributes->clone(arena);
+        decl->attributes = attributes->clone(arena);
         decl->name = name;
 
         for(const auto* method : methods)
@@ -108,8 +104,7 @@ namespace ionsl
         decl->span = span;
         decl->name = name;
         decl->id = id;
-        if (decl->attributes)
-            decl->attributes = attributes->clone(arena);
+        decl->attributes = attributes->clone(arena);
         decl->targetType = targetType->clone(arena);
 
         for(const auto param : genericParams)
@@ -125,8 +120,7 @@ namespace ionsl
         decl->span = span;
         decl->name = name;
         decl->id = id;
-        if (decl->attributes)
-            decl->attributes = attributes->clone(arena);
+        decl->attributes = attributes->clone(arena);
 
         decl->underlyingType = underlyingType->clone(arena);
         decl->members = members;
@@ -144,8 +138,7 @@ namespace ionsl
         decl->span = span;
         decl->id = id;
 
-        if (decl->attributes)
-            decl->attributes = attributes->clone(arena);
+        decl->attributes = attributes->clone(arena);
 
         decl->name = name;
 
@@ -161,8 +154,7 @@ namespace ionsl
         decl->id = id;
         decl->name = name;
         decl->span = span;
-        if (decl->attributes)
-            decl->attributes = attributes->clone(arena);
+        decl->attributes = attributes->clone(arena);
         return decl;
     }
 
@@ -172,8 +164,7 @@ namespace ionsl
         decl->span = span;
         decl->name = name;
         decl->id = id;
-        if (decl->attributes)
-            decl->attributes = attributes->clone(arena);
+        decl->attributes = attributes->clone(arena);
         decl->constraints = constraints;
         return decl;
     }
@@ -186,8 +177,7 @@ namespace ionsl
         decl->id = id;
         decl->type = type->clone(arena);
         decl->resolvedType = resolvedType;
-        if (decl->attributes)
-            decl->attributes = attributes->clone(arena);
+        decl->attributes = attributes->clone(arena);
         return decl;
     }
 }

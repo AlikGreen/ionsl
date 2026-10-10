@@ -110,6 +110,7 @@ private:
     {
         T* decl = m_ast.arena().create<T>(std::forward<Args>(args)...);
         static_cast<Declaration*>(decl)->id = m_declAllocator.allocate();
+        static_cast<Declaration*>(decl)->attributes = takeAttributes();
         return decl;
     }
 

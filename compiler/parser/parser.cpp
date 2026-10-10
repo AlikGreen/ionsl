@@ -10,6 +10,7 @@ namespace ionsl
         : m_tokens(tokens), m_ast(compiler), m_symbolTable(compiler.m_symbolTable), m_scopeTable(compiler.m_scopeTable), m_declAllocator(compiler.m_declAllocator)
     {
         m_currentScope = ScopeId::None;
+        m_pendingAttributes = m_ast.arena().create<Attributes>();
     }
 
     Module Parser::parse(const std::span<Token> tokens, Compiler& compiler)
@@ -99,6 +100,7 @@ namespace ionsl
 
     void Parser::parseAttributes()
     {
+        SourceSpan startSpan = peek().span;
         while(match(TokenKind::LBracketLBracket))
         {
             auto* attr = create<Attribute>();
@@ -117,7 +119,10 @@ namespace ionsl
                 while (!match(TokenKind::RParen));
             }
             expect(TokenKind::RBracketRBracket);
+            attr->span = SourceSpan::between(startSpan, previous().span);
             m_pendingAttributes->attributes.push_back(attr);
+
+            startSpan = peek().span;
         }
     }
 

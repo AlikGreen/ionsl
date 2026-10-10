@@ -43,7 +43,6 @@ namespace ionsl
     {
         auto* decl = createDecl<FunctionDecl>();
         const SourceSpan start = peek().span;
-        decl->attributes = takeAttributes();
         expect(TokenKind::KwFunction);
         decl->name = m_symbolTable.intern(advance().text);
         m_scopeTable.registerDecl(m_currentScope, decl->name, decl->id);
@@ -86,7 +85,6 @@ namespace ionsl
         const SourceSpan start = peek().span;
 
         auto* decl = createDecl<StructDecl>();
-        decl->attributes = takeAttributes();
         expect(TokenKind::KwStruct);
         decl->name = m_symbolTable.intern(advance().text);
         m_scopeTable.registerDecl(m_currentScope, decl->name, decl->id);
@@ -124,9 +122,7 @@ namespace ionsl
     InterfaceDecl* Parser::parseInterfaceDecl()
     {
         const SourceSpan start = peek().span;
-
         auto* decl = createDecl<InterfaceDecl>();
-        decl->attributes = takeAttributes();
         expect(TokenKind::KwInterface);
         decl->name = m_symbolTable.intern(advance().text);
         m_scopeTable.registerDecl(m_currentScope, decl->name, decl->id);
@@ -160,7 +156,6 @@ namespace ionsl
         const SourceSpan start = peek().span;
         parseAttributes();
         auto* decl = createDecl<ValueDecl>();
-        decl->attributes = takeAttributes();
         decl->name = m_symbolTable.intern(consume(TokenKind::Identifier).text);
         m_scopeTable.registerDecl(m_currentScope, decl->name, decl->id);
         expect(TokenKind::Colon);
@@ -267,7 +262,6 @@ namespace ionsl
 
         auto* decl = createDecl<TypeGenericParam>();
         const SourceSpan startSpan = peek().span;
-        decl->attributes = takeAttributes();
 
         decl->name = m_symbolTable.intern(peek().text);
         expect(TokenKind::Identifier);

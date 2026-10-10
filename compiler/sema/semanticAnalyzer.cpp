@@ -456,9 +456,9 @@ namespace ionsl
     void SemanticAnalyzer::checkDeclaration(Declaration &declaration, const SemaContext& ctx)
     {
         if (declaration.attributes)
-            for (const auto& attrib : declaration.attributes->attributes)
+            for (const auto attrib : declaration.attributes->attributes)
             {
-                // TODO check attribute
+                checkAttribute(*attrib, ctx);
             }
 
         if(const auto funcDecl = declaration.as<FunctionDecl>())

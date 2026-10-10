@@ -3,6 +3,9 @@
 // [[target(hlsl, "RWStructuredBuffer")]] type RWStructuredBuffer<T>;
 // [[target(hlsl, "SamplerState")]]     type SamplerState;
 
+attribute hlsl(function : string);
+attribute shader(shaderType : string);
+
 type vec2<T> = vector::<T, 2>;
 type vec3<T> = vector::<T, 3>;
 type vec4<T> = vector::<T, 4>;
