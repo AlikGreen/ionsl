@@ -131,7 +131,7 @@ namespace ionsl
             argumentTypes.push_back(type);
         }
 
-        auto candidates = m_scopeTable.find(ctx.scope, identifier.name.parts[0]);
+        auto candidates = find(identifier.name, ctx);
         if(candidates.empty())
             candidates = m_globalScope.find(identifier.name.parts[0]);
 
@@ -245,7 +245,7 @@ namespace ionsl
 
     TypeId SemanticAnalyzer::checkIdentifierExpr(IdentifierExpr &expression, const SemaContext& ctx) const
     {
-        auto candidates = m_scopeTable.find(ctx.scope, expression.name.parts[0]);
+        auto candidates = find(expression.name, ctx);;
         if(candidates.empty())
             candidates = m_globalScope.find(expression.name.parts[0]);
 
@@ -455,10 +455,11 @@ namespace ionsl
 
     void SemanticAnalyzer::checkDeclaration(Declaration &declaration, const SemaContext& ctx)
     {
-        for (const auto& attrib : declaration.attributes.attributes())
-        {
-            // TODO check attribute
-        }
+        if (declaration.attributes)
+            for (const auto& attrib : declaration.attributes->attributes)
+            {
+                // TODO check attribute
+            }
 
         if(const auto funcDecl = declaration.as<FunctionDecl>())
             checkFunctionDecl(*funcDecl, ctx);
@@ -549,7 +550,17 @@ namespace ionsl
     void SemanticAnalyzer::checkAttributeDecl(const AttributeDecl &declaration, const SemaContext &ctx)
     {
         for (const auto field : declaration.fields)
+        {
             checkValueDecl(*field, ctx);
+
+            if (field->initializer)
+            {
+                if (!m_evaluator.evaluate(*field->initializer))
+                {
+                    error(field->initializer->span, "attribute parameter initializer must be a compile-time constant");
+                }
+            }
+        }
     }
 
     void SemanticAnalyzer::checkDeclarationSignature(Declaration &declaration, const SemaContext &ctx)
@@ -593,7 +604,82 @@ namespace ionsl
 
     void SemanticAnalyzer::checkAttribute(Attribute &attribute, const SemaContext &ctx)
     {
-        auto candidates = m_scopeTable.find(ctx.scope, attribute.name.parts.back());
+        AttributeDecl* decl = nullptr;
+        for(const DeclId id : find(attribute.name, ctx))
+            if(auto* a = m_declTable.get(id)->as<AttributeDecl>()) { decl = a; break; }
+
+        if(!decl) { error(attribute.span, "unknown attribute '{}'", attribute.name.string(m_symbols)); return; }
+        attribute.decl = decl->id;
+
+        // TODO check this is a valid target
+
+        std::vector<std::optional<ConstantValue>> fieldValues(decl->fields.size());
+        size_t nextPositional = 0;
+        bool sawNamed = false;
+
+        for(auto* arg : attribute.args)
+        {
+            size_t idx;
+            if(arg->name == SymbolId::Invalid)
+            {
+                if(sawNamed)
+                {
+                    error(arg->span, "positional argument after named argument");
+                    return;
+                }
+
+                if(nextPositional >= fieldValues.size())
+                {
+                    error(arg->span, "too many arguments");
+                    return;
+                }
+
+                idx = nextPositional++;
+            }
+            else
+            {
+                sawNamed = true;
+                auto it = std::ranges::find(decl->fields, arg->name, &ValueDecl::name);
+                if(it == decl->fields.end())
+                {
+                    error(arg->span, "no parameter named '{}'", m_symbols.get(arg->name));
+                    return;
+                }
+
+                idx = it - decl->fields.begin();
+
+                if(fieldValues[idx])
+                {
+                    error(arg->span, "parameter already supplied", m_symbols.get(arg->name));
+                    return;
+                }
+            }
+
+            checkExpression(arg->expression, ctx);
+            arg->value = m_evaluator.evaluate(*arg->expression);
+
+            if(!arg->value)
+            {
+                error(arg->span, "attribute arguments must be constant");
+                return;
+            }
+            fieldValues[idx] = *arg->value;
+        }
+
+        for(size_t i = 0; i < fieldValues.size(); ++i)
+        {
+            if(fieldValues[i]) continue;
+
+            const ValueDecl& p = *decl->fields[i];
+            if(!p.initializer) { error(decl->fields[i]->span, "missing required argument '{}'", m_symbols.get(decl->fields[i]->name)); return; }
+
+            const auto def = m_evaluator.evaluate(*p.initializer);
+
+            auto* arg = m_module.arena().create<AttributeArg>();
+            arg->name = p.name;
+            arg->value = def;
+            attribute.args.push_back(arg);
+        }
     }
 
     TypeId SemanticAnalyzer::resolveType(TypeSyntax& syntax, const SemaContext& ctx)
@@ -727,7 +813,7 @@ namespace ionsl
         }
 
         // FIXME make sure to match the whole type
-        auto decls = m_scopeTable.find(ctx.scope, syntax.name.parts[0]);
+        auto decls = find(syntax.name, ctx);;
         if(decls.empty())
             decls = m_globalScope.find(syntax.name.parts[0]);
 
@@ -820,26 +906,57 @@ namespace ionsl
         return syntax.resolvedType = m_typeSystem.types().getArrayType(syntax.elementType->resolvedType, size);
     }
 
-    std::vector<DeclId> SemanticAnalyzer::find(QualifiedName name, const SemaContext &ctx)
+    std::vector<DeclId> SemanticAnalyzer::findInScopeChain(const SymbolId name, const ScopeId scope) const
     {
-        // TODO implement searching through namespaces (which dont exist)
-        static_assert(false);
-        if (name.parts.empty()) return {};
-
-        std::vector<DeclId> decls{};
-        ScopeId currentScope = ctx.scope;
-
-        while (decls.empty() && currentScope != ScopeId::None)
+        for(ScopeId s = scope; s != ScopeId::None; s = m_scopeTable.getScope(s).parent)
         {
+            auto found = m_scopeTable.find(s, name);
+            if(!found.empty())
+                return found;
+        }
+        return {};
+    }
 
+    std::vector<DeclId> SemanticAnalyzer::findUnqualified(const SymbolId name, const SemaContext& ctx) const
+    {
+        auto found = findInScopeChain(name, ctx.scope);
+        if(!found.empty())
+            return found;
+
+        return m_globalScope.find(name);
+    }
+
+    std::vector<DeclId> SemanticAnalyzer::find(const QualifiedName& name, const SemaContext &ctx) const
+    {
+        if(name.parts.empty())
+            return {};
+
+        auto current = findUnqualified(name.parts[0], ctx);
+
+        for(size_t i = 1; i < name.parts.size() && !current.empty(); ++i)
+        {
+            ScopeId members = ScopeId::None;
+            int owners = 0;
+
+            for(const DeclId id : current)
+            {
+                const ScopeId s = memberScopeOf(*m_declTable.get(id));
+                if(s != ScopeId::None) { members = s; ++owners; }
+            }
+
+            if(owners != 1)
+                return {};
+
+            current = m_scopeTable.find(members, name.parts[i]);
         }
 
-        if (decls.empty())
-        {
+        return current;
+    }
 
-        }
-
-        return decls;
+    ScopeId SemanticAnalyzer::memberScopeOf(const Declaration& decl) const
+    {
+        // TODO return namespaces scope or struct scope for nested types
+        return ScopeId::None;
     }
 
     PrimitiveKind SemanticAnalyzer::toPrimitiveKind(const std::string &name)

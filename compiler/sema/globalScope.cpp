@@ -16,9 +16,9 @@ namespace ionsl
         m_decls[name].push_back(id);
     }
 
-    std::span<const DeclId> GlobalScope::find(const SymbolId name) const
+    std::vector<DeclId> GlobalScope::find(const SymbolId name) const
     {
         const auto it = m_decls.find(name);
-        return it != m_decls.end() ? std::span(it->second) : std::span<const DeclId>{};
+        return it != m_decls.end() ? it->second : std::vector<DeclId>{};
     }
 }

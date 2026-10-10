@@ -37,17 +37,17 @@ namespace ionsl
         if (!declaration.genericParams.empty())
             return;
 
-        const auto shaderAttrib = declaration.attributes.find("shader", m_symbols);
+        const auto shaderAttrib = declaration.attributes->find("shader", m_symbols);
         if (!shaderAttrib || shaderAttrib->args.empty())
             return;
 
-        const auto arg = shaderAttrib->args.at(0).value;
+        const auto arg = shaderAttrib->args.at(0)->value;
 
-        if (!std::holds_alternative<ConstantValue>(arg) || !std::holds_alternative<std::string>(std::get<ConstantValue>(arg)))
+        if (!arg || !std::holds_alternative<std::string>(*arg))
             return;
 
         ReflectedEntryPoint ep;
-        ep.stage = convertStage(std::get<std::string>(std::get<ConstantValue>(arg)));
+        ep.stage = convertStage(std::get<std::string>(*arg));
 
         for (const auto* param : declaration.params)
         {
@@ -59,13 +59,13 @@ namespace ionsl
 
     void Reflector::reflectValueDecl(const ValueDecl& declaration, ReflectedEntryPoint &ep)
     {
-        if (declaration.attributes.attributes().empty())
+        if (declaration.attributes->attributes.empty())
             return;
 
         ReflectedResourceType resourceType;
-        if (declaration.attributes.contains("constant", m_symbols))
+        if (declaration.attributes->contains("constant", m_symbols))
             resourceType = ReflectedResourceType::ConstantBuffer;
-        else if (declaration.attributes.contains("storage", m_symbols))
+        else if (declaration.attributes->contains("storage", m_symbols))
             resourceType = ReflectedResourceType::StorageBuffer;
         else
             return; // TODO texture and vertex inputs
@@ -74,21 +74,22 @@ namespace ionsl
 
         const ReflectedType t = reflectType(declaration.type->resolvedType);
 
+        // TODO implement constant evaluation to enum
         auto access = ReflectedAccess::ReadOnly;
-        if (const auto attrib = declaration.attributes.find("access", m_symbols))
-        {
-            if (!attrib->args.empty() && std::holds_alternative<QualifiedName>(attrib->args.front().value))
-            {
-                const std::string arg = std::get<QualifiedName>(attrib->args.front().value).string(m_symbols);
-
-                if (arg == "readonly")
-                    access = ReflectedAccess::ReadOnly;
-                else if (arg == "write")
-                    access = ReflectedAccess::WriteOnly;
-                if (arg == "readwrite")
-                    access = ReflectedAccess::ReadWrite;
-            }
-        }
+        // if (const auto attrib = declaration.attributes.find("access", m_symbols))
+        // {
+        //     if (!attrib->args.empty() && std::holds_alternative<QualifiedName>(attrib->args.front().value))
+        //     {
+        //         const std::string arg = std::get<QualifiedName>(attrib->args.front().value).string(m_symbols);
+        //
+        //         if (arg == "readonly")
+        //             access = ReflectedAccess::ReadOnly;
+        //         else if (arg == "write")
+        //             access = ReflectedAccess::WriteOnly;
+        //         if (arg == "readwrite")
+        //             access = ReflectedAccess::ReadWrite;
+        //     }
+        // }
 
         const ReflectedResource res{name, t, access, resourceType};
         ep.resources.push_back(res);

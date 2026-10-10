@@ -20,7 +20,7 @@ class BlockStmt;
 class  Declaration : public AstNode
 {
 public:
-    Attributes attributes{};
+    Attributes* attributes{};
     DeclId id{};
     SymbolId name{};
 

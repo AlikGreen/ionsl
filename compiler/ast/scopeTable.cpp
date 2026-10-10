@@ -29,7 +29,7 @@ namespace ionsl
     }
 
 
-    std::span<const DeclId> ScopeTable::find(ScopeId scopeId, const SymbolId name) const
+    std::vector<DeclId> ScopeTable::find(ScopeId scopeId, const SymbolId name) const
     {
         while(scopeId != ScopeId::Error && scopeId != ScopeId::None)
         {

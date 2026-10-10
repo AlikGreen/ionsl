@@ -101,46 +101,50 @@ namespace ionsl
     {
         while(match(TokenKind::LBracketLBracket))
         {
-            Attribute attr;
-            attr.name = parseName();
+            auto* attr = create<Attribute>();
+            attr->name = parseName();
             if(match(TokenKind::LParen))
             {
+                bool first = true;
                 do
                 {
-                    attr.args.push_back(parseAttribArg());
+                    if (!first)
+                        expect(TokenKind::Comma);
+
+                    first = false;
+                    attr->args.push_back(parseAttribArg());
                 }
                 while (!match(TokenKind::RParen));
             }
             expect(TokenKind::RBracketRBracket);
-            m_pendingAttributes.push_back(attr);
+            m_pendingAttributes->attributes.push_back(attr);
         }
     }
 
-    std::vector<Attribute> Parser::takeAttributes()
+    Attributes* Parser::takeAttributes()
     {
-        auto pending = m_pendingAttributes;
-        m_pendingAttributes.clear();
+        auto* pending = m_pendingAttributes;
+        m_pendingAttributes = create<Attributes>();
         return pending;
     }
 
-    AttributeArg Parser::parseAttribArg()
+    AttributeArg* Parser::parseAttribArg()
     {
+        SourceSpan startSpan = peek().span;
+        auto* arg = create<AttributeArg>();
+
         if(check(TokenKind::Identifier))
         {
-            auto name = parseName();
-            AttribArgValue value;
-            if(match(TokenKind::Equal))
-            {
-                if(check(TokenKind::Identifier))
-                    return AttributeArg{ name.parts.front(), parseName() };
+            auto name = consume(TokenKind::Identifier);
+            arg->name = m_symbolTable.intern(name.text);
 
-                return AttributeArg{ parseLiteral() };
-            }
-
-            return AttributeArg{ name };
+            expect(TokenKind::Equal);
         }
 
-        return AttributeArg{ parseLiteral() };
+        arg->expression = parseExpression();
+        arg->span = SourceSpan::between(startSpan, previous().span);
+
+        return arg;
     }
 
     ParserState Parser::saveState() const

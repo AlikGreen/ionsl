@@ -83,7 +83,10 @@ private:
     TypeId resolveAliasType(NamedTypeSyntax& syntax, const AliasDecl& alias, const SemaContext& ctx);
     TypeId resolveArrayType(ArrayTypeSyntax& syntax, const SemaContext& ctx);
 
-    std::vector<DeclId> find(QualifiedName name, const SemaContext& ctx);
+    std::vector<DeclId> findInScopeChain(SymbolId name, ScopeId scope) const;
+    std::vector<DeclId> findUnqualified(SymbolId name, const SemaContext& ctx) const;
+    std::vector<DeclId> find(const QualifiedName& name, const SemaContext& ctx) const;
+    ScopeId memberScopeOf(const Declaration &decl) const;
 
     static PrimitiveKind toPrimitiveKind(const std::string &name);
 

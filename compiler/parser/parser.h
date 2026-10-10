@@ -43,7 +43,7 @@ private:
     DeclAllocator& m_declAllocator;
 
     ScopeId m_currentScope{};
-    std::vector<Attribute> m_pendingAttributes;
+    Attributes* m_pendingAttributes;
 
     Declaration* parseDeclaration();
     FunctionDecl* parseFunctionDecl();
@@ -92,8 +92,8 @@ private:
     ConstantValue parseLiteral();
 
     void parseAttributes();
-    std::vector<Attribute> takeAttributes();
-    AttributeArg parseAttribArg();
+    Attributes* takeAttributes();
+    AttributeArg* parseAttribArg();
 
     static std::optional<std::pair<uint32_t, uint32_t>> getBindingPower(TokenKind kind);
 

@@ -50,8 +50,7 @@ public:
 
     void registerDecl(ScopeId scopeId, SymbolId name, DeclId id);
 
-    // FIXME split into findValueDecls and findTypeDecls
-    [[nodiscard]] std::span<const DeclId> find(ScopeId scopeId, SymbolId name) const;
+    [[nodiscard]] std::vector<DeclId> find(ScopeId scopeId, SymbolId name) const;
 private:
     uint32_t m_nextScopeId = 2;
     std::unordered_map<ScopeId, Scope> m_scopes;

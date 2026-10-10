@@ -4,55 +4,54 @@
 #include <variant>
 
 #include "constantValue.h"
+#include "expressions.h"
 #include "qualifiedName.h"
+#include "../common/arena.h"
 
 namespace ionsl
 {
-using AttribArgValue = std::variant<QualifiedName, ConstantValue>;
-
-struct AttributeArg
+class AttributeArg : public AstNode
 {
-    AttributeArg(const SymbolId name, AttribArgValue value)
-        : name(name), value(std::move(value)) { }
+public:
+    AttributeArg() = default;
 
-    explicit AttributeArg(AttribArgValue value)
-        : name(SymbolId::Invalid), value(std::move(value)) { }
+    AttributeArg* clone(Arena& arena) const override;
 
-    SymbolId name{};
-    AttribArgValue value;
+    SymbolId name = SymbolId::Invalid;
+    SourceSpan span{};
+    Expression* expression{};
+    std::optional<ConstantValue> value{};
 };
 
-struct Attribute
+class Attribute : public AstNode
 {
+public:
+    Attribute() = default;
+
+    Attribute* clone(Arena& arena) const override;
+
     QualifiedName name;
-    std::vector<AttributeArg> args;
+    SourceSpan span;
+    std::vector<AttributeArg*> args;
+    DeclId decl = DeclId::Error;
 
-    const AttributeArg& getArgOr(const SymbolId argName, const AttributeArg& val) const
-    {
-        for (const auto& arg : args)
-        {
-            if (arg.name == argName)
-                return arg;
-        }
-
-        return val;
-    }
+    const AttributeArg& getArgOr(SymbolId argName, const AttributeArg& val) const;
 };
 
-class Attributes
+class Attributes : public AstNode
 {
 public:
     Attributes() = default;
     // ReSharper disable once CppNonExplicitConvertingConstructor
-    Attributes(const std::vector<Attribute> &attributes) : m_attributes(attributes) { } // NOLINT(*-explicit-constructor)
-
-    [[nodiscard]] const std::vector<Attribute>& attributes() const { return m_attributes; }
+    Attributes(std::vector<Attribute*> attributes) : attributes(std::move(attributes)) { } // NOLINT(*-explicit-constructor)
 
     [[nodiscard]] bool contains(const QualifiedName &name) const;
     [[nodiscard]] bool contains(const std::string &name, const SymbolTable& symbols) const;
 
     [[nodiscard]] const Attribute* find(const std::string &name, const SymbolTable& symbols) const;
-private:
-    std::vector<Attribute> m_attributes;
+
+    Attributes* clone(Arena& arena) const override;
+
+    std::vector<Attribute*> attributes;
 };
 }

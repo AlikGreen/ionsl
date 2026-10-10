@@ -36,7 +36,7 @@ namespace ionsl
 
     bool HlslGenerator::genFunctionDecl(const FunctionDecl &decl)
     {
-        if(!decl.genericParams.empty() || decl.attributes.contains("hlsl", m_symbols))
+        if(!decl.genericParams.empty() || (decl.attributes && decl.attributes->contains("hlsl", m_symbols)))
         {
             if (decl.instances.empty())
                 return false;
@@ -69,15 +69,16 @@ namespace ionsl
             m_writer.space();
             m_writer.writeSymbol(param->name);
 
-            for (const auto& attrib : param->attributes.attributes())
-            {
-                std::string hlslName = convertAttribute(attrib);
-                if (!hlslName.empty())
+            if (param->attributes)
+                for (const auto* attrib : param->attributes->attributes)
                 {
-                    m_writer.write(" : {}", hlslName);
-                    break;
+                    std::string hlslName = convertAttribute(*attrib);
+                    if (!hlslName.empty())
+                    {
+                        m_writer.write(" : {}", hlslName);
+                        break;
+                    }
                 }
-            }
 
             if(param->initializer)
             {
@@ -180,7 +181,7 @@ namespace ionsl
 
     void HlslGenerator::genResourceDecl(const ValueDecl &decl)
     {
-        if (decl.attributes.contains("constant", m_symbols))
+        if (decl.attributes->contains("constant", m_symbols))
         {
             m_writer.write("ConstantBuffer<");
             genType(decl.type->resolvedType);
@@ -188,13 +189,13 @@ namespace ionsl
             m_writer.writeSymbol(decl.name);
             m_writer.write(";"); // TODO generate binding
         }
-        else if (decl.attributes.contains("storage", m_symbols))
+        else if (decl.attributes->contains("storage", m_symbols))
         {
             auto arrayType = m_typeTable.getInfo(decl.type->resolvedType).as<ArrayType>();
             if (!arrayType) return;
 
             // TODO if the type is byte array then use ByteAddressBuffer
-            if (auto access = decl.attributes.find("access", m_symbols))
+            if (auto access = decl.attributes->find("access", m_symbols))
             {
                 // TODO if it is writable prepend "RW"
             }
@@ -728,8 +729,10 @@ namespace ionsl
 
     bool HlslGenerator::isResourceDecl(const ValueDecl &decl)
     {
-        if (decl.attributes.contains("constant", m_symbols) ||
-            decl.attributes.contains("storage", m_symbols))
+        if (!decl.attributes) return false;
+
+        if (decl.attributes->contains("constant", m_symbols) ||
+            decl.attributes->contains("storage", m_symbols))
         {
             return true;
         }

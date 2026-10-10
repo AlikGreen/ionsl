@@ -13,7 +13,7 @@ class GlobalScope
 public:
     explicit GlobalScope(const Module& module);
     void registerDecl(SymbolId name, DeclId id);
-    [[nodiscard]] std::span<const DeclId> find(SymbolId name) const;
+    [[nodiscard]] std::vector<DeclId> find(SymbolId name) const;
 private:
     std::unordered_map<SymbolId, std::vector<DeclId>> m_decls;
 };
