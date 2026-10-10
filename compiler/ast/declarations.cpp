@@ -126,7 +126,8 @@ namespace ionsl
         decl->members = members;
         for (auto& member : decl->members)
         {
-            member.initializer = member.initializer->clone(arena);
+            if (member.initializer)
+                member.initializer = member.initializer->clone(arena);
         }
         return decl;
     }

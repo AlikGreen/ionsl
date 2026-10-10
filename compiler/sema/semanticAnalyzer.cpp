@@ -98,8 +98,10 @@ namespace ionsl
         for(const auto arg : expression.genericArgs)
             resolveTypeArg(*arg, ctx);
 
+        m_speculative = true;
         if(resolveType(*typeSyntax, ctx) != TypeId::Error)
         {
+            m_speculative = false;
             auto* construct = m_module.arena().create<ConstructExpr>();
             construct->type = typeSyntax;
             construct->args = expression.args;
@@ -107,6 +109,7 @@ namespace ionsl
             slot = construct;
             return typeSyntax->resolvedType;
         }
+        m_speculative = false;
 
         // TODO check non identifier calls eg
         // var func = () -> { return 2; };
@@ -272,7 +275,6 @@ namespace ionsl
                 bestCandidateType = m_typeSystem.types().getEnumType(enumeration->id);
                 bestCandidateDecl = id;
             }
-            // TODO other decl types
         }
 
         // TODO diagnostics if no candidates
@@ -589,6 +591,11 @@ namespace ionsl
             checkFunctionDeclSignature(*method, ctx);
     }
 
+    void SemanticAnalyzer::checkAttribute(Attribute &attribute, const SemaContext &ctx)
+    {
+        auto candidates = m_scopeTable.find(ctx.scope, attribute.name.parts.back());
+    }
+
     TypeId SemanticAnalyzer::resolveType(TypeSyntax& syntax, const SemaContext& ctx)
     {
         if(auto* namedSyntax = syntax.as<NamedTypeSyntax>())
@@ -624,7 +631,7 @@ namespace ionsl
     {
         if(syntax.arguments.size() != 2)
         {
-            // TODO diagnostics
+            error(syntax.span, "vector type expects 2 arguments");
             return TypeId::Error;
         }
 
@@ -634,12 +641,24 @@ namespace ionsl
         const auto primitiveElementType = m_typeSystem.types().getInfo(elementType).as<PrimitiveType>();
 
         if (!primitiveElementType)
-            return TypeId::Error; // TODO diagnostics
+        {
+            error(syntax.span, "vector element type must be a scalar type");
+            return TypeId::Error;
+        }
 
         const auto res = m_evaluator.evaluate(*syntax.arguments.at(1)->as<TypeArgumentValue>()->expression);
-        if(!res) return TypeId::Error; // TODO diagnostics
+        if(!res || !std::holds_alternative<ConstantInt>(*res))
+        {
+            error(syntax.arguments.at(1)->span, "vector dimension must be a compile-time constant integer");
+            return TypeId::Error;
+        }
 
         const uint32_t dimension = std::get<ConstantInt>(*res).value; // TODO check signedness
+
+        if (dimension < 2 || dimension > 4)
+        {
+            error(syntax.arguments.at(1)->span, "invalid vector dimension ({}), dimension must be between 2 and 4", dimension);
+        }
 
         return syntax.resolvedType = m_typeSystem.types().getVectorType(primitiveElementType->kind, dimension);
     }
@@ -648,7 +667,7 @@ namespace ionsl
     {
         if(syntax.arguments.size() != 3)
         {
-            // TODO diagnostics
+            error(syntax.span, "matrix type expects 3 arguments");
             return TypeId::Error;
         }
 
@@ -657,15 +676,39 @@ namespace ionsl
         const auto primitiveElementType = m_typeSystem.types().getInfo(elementType).as<PrimitiveType>();
 
         if (!primitiveElementType)
-            return TypeId::Error; // TODO diagnostics
+        {
+            error(syntax.span, "matrix element type must be a scalar type");
+            return TypeId::Error;
+        }
 
         const auto rowsRes = m_evaluator.evaluate(*syntax.arguments.at(1)->as<TypeArgumentValue>()->expression);
-        if(!rowsRes) return TypeId::Error; // TODO diagnostics
-        const uint32_t rows =std::get<ConstantInt>(*rowsRes).value; // TODO check signedness
+
+        if(!rowsRes || !std::holds_alternative<ConstantInt>(*rowsRes))
+        {
+            error(syntax.arguments.at(1)->span, "matrix rows must be a compile-time constant integer");
+            return TypeId::Error;
+        }
+
+        const uint32_t rows = std::get<ConstantInt>(*rowsRes).value;
+
+        if (rows < 1 || rows > 4)
+        {
+            error(syntax.arguments.at(1)->span, "invalid matrix rows ({}), rows must be between 1 and 4", rows);
+        }
 
         const auto columnsRes = m_evaluator.evaluate(*syntax.arguments.at(2)->as<TypeArgumentValue>()->expression);
-        if(!columnsRes) return TypeId::Error; // TODO diagnostics
+        if(!columnsRes || !std::holds_alternative<ConstantInt>(*columnsRes))
+        {
+            error(syntax.arguments.at(2)->span, "matrix columns must be a compile-time constant integer");
+            return TypeId::Error;
+        }
+
         const uint32_t columns = std::get<ConstantInt>(*columnsRes).value; // TODO check signedness
+
+        if (columns < 2 || columns > 4)
+        {
+            error(syntax.arguments.at(2)->span, "invalid matrix columns ({}), columns must be between 2 and 4", columns);
+        }
 
         return syntax.resolvedType = m_typeSystem.types().getMatrixType(primitiveElementType->kind, rows, columns);
     }
@@ -715,12 +758,12 @@ namespace ionsl
             }
         }
 
-        return TypeId::Error; // TODO diagnostics
+        error(syntax.span, "unknown type '{}'", syntax.name.string(m_symbols));
+        return TypeId::Error;
     }
 
     TypeId SemanticAnalyzer::resolveAliasType(NamedTypeSyntax& syntax, const AliasDecl& alias, const SemaContext& ctx)
     {
-
         if(alias.genericParams.size() != syntax.arguments.size())
             return TypeId::Error; // TODO diagnostics
 
@@ -761,11 +804,42 @@ namespace ionsl
         {
             checkExpression(syntax.size, ctx);
             const auto sizeRes = m_evaluator.evaluate(*syntax.size);
-            if(!sizeRes) return TypeId::Error; // TODO diagnostics
-            size = std::get<ConstantInt>(*sizeRes).value; // TODO check signedness
+            if(!sizeRes || !std::holds_alternative<ConstantInt>(*sizeRes))
+            {
+                error(syntax.size->span, "array size must be a compile-time constant integer");
+                return TypeId::Error;
+            }
+            size = std::get<ConstantInt>(*sizeRes).value;
+            if(*size < 1)
+            {
+                error(syntax.size->span, "array size must be a non-zero positive integer");
+                return TypeId::Error;
+            }
         }
 
         return syntax.resolvedType = m_typeSystem.types().getArrayType(syntax.elementType->resolvedType, size);
+    }
+
+    std::vector<DeclId> SemanticAnalyzer::find(QualifiedName name, const SemaContext &ctx)
+    {
+        // TODO implement searching through namespaces (which dont exist)
+        static_assert(false);
+        if (name.parts.empty()) return {};
+
+        std::vector<DeclId> decls{};
+        ScopeId currentScope = ctx.scope;
+
+        while (decls.empty() && currentScope != ScopeId::None)
+        {
+
+        }
+
+        if (decls.empty())
+        {
+
+        }
+
+        return decls;
     }
 
     PrimitiveKind SemanticAnalyzer::toPrimitiveKind(const std::string &name)

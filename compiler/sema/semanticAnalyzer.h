@@ -1,11 +1,11 @@
 #pragma once
-#include <span>
 
 #include "constantEvaluator.h"
 #include "genericInstantiator.h"
 #include "globalScope.h"
 #include "semaContext.h"
 #include "../ast/declarations.h"
+#include "../ast/module.h"
 #include "../ast/statements.h"
 #include "../ast/type.h"
 
@@ -39,6 +39,7 @@ private:
     GlobalScope m_globalScope;
     GenericInstantiator m_genericInstantiator;
     std::unordered_map<DeclId, std::vector<TypeId>> m_specializations{};
+    bool m_speculative = false;
 
     TypeId checkExpression(Expression*& expression, const SemaContext& ctx);
     TypeId checkBinaryExpr(BinaryExpr& expression, const SemaContext& ctx);
@@ -71,6 +72,8 @@ private:
     void checkStructDeclSignature(const StructDecl& declaration, const SemaContext& ctx);
     void checkInterfaceDeclSignature(const InterfaceDecl& declaration, const SemaContext& ctx);
 
+    void checkAttribute(Attribute& attribute, const SemaContext &ctx);
+
     TypeId resolveType(TypeSyntax& syntax, const SemaContext& ctx);
     TypeId resolveTypeArg(TypeArgument& arg, const SemaContext& ctx);
 
@@ -80,10 +83,19 @@ private:
     TypeId resolveAliasType(NamedTypeSyntax& syntax, const AliasDecl& alias, const SemaContext& ctx);
     TypeId resolveArrayType(ArrayTypeSyntax& syntax, const SemaContext& ctx);
 
+    std::vector<DeclId> find(QualifiedName name, const SemaContext& ctx);
+
     static PrimitiveKind toPrimitiveKind(const std::string &name);
 
     Expression* makeConversion(Expression* operand, TypeId type) const;
 
     uint8_t componentIndex(char c);
+
+    template<typename... Args>
+    void error(SourceSpan span, std::format_string<Args...> fmt, Args&&... args)
+    {
+        if (!m_speculative)
+            m_module.diagnostics().error(span, fmt, std::forward<Args>(args)...);
+    }
 };
 }
