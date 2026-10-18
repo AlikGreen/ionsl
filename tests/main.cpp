@@ -53,7 +53,7 @@ bool testShaderFile(const std::string& path, ionsl::Compiler& compiler)
         return false;
     }
 
-    auto module = compiler.compile(*source);
+    auto module = compiler.parse(*source);
     printDiagnostics(module.diagnostics().logs());
 
     if (!module.diagnostics().logs().empty())
@@ -64,14 +64,17 @@ bool testShaderFile(const std::string& path, ionsl::Compiler& compiler)
 
     std::cout << "OK ({} top-level decls)\n" << module.declarations().size() << std::endl;
 
-    auto epDecl = module.findTopLevelDecl("vertexMain");
+    auto genericEP = module.findEntryPoint("vertexMain");
     auto type = module.findType("f32");
 
     ionsl::LinkDescription desc{};
     desc.modules = { &module };
-    desc.specializations[*epDecl] = { *type };
+    desc.specializations[*genericEP] = { { *type }, "vertexMain_f32" };
+
 
     ionsl::Module linked = compiler.link(desc);
+
+    auto ep = linked.findEntryPoint("vertexMain_f32");
 
     printDiagnostics(linked.diagnostics().logs());
     if (!linked.diagnostics().logs().empty())
@@ -80,10 +83,12 @@ bool testShaderFile(const std::string& path, ionsl::Compiler& compiler)
         return false;
     }
 
-    std::string hlsl = compiler.generate<ionsl::HlslGenerator>(linked);
+    ionsl::Module extracted = compiler.extract(linked, { *ep });
+
+    std::string hlsl = compiler.generate<ionsl::HlslGenerator>(extracted);
     std::cout << hlsl << std::endl;
 
-    auto reflection = compiler.reflect(linked);
+    auto reflection = compiler.reflect(extracted);
     std::cout << reflection.entryPoints.size();
 
     return true;
@@ -97,7 +102,8 @@ int main()
         // "test2.ionsl",
         // "test3.ionsl",
         // "test4.ionsl",
-        "test5.ionsl"
+        // "test5.ionsl",
+        "generictest.ionsl"
     };
 
     ionsl::Compiler compiler;

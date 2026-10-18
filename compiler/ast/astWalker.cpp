@@ -131,6 +131,7 @@ namespace ionsl
                 walk(*value->initializer);
         }
 
+
         if(auto* alias = declaration.as<AliasDecl>())
         {
             walk(*alias->targetType);

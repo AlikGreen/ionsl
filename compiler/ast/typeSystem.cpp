@@ -24,6 +24,8 @@ namespace ionsl
         TypeInfo fromInfo = m_types.getInfo(from);
         TypeInfo toInfo = m_types.getInfo(to);
 
+        if (fromInfo.is<GenericType>() || toInfo.is<GenericType>()) return 1;
+
         if(fromInfo.kind.index() != toInfo.kind.index()) return std::nullopt;
         if(!fromInfo.is<PrimitiveType>()) return std::nullopt;
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <unordered_set>
+
 #include "constantEvaluator.h"
 #include "genericInstantiator.h"
 #include "globalScope.h"
@@ -12,11 +14,12 @@
 
 namespace ionsl
 {
+    struct EntrypointSpecialization;
 
-class SemanticAnalyzer
+    class SemanticAnalyzer
 {
 public:
-    SemanticAnalyzer(Module& module, SymbolTable& symbolTable, TypeSystem& typeSystem, ScopeTable& scopeTable, DeclAllocator& declAllocator, const std::unordered_map<DeclId, std::vector<TypeId>>& specializations = {})
+    SemanticAnalyzer(Module& module, SymbolTable& symbolTable, TypeSystem& typeSystem, ScopeTable& scopeTable, DeclAllocator& declAllocator, const std::unordered_map<DeclId, EntrypointSpecialization>& specializations = {})
         :   m_module(module), m_symbols(symbolTable), m_typeSystem(typeSystem), m_scopeTable(scopeTable), m_declAllocator(declAllocator),
             m_declTable(module), m_evaluator(m_declTable, m_typeSystem),
             m_globalScope(module), m_genericInstantiator(m_typeSystem, m_declAllocator, m_module), m_specializations(specializations)
@@ -24,12 +27,12 @@ public:
     }
 
     void analyze();
-    static void analyze(Module& module, SymbolTable& symbolTable, TypeSystem& typeSystem, ScopeTable& scopeTable, DeclAllocator& declAllocator, const std::unordered_map<DeclId, std::vector<TypeId>>& specializations);
+    static void analyze(Module& module, SymbolTable& symbolTable, TypeSystem& typeSystem, ScopeTable& scopeTable, DeclAllocator& declAllocator, const std::unordered_map<DeclId, EntrypointSpecialization>& specializations);
 private:
     friend class Module;
 
     Module& m_module;
-    const SymbolTable& m_symbols;
+    SymbolTable& m_symbols;
 
     TypeSystem& m_typeSystem;
     ScopeTable& m_scopeTable;
@@ -38,15 +41,18 @@ private:
     ConstantEvaluator m_evaluator;
     GlobalScope m_globalScope;
     GenericInstantiator m_genericInstantiator;
-    std::unordered_map<DeclId, std::vector<TypeId>> m_specializations{};
+    std::unordered_map<DeclId, EntrypointSpecialization> m_specializations{};
     bool m_speculative = false;
+    std::array<uint32_t, 16> m_nextBindingIndices{};
+    std::unordered_set<uint32_t> m_takenBindingIndices{};
+    std::vector<ResourceDecl*> m_pendingResources{};
 
     TypeId checkExpression(Expression*& expression, const SemaContext& ctx);
     TypeId checkBinaryExpr(BinaryExpr& expression, const SemaContext& ctx);
     TypeId checkUnaryExpr(UnaryExpr& expression, const SemaContext& ctx);
     TypeId checkCallExpr(Expression*& slot, CallExpr& expression, const SemaContext& ctx);
-    TypeId checkIdentifierCall(CallExpr& expression, const IdentifierExpr& identifier, const SemaContext& ctx);
-    TypeId checkIdentifierExpr(IdentifierExpr& expression, const SemaContext& ctx) const;
+    TypeId checkIdentifierCall(CallExpr& expression, IdentifierExpr& identifier, const SemaContext& ctx);
+    TypeId checkIdentifierExpr(IdentifierExpr& expression, const SemaContext& ctx);
     TypeId checkIndexExpr(IndexExpr& expression, const SemaContext& ctx);
     TypeId checkLiteralExpr(LiteralExpr& expression) const;
     TypeId checkFieldAccessExpr(Expression*&, FieldAccessExpr& expression, const SemaContext& ctx);
@@ -68,7 +74,7 @@ private:
     void checkAttributeDecl(const AttributeDecl& declaration, const SemaContext& ctx);
 
     void checkDeclarationSignature(Declaration& declaration, const SemaContext& ctx);
-    void checkFunctionDeclSignature(const FunctionDecl& declaration, const SemaContext& ctx);
+    void checkFunctionDeclSignature(FunctionDecl& declaration, const SemaContext& ctx);
     void checkStructDeclSignature(const StructDecl& declaration, const SemaContext& ctx);
     void checkInterfaceDeclSignature(const InterfaceDecl& declaration, const SemaContext& ctx);
 
@@ -82,6 +88,11 @@ private:
     TypeId resolveNamedType(NamedTypeSyntax& syntax, const SemaContext& ctx);
     TypeId resolveAliasType(NamedTypeSyntax& syntax, const AliasDecl& alias, const SemaContext& ctx);
     TypeId resolveArrayType(ArrayTypeSyntax& syntax, const SemaContext& ctx);
+
+    uint32_t nextBindingIndex(uint32_t space);
+    ResourceDecl* findResourceDecl(const ValueDecl& param) const;
+    std::optional<ResourceKind> getResourceKind(const ValueDecl& param);
+    bool tryExtractResourceDecl(const ValueDecl& param, const FunctionDecl &function);
 
     std::vector<DeclId> findInScopeChain(SymbolId name, ScopeId scope) const;
     std::vector<DeclId> findUnqualified(SymbolId name, const SemaContext& ctx) const;

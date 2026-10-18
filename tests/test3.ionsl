@@ -1,3 +1,5 @@
+attribute flags();
+
 enum CullMode
 {
     None,
@@ -40,10 +42,14 @@ struct VertexOutput
 
 fn applyChannelMask(color : vec4f, mask : ChannelMask) -> vec4f
 {
-    var r : f32 = ((mask & ChannelMask::Red)   != ChannelMask::None) ? color.x : 0.0;
-    var g : f32 = ((mask & ChannelMask::Green) != ChannelMask::None) ? color.y : 0.0;
-    var b : f32 = ((mask & ChannelMask::Blue)  != ChannelMask::None) ? color.z : 0.0;
-    var a : f32 = ((mask & ChannelMask::Alpha) != ChannelMask::None) ? color.w : 1.0;
+    var r : f32 = 0.0f; // ((mask & ChannelMask::Red)   != ChannelMask::None) ? color.x : 0.0;
+    var g : f32 = 0.0f; // ((mask & ChannelMask::Green) != ChannelMask::None) ? color.y : 0.0;
+    var b : f32 = 0.0f; // ((mask & ChannelMask::Blue)  != ChannelMask::None) ? color.z : 0.0;
+    var a : f32 = 0.0f; // ((mask & ChannelMask::Alpha) != ChannelMask::None) ? color.w : 1.0;
+
+    if((ChannelMask::Red & mask) != ChannelMask::None)
+        r = color.r;
+
     return vec4f(r, g, b, a);
 }
 
@@ -62,7 +68,7 @@ fn fragmentMain(input : VertexOutput, [[constant]] config : PipelineConfig) -> v
 {
     var lightDir : vec3f = normalize(vec3f(0.5, 1.0, 0.2));
     var lit : vec3f = shadeSurface(config.shading, vec3f(0.8, 0.2, 0.2), input.normal, lightDir);
-    var rawCode : u32 = cast::<u32>(config.shading);
+    var rawCode : u32 = u32(config.shading);
     if (rawCode == 0u)
     {
         return vec4f(lit, 1.0);

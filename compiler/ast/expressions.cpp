@@ -34,6 +34,7 @@ namespace ionsl
         auto* newExpr = arena.create<IdentifierExpr>();
         newExpr->span = span;
         newExpr->name = name;
+        newExpr->decl = decl;
         return newExpr;
     }
 

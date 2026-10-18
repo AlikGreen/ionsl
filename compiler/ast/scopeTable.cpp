@@ -28,6 +28,19 @@ namespace ionsl
         m_scopes[scopeId].decls[name].push_back(id);
     }
 
+    void ScopeTable::unregisterDecl(const ScopeId scopeId, const SymbolId name, const DeclId id)
+    {
+        auto& decls = m_scopes[scopeId].decls[name];
+        for (auto it = decls.begin(); it != decls.end(); ++it)
+        {
+            if (*it == id)
+            {
+                decls.erase(it);
+                break;
+            }
+        }
+    }
+
 
     std::vector<DeclId> ScopeTable::find(ScopeId scopeId, const SymbolId name) const
     {

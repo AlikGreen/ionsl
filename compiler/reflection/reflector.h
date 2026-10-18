@@ -30,6 +30,9 @@ private:
     ReflectedType reflectMatrixType(const MatrixType& type);
     ReflectedType reflectVectorType(const VectorType& type);
 
+    ReflectedAttributes reflectAttributes(const Attributes& attributes);
+    ReflectedAttribute reflectAttribute(const Attribute& attribute);
+
     static ShaderStage convertStage(const std::string &name);
     static uint32_t primitiveSize(PrimitiveKind kind);
 };

@@ -17,7 +17,6 @@ public:
 
 private:
     CodeWriter m_writer;
-    std::unordered_map<char, uint32_t> m_bindingIndices;
 
     void genDecl(const Declaration& decl);
     bool genFunctionDecl(const FunctionDecl& decl);
@@ -26,7 +25,7 @@ private:
     void genVarDeclHeader(const ValueDecl& decl);
     void genVarDecl(const ValueDecl& decl);
     void genEnumDecl(const EnumDecl& decl);
-    void genResourceDecl(const ValueDecl& decl);
+    void genResourceDecl(const ResourceDecl& decl);
 
     void genStmt(Statement& stmt);
     void genExprStmt(ExprStmt& stmt);

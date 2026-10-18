@@ -37,17 +37,44 @@ namespace ionsl
         if (!declaration.genericParams.empty())
             return;
 
-        const auto shaderAttrib = declaration.attributes->find("shader", m_symbols);
-        if (!shaderAttrib || shaderAttrib->args.empty())
+        ReflectedAttributes attribs = reflectAttributes(*declaration.attributes);
+
+        const auto shaderAttrib = attribs.find("shader");
+        if (!shaderAttrib)
             return;
 
-        const auto arg = shaderAttrib->args.at(0)->value;
+        const auto shaderTypeArg = shaderAttrib->find("shaderType");
 
-        if (!arg || !std::holds_alternative<std::string>(*arg))
+        if (!shaderTypeArg || !std::holds_alternative<std::string>(*shaderTypeArg))
             return;
 
         ReflectedEntryPoint ep;
-        ep.stage = convertStage(std::get<std::string>(*arg));
+        ep.attributes = attribs;
+        ep.stage = convertStage(std::get<std::string>(*shaderTypeArg));
+
+        if (ep.stage == ShaderStage::Compute)
+        {
+            const auto numThreadsAttrib = attribs.find("numthreads");
+            if (!numThreadsAttrib)
+                return;
+
+            const auto threadsXArg = numThreadsAttrib->find("x");
+            const auto threadsYArg = numThreadsAttrib->find("y");
+            const auto threadsZArg = numThreadsAttrib->find("z");
+
+            if (!threadsXArg || !threadsYArg || !threadsZArg ||
+                !std::holds_alternative<ConstantInt>(*threadsXArg) ||
+                !std::holds_alternative<ConstantInt>(*threadsYArg) ||
+                !std::holds_alternative<ConstantInt>(*threadsZArg))
+            {
+                // TODO should error since should not be possible after sema
+                return;
+            }
+
+            ep.threadsX = std::get<ConstantInt>(*threadsXArg).value;
+            ep.threadsY = std::get<ConstantInt>(*threadsYArg).value;
+            ep.threadsZ = std::get<ConstantInt>(*threadsZArg).value;
+        }
 
         for (const auto* param : declaration.params)
         {
@@ -62,11 +89,11 @@ namespace ionsl
         if (declaration.attributes->attributes.empty())
             return;
 
-        ReflectedResourceType resourceType;
+        ResourceKind resourceKind;
         if (declaration.attributes->contains("constant", m_symbols))
-            resourceType = ReflectedResourceType::ConstantBuffer;
+            resourceKind = ResourceKind::ConstantBuffer;
         else if (declaration.attributes->contains("storage", m_symbols))
-            resourceType = ReflectedResourceType::StorageBuffer;
+            resourceKind = ResourceKind::StorageBuffer;
         else
             return; // TODO texture and vertex inputs
 
@@ -74,24 +101,25 @@ namespace ionsl
 
         const ReflectedType t = reflectType(declaration.type->resolvedType);
 
-        // TODO implement constant evaluation to enum
-        auto access = ReflectedAccess::ReadOnly;
-        // if (const auto attrib = declaration.attributes.find("access", m_symbols))
-        // {
-        //     if (!attrib->args.empty() && std::holds_alternative<QualifiedName>(attrib->args.front().value))
-        //     {
-        //         const std::string arg = std::get<QualifiedName>(attrib->args.front().value).string(m_symbols);
-        //
-        //         if (arg == "readonly")
-        //             access = ReflectedAccess::ReadOnly;
-        //         else if (arg == "write")
-        //             access = ReflectedAccess::WriteOnly;
-        //         if (arg == "readwrite")
-        //             access = ReflectedAccess::ReadWrite;
-        //     }
-        // }
+        ReflectedAttributes attrs = reflectAttributes(*declaration.attributes);
 
-        const ReflectedResource res{name, t, access, resourceType};
+        // TODO implement constant evaluation to enum
+        auto access = ResourceAccess::ReadOnly;
+        if (const auto attrib = attrs.find("access"))
+        {
+            const ConstantValue* attribArgVal = attrib->find("access");
+            if (attribArgVal && std::holds_alternative<std::string>(*attribArgVal))
+            {
+                const std::string accessString = std::get<std::string>(*attribArgVal);
+
+                if (accessString == "readonly")
+                    access = ResourceAccess::ReadOnly;
+                if (accessString == "read-write")
+                    access = ResourceAccess::ReadWrite;
+            }
+        }
+
+        ReflectedResource res{name, attrs, t, access, resourceKind};
         ep.resources.push_back(res);
     }
 
@@ -169,6 +197,31 @@ namespace ionsl
         kind.dimension = type.dimension;
         const uint32_t size = primitiveSize(kind.type) * kind.dimension;
         return ReflectedType{ kind, size, size }; // TODO alignment
+    }
+
+    ReflectedAttributes Reflector::reflectAttributes(const Attributes &attributes)
+    {
+        ReflectedAttributes reflectedAttrs{};
+
+        for (const auto* attrib : attributes.attributes)
+        {
+            reflectedAttrs.attributes.push_back(reflectAttribute(*attrib));
+        }
+
+        return reflectedAttrs;
+    }
+
+    ReflectedAttribute Reflector::reflectAttribute(const Attribute &attribute)
+    {
+        ReflectedAttribute attr{};
+        attr.name = attribute.name.string(m_symbols);
+
+        for (const auto& arg : attribute.args)
+        {
+            attr.args[m_symbols.get(arg->name)] = *arg->value; // TODO maybe check if null but should never be after sema
+        }
+
+        return attr;
     }
 
     ShaderStage Reflector::convertStage(const std::string &name)

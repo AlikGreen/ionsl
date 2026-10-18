@@ -4,11 +4,41 @@
 #include <utility>
 #include <vector>
 
+#include "../ast/constantValue.h"
 #include "../ast/type.h"
+#include "../common/enums.h"
 
 
 namespace ionsl
 {
+struct ReflectedAttribute
+{
+    std::string name;
+    std::unordered_map<std::string, ConstantValue> args{};
+
+
+    ConstantValue* find(const std::string &argName)
+    {
+        if (const auto it = args.find(argName); it != args.end())
+            return &it->second;
+
+        return nullptr;
+    }
+};
+
+struct ReflectedAttributes
+{
+    std::vector<ReflectedAttribute> attributes;
+
+    ReflectedAttribute* find(const std::string &name)
+    {
+        for (auto& attr : attributes)
+            if (attr.name == name) return &attr;
+
+        return nullptr;
+    }
+};
+
 class ReflectedType;
 
 
@@ -58,33 +88,22 @@ private:
     uint32_t m_alignment{};
 };
 
-enum class ReflectedResourceType
-{
-    ConstantBuffer, PushConstant, StorageBuffer, Texture,
-};
-
-enum class ReflectedAccess
-{
-    ReadOnly, WriteOnly, ReadWrite
-};
 
 // TODO texture dimension
 struct ReflectedResource
 {
     std::string name;
+    ReflectedAttributes attributes;
     ReflectedType type;
-    ReflectedAccess access;
-    ReflectedResourceType resourceType;
-};
-
-enum class ShaderStage
-{
-    Vertex, Pixel, Geometry, Mesh, Hull, Amplification, Compute, Unknown
+    ResourceAccess access;
+    ResourceKind kind;
 };
 
 struct ReflectedEntryPoint
 {
+    ReflectedAttributes attributes;
     ShaderStage stage;
+    uint32_t threadsX, threadsY, threadsZ;
     std::vector<ReflectedResource> resources;
 };
 

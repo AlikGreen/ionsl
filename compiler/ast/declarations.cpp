@@ -51,6 +51,22 @@ namespace ionsl
         return decl;
     }
 
+    ResourceDecl* ResourceDecl::clone(Arena &arena) const
+    {
+        auto* decl = arena.create<ResourceDecl>();
+        decl->span = span;
+        decl->id = id;
+        decl->attributes = attributes->clone(arena);
+        decl->name = name;
+        decl->type = type;
+        decl->space = space;
+        decl->index = index;
+        decl->access = access;
+        decl->kind = kind;
+        decl->usedBy = usedBy;
+        return decl;
+    }
+
     InterfaceDecl* InterfaceDecl::clone(Arena &arena) const
     {
         auto* decl = arena.create<InterfaceDecl>();
@@ -122,7 +138,9 @@ namespace ionsl
         decl->id = id;
         decl->attributes = attributes->clone(arena);
 
-        decl->underlyingType = underlyingType->clone(arena);
+        if (decl->underlyingType)
+            decl->underlyingType = underlyingType->clone(arena);
+
         decl->members = members;
         for (auto& member : decl->members)
         {

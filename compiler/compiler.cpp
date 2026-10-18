@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <fstream>
 
+#include "extractor/extractor.h"
 #include "lexer/lexer.h"
 #include "parser/parser.h"
 #include "reflection/reflector.h"
@@ -29,10 +30,10 @@ namespace ionsl
     Compiler::Compiler()
         : m_typeSystem(m_typeTable, m_symbolTable)
     {
-        m_stdlib = compile(*loadFile(R"(C:\Users\alikg\CLionProjects\ionsl\std\core.ionsl)"));
+        m_stdlib = parse(*loadFile(R"(C:\Users\alikg\CLionProjects\ionsl\std\core.ionsl)"));
     }
 
-    Module Compiler::compile(const std::string &source)
+    Module Compiler::parse(const std::string &source)
     {
         auto tokens = Lexer::tokenize(source);
         return Parser::parse(tokens, *this);
@@ -50,6 +51,11 @@ namespace ionsl
         SemanticAnalyzer::analyze(module, m_symbolTable, m_typeSystem, m_scopeTable, m_declAllocator, desc.specializations);
 
         return std::move(module);
+    }
+
+    Module Compiler::extract(const Module &module, const std::vector<DeclId> &entryPoints)
+    {
+        return Extractor(module, *this, m_typeTable, entryPoints).extract();
     }
 
     ShaderReflection Compiler::reflect(const Module &module)

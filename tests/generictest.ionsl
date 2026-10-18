@@ -1,0 +1,34 @@
+struct CameraParams
+{
+    viewProj : mat4f,
+    bias     : f32,
+}
+
+struct VertexOutput
+{
+    [[sv_position]] position : vec4f,
+    color                    : vec4f,
+}
+
+fn applyBias<T>(value : T, bias : T) -> T
+{
+    return value + bias;
+}
+
+[[shader("vertex")]]
+fn vertexMain<T>(
+    [[sv_vertexid]] vertexId : u32,
+    [[constant]] camera : CameraParams,
+    [[storage]] positions : vec3f[],
+    [[storage]] scales : T[]
+) -> VertexOutput
+{
+    var mut p : vec3f = positions[vertexId];
+    var mut uv : vec2f = p.xy;
+    var mut scale : T = applyBias::<T>(scales[vertexId], camera.bias);
+
+    var mut clip : vec4f = mul(camera.viewProj, vec4f(p.x * scale, p.y * scale, p.z * scale, 1.0));
+    var mut color : vec4f = vec4f(uv.x, uv.y, 0.0, 1.0);
+
+    return VertexOutput(clip, color);
+}

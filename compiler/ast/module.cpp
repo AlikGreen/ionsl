@@ -28,13 +28,13 @@ namespace ionsl
 
     }
 
-    std::optional<DeclId> Module::findTopLevelDecl(const std::string &name) const
+    std::optional<DeclId> Module::findEntryPoint(const std::string &name) const
     {
         const auto symbolId = m_compiler->m_symbolTable.find(name);
         if(!symbolId) return std::nullopt;
 
         for(const auto* decl : m_declarations)
-            if(decl->name == *symbolId)
+            if(decl->name == *symbolId && decl->attributes->find("shader", m_compiler->m_symbolTable) && decl->is<FunctionDecl>())
                 return decl->id;
 
         return std::nullopt;

@@ -5,21 +5,21 @@
 
 namespace ionsl
 {
-    FunctionDecl* GenericInstantiator::instantiate(const FunctionDecl& genericDecl, const std::vector<TypeArgument*> &typeArgs)
+    FunctionDecl* GenericInstantiator::instantiate(const FunctionDecl& genericDecl, const std::vector<TypeArgument*> &typeArgs, SymbolId newName)
     {
         std::vector<TypeId> typeArgTypes{};
         for(const auto arg : typeArgs)
             typeArgTypes.push_back(arg->resolvedType);
 
-        return instantiate(genericDecl, typeArgTypes);
+        return instantiate(genericDecl, typeArgTypes, newName);
     }
 
-    FunctionDecl * GenericInstantiator::instantiate(const FunctionDecl &genericDecl, const std::vector<TypeId> &typeArgs)
+    FunctionDecl * GenericInstantiator::instantiate(const FunctionDecl &genericDecl, const std::vector<TypeId> &typeArgs, SymbolId newName)
     {
         if(typeArgs.size() != genericDecl.genericParams.size())
             return nullptr;
 
-        size_t key = hashFuncInst(genericDecl.id, typeArgs);
+        size_t key = hashFuncInst(genericDecl.id, typeArgs, newName);
 
         if(const auto it = m_cache.find(key); it != m_cache.end())
             return it->second;
@@ -54,16 +54,21 @@ namespace ionsl
         clone->genericParams.clear();
         walker.walk(*clone);
 
+        if (newName != SymbolId::Invalid)
+            clone->name = newName;
+
         m_cache.emplace(key, clone);
 
         return clone;
     }
 
-    size_t GenericInstantiator::hashFuncInst(const DeclId genericId, const std::vector<TypeId>& typeArgs) const
+    size_t GenericInstantiator::hashFuncInst(const DeclId genericId, const std::vector<TypeId>& typeArgs, const SymbolId name) const
     {
         size_t h = std::hash<DeclId>{}(genericId);
         for(const TypeId t : typeArgs)
             hashCombine(h, t);
+
+        hashCombine(h, name.value());
         return h;
     }
 }

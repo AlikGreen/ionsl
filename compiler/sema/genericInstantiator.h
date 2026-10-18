@@ -15,10 +15,10 @@ public:
     {
     }
 
-    FunctionDecl* instantiate(const FunctionDecl& genericDecl, const std::vector<TypeArgument*> &typeArgs);
-    FunctionDecl* instantiate(const FunctionDecl& genericDecl, const std::vector<TypeId>& typeArgs);
+    FunctionDecl* instantiate(const FunctionDecl& genericDecl, const std::vector<TypeArgument*> &typeArgs, SymbolId newName = SymbolId::Invalid);
+    FunctionDecl* instantiate(const FunctionDecl& genericDecl, const std::vector<TypeId>& typeArgs, SymbolId newName = SymbolId::Invalid);
 private:
-    [[nodiscard]] size_t hashFuncInst(DeclId genericId, const std::vector<TypeId> &typeArgs) const;
+    [[nodiscard]] size_t hashFuncInst(DeclId genericId, const std::vector<TypeId> &typeArgs, SymbolId name) const;
 
     TypeSystem& m_types;
     DeclAllocator& m_declAllocator;

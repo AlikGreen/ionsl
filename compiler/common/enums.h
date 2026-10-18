@@ -6,6 +6,21 @@
 
 namespace ionsl
 {
+enum class ShaderStage
+{
+    Vertex, Pixel, Geometry, Mesh, Hull, Amplification, Compute, Unknown
+};
+
+enum class ResourceAccess
+{
+    ReadOnly, ReadWrite
+};
+
+enum class ResourceKind
+{
+    ConstantBuffer, PushConstant, StorageBuffer, Texture,
+};
+
 enum class BinaryOp : uint8_t
 {
     Add,

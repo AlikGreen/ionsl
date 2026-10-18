@@ -57,6 +57,18 @@ public:
     FunctionDecl* clone(Arena &arena) const override;
 };
 
+class ResourceDecl final : public Declaration
+{
+public:
+    TypeId type;
+    uint32_t space, index;
+    ResourceAccess access;
+    ResourceKind kind;
+    std::vector<DeclId> usedBy;
+
+    ResourceDecl* clone(Arena &arena) const override;
+};
+
 class InterfaceDecl final : public Declaration
 {
 public:

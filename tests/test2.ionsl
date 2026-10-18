@@ -23,7 +23,7 @@ fn classify(val : f32) -> i32
 fn computeMain(
     [[sv_dispatchthreadid]] id : vec3<u32>,
     [[constant]] params : ComputeParams,
-    [[storage]] [[access(readwrite)]] outputBuffer : u32[]
+    [[storage]] [[access("read-write")]] outputBuffer : u32[]
 )
 {
     if (id.x >= params.count)

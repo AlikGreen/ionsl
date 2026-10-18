@@ -38,9 +38,9 @@ public:
 
     [[nodiscard]] Arena& arena() const { return *m_arena; }
 
-    [[nodiscard]] std::optional<DeclId> findTopLevelDecl(const std::string &name) const;
+    [[nodiscard]] std::optional<DeclId> findEntryPoint(const std::string &name) const;
 
-    // warning this is a very bad function and should not be run often
+    // WARNING this is a very bad function and should not be run often
     [[nodiscard]] std::optional<TypeId> findType(const std::string &name) const; // FIXME
 private:
     std::unique_ptr<Arena> m_arena;

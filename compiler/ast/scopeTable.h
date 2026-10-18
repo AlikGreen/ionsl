@@ -49,6 +49,7 @@ public:
     const Scope& getScope(ScopeId id);
 
     void registerDecl(ScopeId scopeId, SymbolId name, DeclId id);
+    void unregisterDecl(ScopeId scopeId, SymbolId name, DeclId id);
 
     [[nodiscard]] std::vector<DeclId> find(ScopeId scopeId, SymbolId name) const;
 private:

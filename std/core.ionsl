@@ -3,14 +3,19 @@
 // [[target(hlsl, "RWStructuredBuffer")]] type RWStructuredBuffer<T>;
 // [[target(hlsl, "SamplerState")]]     type SamplerState;
 
+attribute sv_position();
+attribute sv_vertexid();
+attribute sv_dispatchthreadid();
+attribute builtin(name : string);
+
 attribute constant();
 attribute storage();
-attribute sv_position();
+attribute numthreads(x : u32, y : u32 = 1, z : u32 = 1);
 
 attribute hlsl(function : string);
 attribute shader(shaderType : string);
 
-attribute binding(slot : u32, set : u32 = 0u);
+attribute binding(index : u32, space : u32 = 0u);
 attribute access(access : string);
 
 type vec2<T> = vector::<T, 2>;
@@ -27,7 +32,6 @@ type mat4x4<T> = matrix<T, 4, 4>;
 
 type mat3f = matrix<f32, 3, 3>;
 type mat4f = matrix<f32, 4, 4>;
-
 
 [[hlsl(function = "normalize")]]
 fn normalize(val : vec3f) -> vec3f;

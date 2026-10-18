@@ -5,6 +5,7 @@
 #include <unordered_set>
 
 #include "constantEvaluator.h"
+#include "../compiler.h"
 #include "../ast/declarations.h"
 #include "../ast/module.h"
 
@@ -14,9 +15,17 @@ namespace ionsl
     {
         constexpr SemaContext ctx{};
 
-        for(const auto decl : m_module.declarations())
+        for(auto it = m_module.declarations().begin(); it != m_module.declarations().end(); ++it)
         {
-            checkDeclarationSignature(*decl, ctx);
+            checkDeclarationSignature(*(*it), ctx);
+
+            for (auto* resource : m_pendingResources)
+            {
+                it = m_module.declarations().insert(it, resource);
+                ++it;
+            }
+
+            m_pendingResources.clear();
         }
 
         for(const auto decl : m_module.declarations())
@@ -25,7 +34,7 @@ namespace ionsl
         }
     }
 
-    void SemanticAnalyzer::analyze(Module& module, SymbolTable& symbolTable, TypeSystem& typeSystem, ScopeTable& scopeTable, DeclAllocator& declAllocator, const std::unordered_map<DeclId, std::vector<TypeId>>& specializations)
+    void SemanticAnalyzer::analyze(Module& module, SymbolTable& symbolTable, TypeSystem& typeSystem, ScopeTable& scopeTable, DeclAllocator& declAllocator, const std::unordered_map<DeclId, EntrypointSpecialization>& specializations)
     {
         return SemanticAnalyzer(module, symbolTable, typeSystem, scopeTable, declAllocator, specializations).analyze();
     }
@@ -117,7 +126,7 @@ namespace ionsl
         return checkIdentifierCall(expression, *identifier, ctx);
     }
 
-    TypeId SemanticAnalyzer::checkIdentifierCall(CallExpr& expression, const IdentifierExpr& identifier, const SemaContext& ctx)
+    TypeId SemanticAnalyzer::checkIdentifierCall(CallExpr& expression, IdentifierExpr& identifier, const SemaContext& ctx)
     {
         std::vector<TypeId> argumentTypes;
 
@@ -196,35 +205,19 @@ namespace ionsl
         {
             if (!funcDecl->genericParams.empty())
             {
-                std::optional<FunctionInstance> instance{};
-                for (const auto& inst : funcDecl->instances)
+                std::vector<TypeId> genericArgs;
+                for(const auto* a : expression.genericArgs) genericArgs.push_back(a->resolvedType);
+
+                FunctionDecl* target = nullptr;
+                for(const auto& inst : funcDecl->instances)
+                    if(inst.args == genericArgs) { target = inst.decl; break; }
+
+                if(!target)
                 {
-                    bool same = false;
-                    for (const auto [requiredType, providedType] : std::views::zip(inst.args, expression.genericArgs))
-                    {
-                        if (requiredType != providedType->resolvedType)
-                        {
-                            same = true;
-                            break;
-                        }
-                    }
-
-                    if (same)
-                    {
-                        instance = inst;
-                        break;
-                    }
+                    target = m_genericInstantiator.instantiate(*funcDecl, expression.genericArgs);
+                    funcDecl->instances.push_back({genericArgs, target});
                 }
-
-                if (!instance)
-                {
-                    instance = FunctionInstance{};
-                    instance->decl = m_genericInstantiator.instantiate(*funcDecl, expression.genericArgs);
-                    instance->args = bestCandidate.paramTypes;
-                    funcDecl->instances.push_back(*instance);
-                }
-
-                funcDecl = instance->decl;
+                funcDecl = target;
             }
 
             for(const auto& [arg, param] : std::views::zip(expression.args, funcDecl->params))
@@ -232,6 +225,7 @@ namespace ionsl
                 arg = makeConversion(arg, param->type->resolvedType);
             }
 
+            identifier.decl = funcDecl->id;
             return funcDecl->returnType->resolvedType;
         }
 
@@ -243,9 +237,9 @@ namespace ionsl
         return TypeId::Error;
     }
 
-    TypeId SemanticAnalyzer::checkIdentifierExpr(IdentifierExpr &expression, const SemaContext& ctx) const
+    TypeId SemanticAnalyzer::checkIdentifierExpr(IdentifierExpr &expression, const SemaContext& ctx)
     {
-        auto candidates = find(expression.name, ctx);;
+        auto candidates = find(expression.name, ctx);
         if(candidates.empty())
             candidates = m_globalScope.find(expression.name.parts[0]);
 
@@ -278,6 +272,8 @@ namespace ionsl
         }
 
         // TODO diagnostics if no candidates
+        if (bestCandidateDecl == DeclId::Error)
+            error(expression.span, "cannot resolve name {}", expression.name.string(m_symbols));
 
         expression.decl = bestCandidateDecl;
         return expression.resultType = bestCandidateType;
@@ -480,7 +476,7 @@ namespace ionsl
         {
             if(const auto it = m_specializations.find(declaration.id); it != m_specializations.end())
             {
-                for(const auto [param, typeId] : std::ranges::zip_view(declaration.genericParams, it->second))
+                for(const auto [param, typeId] : std::ranges::zip_view(declaration.genericParams, it->second.typeArgs))
                     subs[param->id] = typeId;
 
                 newCtx = ctx.forGenericDecl(declaration.genericParams, subs);
@@ -493,7 +489,10 @@ namespace ionsl
         if(!declaration.genericParams.empty())
         {
             if(const auto it = m_specializations.find(declaration.id); it != m_specializations.end())
-                m_module.declarations().push_back(m_genericInstantiator.instantiate(declaration, it->second));
+            {
+                SymbolId newName = m_symbols.intern(it->second.newName);
+                m_module.declarations().push_back(m_genericInstantiator.instantiate(declaration, it->second.typeArgs, newName));
+            }
         }
     }
 
@@ -581,14 +580,26 @@ namespace ionsl
         //     checkAliasDeclSignature(*aliasDecl);
     }
 
-    void SemanticAnalyzer::checkFunctionDeclSignature(const FunctionDecl &declaration, const SemaContext &ctx)
+    void SemanticAnalyzer::checkFunctionDeclSignature(FunctionDecl &declaration, const SemaContext &ctx)
     {
-        resolveType(*declaration.returnType, ctx);
+        const auto genericCtx = ctx.forGenericDecl(declaration.genericParams, {});
 
-        auto genericCtx = ctx.forGenericDecl(declaration.genericParams, {});
+        resolveType(*declaration.returnType, genericCtx);
 
-        for(const auto param : declaration.params)
+        for(auto it = declaration.params.begin(); it != declaration.params.end();)
+        {
+            const auto param = *it;
             checkDeclarationSignature(*param, genericCtx);
+
+            if (tryExtractResourceDecl(*param, declaration))
+            {
+                m_scopeTable.unregisterDecl(ctx.scope, (*it)->name, (*it)->id);
+                it = declaration.params.erase(it);
+            }else
+            {
+                ++it;
+            }
+        }
     }
 
     void SemanticAnalyzer::checkStructDeclSignature(const StructDecl &declaration, const SemaContext &ctx)
@@ -597,13 +608,13 @@ namespace ionsl
             checkDeclarationSignature(*field, ctx);
 
         for(const auto method : declaration.methods)
-            checkFunctionDeclSignature(*method, ctx);
+            checkDeclarationSignature(*method, ctx);
     }
 
     void SemanticAnalyzer::checkInterfaceDeclSignature(const InterfaceDecl &declaration, const SemaContext &ctx)
     {
         for(const auto method : declaration.methods)
-            checkFunctionDeclSignature(*method, ctx);
+            checkDeclarationSignature(*method, ctx);
     }
 
     void SemanticAnalyzer::checkAttribute(Attribute &attribute, const SemaContext &ctx)
@@ -915,6 +926,111 @@ namespace ionsl
         }
 
         return syntax.resolvedType = m_typeSystem.types().getArrayType(syntax.elementType->resolvedType, size);
+    }
+
+    uint32_t SemanticAnalyzer::nextBindingIndex(const uint32_t space)
+    {
+        // TODO diagnostics
+        if (space >= 16) return 0;
+
+        while (m_takenBindingIndices.contains(m_nextBindingIndices[space]))
+            m_nextBindingIndices[space]++;
+
+        return m_nextBindingIndices[space]++;
+    }
+
+    ResourceDecl* SemanticAnalyzer::findResourceDecl(const ValueDecl &param) const
+    {
+        for(auto* decl : m_module.declarations())
+        {
+            if (auto* resourceDecl = dynamic_cast<ResourceDecl*>(decl))
+            {
+                // TODO check for storage and remove the array
+                if (resourceDecl->name == param.name && resourceDecl->type == param.type->resolvedType)
+                    return resourceDecl;
+            }
+        }
+
+        return nullptr;
+    }
+
+    std::optional<ResourceKind> SemanticAnalyzer::getResourceKind(const ValueDecl &param)
+    {
+        if (param.attributes->find("constant", m_symbols))
+            return ResourceKind::ConstantBuffer;
+        if (param.attributes->find("storage", m_symbols))
+            return ResourceKind::StorageBuffer;
+
+        // TODO textures
+        return std::nullopt;
+    }
+
+    bool SemanticAnalyzer::tryExtractResourceDecl(const ValueDecl &param, const FunctionDecl &function)
+    {
+        auto resourceKind = getResourceKind(param);
+        if (!resourceKind)
+            return false;
+
+        // if already extracted
+        if (auto resource = findResourceDecl(param))
+        {
+            resource->usedBy.push_back(function.id);
+            return true;
+        }
+
+        uint32_t index = 0;
+        uint32_t space = 0;
+        const auto bindingAttrib = param.attributes->find("binding", m_symbols);
+        if (!bindingAttrib)
+        {
+            index = nextBindingIndex(space);
+        }
+        else
+        {
+            index = std::get<ConstantInt>(*bindingAttrib->getArg("index", m_symbols)->value).value;
+            if (index == -1)
+                index = nextBindingIndex(space);
+            else
+                m_takenBindingIndices.emplace(index);
+
+            space = std::get<ConstantInt>(*bindingAttrib->getArg("space", m_symbols)->value).value;
+        }
+
+        auto access = ResourceAccess::ReadOnly;
+        const auto accessAttrib = param.attributes->find("access", m_symbols);
+        if (accessAttrib)
+        {
+            const std::string accessStr = std::get<std::string>(*accessAttrib->getArg("access", m_symbols)->value);
+            if (accessStr == "read-write")
+                access = ResourceAccess::ReadWrite;
+        }
+
+        TypeId type = param.type->resolvedType;
+
+        // strip the array from the type
+        if (param.attributes->find("storage", m_symbols))
+        {
+            if (const auto arrayType = m_typeSystem.types().getInfo(param.type->resolvedType).as<ArrayType>())
+            {
+                type = arrayType->elementType;
+            }
+        }
+
+        auto* decl = m_module.arena().create<ResourceDecl>();
+        decl->span = param.span;
+        decl->attributes = param.attributes->clone(m_module.arena());
+        decl->name = param.name;
+        decl->type = type;
+        decl->index = index;
+        decl->space = space;
+        decl->access = access;
+        decl->kind = *resourceKind;
+        decl->id = m_declAllocator.allocate();
+        decl->usedBy.push_back(function.id);
+
+        m_pendingResources.push_back(decl);
+
+        return true;
     }
 
     std::vector<DeclId> SemanticAnalyzer::findInScopeChain(const SymbolId name, const ScopeId scope) const

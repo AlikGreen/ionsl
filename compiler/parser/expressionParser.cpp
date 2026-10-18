@@ -177,6 +177,7 @@ namespace ionsl
             case TokenKind::Exclamation:
             case TokenKind::MinusMinus:
             case TokenKind::PlusPlus:
+            case TokenKind::Tilde:
             {
                 advance();
                 Expression* operand = parseExpression(kPrefixUnaryBindingPower);

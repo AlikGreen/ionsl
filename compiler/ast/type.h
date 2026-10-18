@@ -121,6 +121,12 @@ public:
     {
         return std::get_if<T>(&kind);
     }
+
+    template<typename T>
+    const T* as() const
+    {
+        return std::get_if<T>(&kind);
+    }
 };
 
 template<typename T>
