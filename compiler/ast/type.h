@@ -86,6 +86,7 @@ struct MatrixType
 
 struct StructType { DeclId declId{}; };
 struct InterfaceType { DeclId declId{}; };
+struct ResourceType { DeclId declId{}; TypeId containedType{}; };
 struct EnumType { DeclId declId{}; };
 struct GenericType { DeclId declId{}; };
 
@@ -102,6 +103,7 @@ using TypeKind = std::variant<
     EnumType,
     AutoType,
     GenericType,
+    ResourceType,
     ErrorType
 >;
 

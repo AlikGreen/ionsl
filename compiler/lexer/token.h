@@ -90,7 +90,7 @@ constexpr std::string_view tokenKindDisplayName(const TokenKind kind)
         case TokenKind::RAngleRAngle:           return "'>>'";
         case TokenKind::LAngleLAngleEqual:      return "'<<='";
         case TokenKind::RAngleRAngleEqual:      return "'>>='";
-        case TokenKind::CaretEqual:             return "'^=";
+        case TokenKind::CaretEqual:             return "'^='";
         case TokenKind::Percent:                return "'%'";
         case TokenKind::PercentEqual:           return "'%='";
         case TokenKind::ColonColonLAngle:       return "'::<'";

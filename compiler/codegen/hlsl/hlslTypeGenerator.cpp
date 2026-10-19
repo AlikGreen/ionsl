@@ -10,15 +10,15 @@ namespace ionsl
 
         if(const auto primitive = info.as<PrimitiveType>())
             genPrimitiveType(primitive->kind);
-        if(const auto vector = info.as<VectorType>())
+        else if(const auto vector = info.as<VectorType>())
             genVectorType(*vector);
-        if(const auto matrix = info.as<MatrixType>())
+        else if(const auto matrix = info.as<MatrixType>())
             genMatrixType(*matrix);
-        if(const auto structure = info.as<StructType>())
+        else if(const auto structure = info.as<StructType>())
             genStructType(*structure);
-        if(const auto enumeration = info.as<EnumType>())
+        else if(const auto enumeration = info.as<EnumType>())
             genEnumType(*enumeration);
-        if(const auto array = info.as<ArrayType>())
+        else if(const auto array = info.as<ArrayType>())
             genArrayType(*array);
     }
 

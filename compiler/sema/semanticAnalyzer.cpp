@@ -19,13 +19,13 @@ namespace ionsl
         {
             checkDeclarationSignature(*(*it), ctx);
 
-            for (auto* resource : m_pendingResources)
+            for (auto* resource : m_pendingTopLevelDecls)
             {
                 it = m_module.declarations().insert(it, resource);
                 ++it;
             }
 
-            m_pendingResources.clear();
+            m_pendingTopLevelDecls.clear();
         }
 
         for(const auto decl : m_module.declarations())
@@ -215,6 +215,7 @@ namespace ionsl
                 if(!target)
                 {
                     target = m_genericInstantiator.instantiate(*funcDecl, expression.genericArgs);
+                    m_pendingTopLevelDecls.push_back(target);
                     funcDecl->instances.push_back({genericArgs, target});
                 }
                 funcDecl = target;
@@ -239,9 +240,7 @@ namespace ionsl
 
     TypeId SemanticAnalyzer::checkIdentifierExpr(IdentifierExpr &expression, const SemaContext& ctx)
     {
-        auto candidates = find(expression.name, ctx);
-        if(candidates.empty())
-            candidates = m_globalScope.find(expression.name.parts[0]);
+        const auto candidates = find(expression.name, ctx);
 
         TypeId bestCandidateType = TypeId::Error;
         DeclId bestCandidateDecl = DeclId::Error;
@@ -269,6 +268,11 @@ namespace ionsl
                 bestCandidateType = m_typeSystem.types().getEnumType(enumeration->id);
                 bestCandidateDecl = id;
             }
+            if(const auto resource = decl->as<ResourceDecl>())
+            {
+                bestCandidateType = m_typeSystem.types().getResourceType(resource->id, resource->type);
+                bestCandidateDecl = id;
+            }
         }
 
         // TODO diagnostics if no candidates
@@ -287,10 +291,23 @@ namespace ionsl
         if (arrayTypeId == TypeId::Error)
             return TypeId::Error;
 
-        TypeInfo arrayType = m_typeSystem.types().getInfo(arrayTypeId);
+        TypeInfo type = m_typeSystem.types().getInfo(arrayTypeId);
+
+        if (const auto arrayType = type.as<ArrayType>())
+        {
+            return expression.resultType = arrayType->elementType;
+        }
+        if (const auto resourceType = type.as<ResourceType>())
+        {
+            // TODO improve this
+            const auto resourceDecl = m_declTable.get(resourceType->declId)->as<ResourceDecl>();
+            if (!resourceDecl) return TypeId::Error;
+
+            return expression.resultType = resourceDecl->type;
+        }
 
         // TODO validation
-        return expression.resultType = arrayType.as<ArrayType>()->elementType;
+        return TypeId::Error;
     }
 
     TypeId SemanticAnalyzer::checkLiteralExpr(LiteralExpr &expression) const
@@ -593,7 +610,7 @@ namespace ionsl
 
             if (tryExtractResourceDecl(*param, declaration))
             {
-                m_scopeTable.unregisterDecl(ctx.scope, (*it)->name, (*it)->id);
+                m_scopeTable.unregisterDecl(declaration.paramsScope, (*it)->name, (*it)->id);
                 it = declaration.params.erase(it);
             }else
             {
@@ -766,6 +783,7 @@ namespace ionsl
         if (dimension < 2 || dimension > 4)
         {
             error(syntax.arguments.at(1)->span, "invalid vector dimension ({}), dimension must be between 2 and 4", dimension);
+            return TypeId::Error;
         }
 
         return syntax.resolvedType = m_typeSystem.types().getVectorType(primitiveElementType->kind, dimension);
@@ -802,6 +820,7 @@ namespace ionsl
         if (rows < 1 || rows > 4)
         {
             error(syntax.arguments.at(1)->span, "invalid matrix rows ({}), rows must be between 1 and 4", rows);
+            return TypeId::Error;
         }
 
         const auto columnsRes = m_evaluator.evaluate(*syntax.arguments.at(2)->as<TypeArgumentValue>()->expression);
@@ -816,6 +835,7 @@ namespace ionsl
         if (columns < 2 || columns > 4)
         {
             error(syntax.arguments.at(2)->span, "invalid matrix columns ({}), columns must be between 2 and 4", columns);
+            return TypeId::Error;
         }
 
         return syntax.resolvedType = m_typeSystem.types().getMatrixType(primitiveElementType->kind, rows, columns);
@@ -987,11 +1007,16 @@ namespace ionsl
         }
         else
         {
-            index = std::get<ConstantInt>(*bindingAttrib->getArg("index", m_symbols)->value).value;
-            if (index == -1)
+            const int64_t indexArg = static_cast<int64_t>(std::get<ConstantInt>(*bindingAttrib->getArg("index", m_symbols)->value).value);
+            if (indexArg == -1)
+            {
                 index = nextBindingIndex(space);
+            }
             else
+            {
+                index = indexArg;
                 m_takenBindingIndices.emplace(index);
+            }
 
             space = std::get<ConstantInt>(*bindingAttrib->getArg("space", m_symbols)->value).value;
         }
@@ -1028,7 +1053,10 @@ namespace ionsl
         decl->id = m_declAllocator.allocate();
         decl->usedBy.push_back(function.id);
 
-        m_pendingResources.push_back(decl);
+        m_pendingTopLevelDecls.push_back(decl);
+
+        m_globalScope.registerDecl(param.name, decl->id);
+        m_declTable.registerDecl(*decl);
 
         return true;
     }
@@ -1137,7 +1165,7 @@ namespace ionsl
             case 'y': case 'g': return 1;
             case 'z': case 'b': return 2;
             case 'w': case 'a': return 3;
-            default: return -1;
+            default: return 0xFF;
         }
     }
 }

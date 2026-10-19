@@ -153,7 +153,7 @@ namespace ionsl
             return makeToken(TokenKind::NumberLiteral, startLoc);
         }
 
-        if(std::isdigit(peek()) || peek() == '-')
+        if(std::isdigit(peek()))
         {
             while (!done() && std::isdigit(peek())) advance();
 

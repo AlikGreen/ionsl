@@ -39,6 +39,8 @@ namespace ionsl
                 break;
             }
         }
+        if (decls.empty())
+            m_scopes[scopeId].decls.erase(name);
     }
 
 
@@ -50,7 +52,7 @@ namespace ionsl
 
             auto it = scope.decls.find(name);
 
-            if(it != scope.decls.end())
+            if(it != scope.decls.end() && !it->second.empty())
                 return it->second;
 
             scopeId = scope.parent;

@@ -4,7 +4,7 @@
 
 namespace ionsl
 {
-void HlslGenerator::genDecl(const Declaration &decl)
+    void HlslGenerator::genDecl(const Declaration &decl)
     {
         bool emitted = true;
 

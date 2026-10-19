@@ -51,6 +51,7 @@ public:
     TypeSyntax* returnType;
     std::vector<ValueDecl*> params;
     std::vector<GenericParam*> genericParams;
+    ScopeId paramsScope = ScopeId::None;
     BlockStmt* body;
     std::vector<FunctionInstance> instances;
 

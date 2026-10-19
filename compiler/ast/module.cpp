@@ -13,7 +13,7 @@ namespace ionsl
     {
         Module newModule{*m_compiler};
         clone(newModule);
-        return std::move(newModule);
+        return newModule;
     }
 
     void Module::clone(Module &newModule) const
@@ -51,7 +51,7 @@ namespace ionsl
 
         GlobalScope globalScope{*this};
 
-        Module m{};
+        Module m{*m_compiler};
         DeclAllocator d{};
         SemanticAnalyzer analyzer{m, m_compiler->m_symbolTable, m_compiler->m_typeSystem, m_compiler->m_scopeTable, d};
         return analyzer.resolveType(*type, SemaContext{});

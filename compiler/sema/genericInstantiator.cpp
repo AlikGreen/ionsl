@@ -26,14 +26,14 @@ namespace ionsl
 
 
         AstWalker walker{};
-        walker.on([&](TypeSyntax& type)
+        walker.on([&](TypeId& type)
         {
-            auto* genericType = m_types.types().getInfo(type.resolvedType).as<GenericType>();
+            auto* genericType = m_types.types().getInfo(type).as<GenericType>();
             if(!genericType) return;
 
             int index = -1;
 
-            for(int i = 0; i < genericDecl.genericParams.size(); i++)
+            for(size_t i = 0; i < genericDecl.genericParams.size(); i++)
             {
                 if(genericDecl.genericParams[i]->id == genericType->declId)
                 {
@@ -44,7 +44,7 @@ namespace ionsl
 
             if(index < 0) return;
 
-            type.resolvedType = typeArgs[index];
+            type = typeArgs[index];
         });
 
         // TODO resolve expressions

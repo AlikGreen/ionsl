@@ -40,6 +40,9 @@ public:
     DeclTable() = default;
     explicit DeclTable(const Module& module);
     [[nodiscard]] Declaration* get(DeclId id) const;
+
+    void registerDecl(Declaration &decl);
+
 private:
     std::unordered_map<DeclId, Declaration*> m_map{};
 };

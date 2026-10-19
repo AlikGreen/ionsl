@@ -50,7 +50,7 @@ namespace ionsl
 
         SemanticAnalyzer::analyze(module, m_symbolTable, m_typeSystem, m_scopeTable, m_declAllocator, desc.specializations);
 
-        return std::move(module);
+        return module;
     }
 
     Module Compiler::extract(const Module &module, const std::vector<DeclId> &entryPoints)

@@ -15,6 +15,9 @@ file(GLOB_RECURSE
 add_library(ionsl STATIC ${SRC_FILES} include/ionsl/ionsl.h)
 target_include_directories(ionsl PUBLIC include)
 
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(ionsl PRIVATE -Wall -Wextra -Wpedantic -Wno-unused-parameter -Werror)
+endif()
 
 file(GLOB_RECURSE
         TEST_FILES

@@ -28,7 +28,7 @@ namespace ionsl
 
         if(!left || !right) return std::nullopt;
 
-        TypeId resultType = expr.resultType;
+        // TypeId resultType = expr.resultType;
 
         throw std::runtime_error("not implemented");
     }

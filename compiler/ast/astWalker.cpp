@@ -27,9 +27,9 @@ namespace ionsl
         return *this;
     }
 
-    AstWalker& AstWalker::on(TypeSyntaxCallback callback)
+    AstWalker& AstWalker::on(TypeIdCallback callback)
     {
-        m_typeSyntaxCallback = std::move(callback);
+        m_typeCallback = std::move(callback);
         return *this;
     }
 
@@ -138,6 +138,12 @@ namespace ionsl
 
             for(const auto param : alias->genericParams)
                 walk(*param);
+        }
+
+        if(auto* resource = declaration.as<ResourceDecl>())
+        {
+            if (m_typeCallback)
+                m_typeCallback(resource->type);
         }
     }
 
@@ -301,9 +307,9 @@ namespace ionsl
 
     void AstWalker::walkTypeSyntax(TypeSyntax& type)
     {
-        if(m_typeSyntaxCallback)
+        if(m_typeCallback)
         {
-            m_typeSyntaxCallback(type);
+            m_typeCallback(type.resolvedType);
         }
 
         if(auto* named = type.as<NamedTypeSyntax>())

@@ -33,6 +33,7 @@ namespace ionsl
         decl->id = id;
         decl->attributes = attributes->clone(arena);
         decl->name = name;
+        decl->paramsScope = paramsScope;
 
         decl->returnType = returnType->clone(arena);
 

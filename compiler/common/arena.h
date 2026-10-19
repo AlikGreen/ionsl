@@ -16,10 +16,8 @@ concept Initializable = requires(Args&&... args)
 class Arena
 {
 public:
-    explicit Arena()
-    {
-        m_pages.emplace_back(std::make_unique<Page>());
-    }
+    explicit Arena();
+    ~Arena();
 
     template<typename T, typename... Args>
     requires std::is_constructible_v<T, Args...>
@@ -30,47 +28,16 @@ public:
 
         T* obj = new (allocation) T(std::forward<Args>(args)...);
 
-        m_dtors.emplace_back([&obj]()
+        m_dtors.emplace_back([obj]()
         {
-            delete obj;
+            obj->~T();
         });
 
         return obj;
     }
 
-    void* allocate(const size_t size, const size_t alignment)
-    {
-        if (size > Page::kPageSize)
-            throw std::bad_alloc();
-
-        size_t space = m_pages.back()->space();
-        if (space < size)
-        {
-            m_pages.emplace_back(std::make_unique<Page>());
-            std::cout << "page count: " << m_pages.size() << "\n";
-        }
-
-        Page& page = *m_pages.back();
-
-        space = page.space();
-        const size_t offset = page.offset;
-        const size_t alignedOffset = (offset + alignment - 1) & ~(alignment - 1);
-
-        if (space < offset - alignedOffset + size)
-            throw std::bad_alloc();
-
-        page.offset = alignedOffset + size;
-
-        return &page.data[alignedOffset];
-    }
-
-    void reset()
-    {
-        for (const auto& dtor : m_dtors)
-            dtor();
-
-        m_pages.clear();
-    }
+    void* allocate(size_t size, size_t alignment);
+    void reset();
 private:
     struct Page
     {

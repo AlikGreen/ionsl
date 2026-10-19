@@ -24,7 +24,6 @@ private:
 
     void extractEntrypoint(FunctionDecl& decl, Module& out);
     void extractDecl(const Declaration& decl, Module& out);
-    void extractStructDecl(const StructDecl& decl, Module& out);
     void extractType(TypeId id, Module& out);
 };
 }

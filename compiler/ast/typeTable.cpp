@@ -107,6 +107,20 @@ namespace ionsl
         return typeId;
     }
 
+    TypeId TypeTable::getResourceType(const DeclId id, const TypeId containedType)
+    {
+        if(const auto it = m_resourceTypes.find(id); it != m_resourceTypes.end())
+            return it->second;
+
+        TypeInfo info{};
+        info.kind = ResourceType{id, containedType};
+
+        const TypeId typeId = addType(info);
+
+        m_resourceTypes[id] = typeId;
+        return typeId;
+    }
+
     TypeId TypeTable::getEnumType(const DeclId id)
     {
         if(const auto it = m_enumTypes.find(id); it != m_enumTypes.end())
@@ -143,6 +157,7 @@ namespace ionsl
     bool TypeTable::isIntegral(const TypeId id) const
     {
         auto info = getInfo(id);
+        if (info.is<EnumType>()) return true;
         if(!info.is<PrimitiveType>()) return false;
         const PrimitiveKind kind = info.as<PrimitiveType>()->kind;
 
@@ -172,11 +187,5 @@ namespace ionsl
         const TypeId typeId{static_cast<uint32_t>(m_types.size())};
         m_types.push_back(info);
         return typeId;
-    }
-
-    void TypeTable::addPrimitiveType(PrimitiveKind kind, TypeId id)
-    {
-
-        m_primitiveTypes[PrimitiveKind::Void] = id;
     }
 }

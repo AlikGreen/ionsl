@@ -37,9 +37,9 @@ namespace ionsl
     void Extractor::extractEntrypoint(FunctionDecl &decl, Module &newModule)
     {
         AstWalker walker{};
-        walker.on([&](const TypeSyntax& type)
+        walker.on([&](const TypeId& type)
         {
-            auto info = m_types.getInfo(type.resolvedType);
+            auto info = m_types.getInfo(type);
 
             if (const auto structType = info.as<StructType>())
                 extractDecl(*m_decls.get(structType->declId), newModule);
@@ -56,8 +56,10 @@ namespace ionsl
                 if (m_topLevelDecls.contains(identifierExpr->decl))
                 {
                     auto* identifierDecl = m_decls.get(identifierExpr->decl);
-                    if (!identifierDecl) return;
+                    if (!identifierDecl)
+                        return;
 
+                    walker.walk(*identifierDecl);
                     extractDecl(*identifierDecl, newModule);
                 }
             }
@@ -72,6 +74,7 @@ namespace ionsl
     {
         if (m_extracted.contains(decl.id)) return;
 
+        m_extracted.emplace(decl.id);
         newModule.declarations().emplace_back(decl.clone(newModule.arena()));
     }
 

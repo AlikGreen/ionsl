@@ -2,25 +2,25 @@
 
 namespace ionsl
 {
-void HlslGenerator::genStmt(Statement &stmt)
+    void HlslGenerator::genStmt(Statement &stmt)
     {
         if(const auto block = stmt.as<BlockStmt>())
             genBlockStmt(*block);
-        if(const auto expr = stmt.as<ExprStmt>())
+        else if(const auto expr = stmt.as<ExprStmt>())
             genExprStmt(*expr);
-        if(const auto decl = stmt.as<DeclStmt>())
+        else if(const auto decl = stmt.as<DeclStmt>())
             genDecl(*decl->decl);
-        if(const auto ifStmt = stmt.as<IfStmt>())
+        else if(const auto ifStmt = stmt.as<IfStmt>())
             genIfStmt(*ifStmt);
-        if(const auto forStmt = stmt.as<ForStmt>())
+        else if(const auto forStmt = stmt.as<ForStmt>())
             genForStmt(*forStmt);
-        if(const auto whileStmt = stmt.as<WhileStmt>())
+        else if(const auto whileStmt = stmt.as<WhileStmt>())
             genWhileStmt(*whileStmt);
-        if(const auto returnStmt = stmt.as<ReturnStmt>())
+        else if(const auto returnStmt = stmt.as<ReturnStmt>())
             genReturnStmt(*returnStmt);
-        if(const auto breakStmt = stmt.as<BreakStmt>())
+        else if(const auto breakStmt = stmt.as<BreakStmt>())
             genBreakStmt(*breakStmt);
-        if(const auto continueStmt = stmt.as<ContinueStmt>())
+        else if(const auto continueStmt = stmt.as<ContinueStmt>())
             genContinueStmt(*continueStmt);
     }
 
@@ -93,12 +93,10 @@ void HlslGenerator::genStmt(Statement &stmt)
     void HlslGenerator::genBreakStmt(BreakStmt &stmt)
     {
         m_writer.writeLine("break;");
-        m_writer.newline();
     }
 
     void HlslGenerator::genContinueStmt(ContinueStmt &stmt)
     {
         m_writer.writeLine("continue;");
-        m_writer.newline();
     }
 }

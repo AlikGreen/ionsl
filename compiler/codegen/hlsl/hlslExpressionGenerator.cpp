@@ -6,23 +6,23 @@ void HlslGenerator::genExpr(Expression &expr, const bool addParens)
     {
         if(const auto binary = expr.as<BinaryExpr>())
             genBinaryExpr(*binary, addParens);
-        if(const auto unary = expr.as<UnaryExpr>())
+        else if(const auto unary = expr.as<UnaryExpr>())
             genUnaryExpr(*unary);
-        if(const auto call = expr.as<CallExpr>())
+        else if(const auto call = expr.as<CallExpr>())
             genCallExpr(*call);
-        if(const auto construct = expr.as<ConstructExpr>())
+        else if(const auto construct = expr.as<ConstructExpr>())
             genConstructExpr(*construct);
-        if(const auto conversion = expr.as<ConversionExpr>())
+        else if(const auto conversion = expr.as<ConversionExpr>())
             genConversionExpr(*conversion);
-        if(const auto index = expr.as<IndexExpr>())
+        else if(const auto index = expr.as<IndexExpr>())
             genIndexExpr(*index);
-        if(const auto literal = expr.as<LiteralExpr>())
+        else if(const auto literal = expr.as<LiteralExpr>())
             genLiteralExpr(*literal);
-        if(const auto fieldAccess = expr.as<FieldAccessExpr>())
+        else if(const auto fieldAccess = expr.as<FieldAccessExpr>())
             genFieldAccessExpr(*fieldAccess);
-        if(const auto identifier = expr.as<IdentifierExpr>())
+        else if(const auto identifier = expr.as<IdentifierExpr>())
             genIdentifierExpr(*identifier);
-        if(const auto swizzle = expr.as<SwizzleExpr>())
+        else if(const auto swizzle = expr.as<SwizzleExpr>())
             genSwizzleExpr(*swizzle);
     }
 

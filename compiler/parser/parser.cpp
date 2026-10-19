@@ -48,12 +48,12 @@ namespace ionsl
             case TokenKind::NumberLiteral:
             {
                 std::string_view text = previous().text;
-                if(text.starts_with("0x"))
+                if(text.starts_with("0x") || text.starts_with("0X"))
                 {
                     uint64_t value;
                     text.remove_prefix(2);
-                    auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), value, 16);
-                    // TODO handle error
+                    // TODO check error code:  auto [ptr, ec] =
+                    std::from_chars(text.data(), text.data() + text.size(), value, 16);
                     return ConstantInt{value, IntKind::Unsigned};
                 }
                 if (text.contains('.') || text.contains('e') || text.contains('E'))
@@ -66,7 +66,7 @@ namespace ionsl
                     }
 
                     double value;
-                    auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), value, std::chars_format::general);
+                    std::from_chars(text.data(), text.data() + text.size(), value, std::chars_format::general);
                     // TODO handle error
                     return ConstantFloat{value, kind};
                 }
@@ -74,7 +74,7 @@ namespace ionsl
                 {
                     int64_t value;
                     text.remove_prefix(1);
-                    auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), value);
+                    std::from_chars(text.data(), text.data() + text.size(), value);
                     // TODO handle error
                     return ConstantInt{static_cast<uint64_t>(-value), IntKind::Signed};
                 }
@@ -83,7 +83,7 @@ namespace ionsl
                     text.remove_suffix(1);
 
                 uint64_t value;
-                auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), value, 10);
+                std::from_chars(text.data(), text.data() + text.size(), value, 10);
                 // TODO handle error
                 return ConstantInt{value, IntKind::Unsigned};
             }

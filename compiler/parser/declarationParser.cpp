@@ -54,9 +54,11 @@ namespace ionsl
 
         expect(TokenKind::LParen);
 
+        m_currentScope = m_scopeTable.create(m_currentScope);
+        decl->paramsScope = m_currentScope;
+
         if(!check(TokenKind::RParen))
         {
-            m_currentScope = m_scopeTable.create(m_currentScope);
             do
             {
                 decl->params.push_back(parseValueDecl());
@@ -77,6 +79,8 @@ namespace ionsl
             expect(TokenKind::Semicolon);
 
         decl->span = SourceSpan::between(start, previous().span);
+
+        m_currentScope = m_scopeTable.getScope(m_currentScope).parent;
         return decl;
     }
 

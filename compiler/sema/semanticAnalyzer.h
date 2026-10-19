@@ -45,7 +45,7 @@ private:
     bool m_speculative = false;
     std::array<uint32_t, 16> m_nextBindingIndices{};
     std::unordered_set<uint32_t> m_takenBindingIndices{};
-    std::vector<ResourceDecl*> m_pendingResources{};
+    std::vector<Declaration*> m_pendingTopLevelDecls{};
 
     TypeId checkExpression(Expression*& expression, const SemaContext& ctx);
     TypeId checkBinaryExpr(BinaryExpr& expression, const SemaContext& ctx);

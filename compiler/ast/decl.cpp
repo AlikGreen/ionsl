@@ -16,12 +16,17 @@ namespace ionsl
         walker.walk(module);
     }
 
-    Declaration * DeclTable::get(const DeclId id) const
+    Declaration* DeclTable::get(const DeclId id) const
     {
         if(const auto it = m_map.find(id); it != m_map.end())
             return it->second;
 
         return nullptr;
+    }
+
+    void DeclTable::registerDecl(Declaration& decl)
+    {
+        m_map[decl.id] = &decl;
     }
 
     DeclId DeclAllocator::allocate()

@@ -3,6 +3,7 @@
 #include <functional>
 
 
+
 namespace ionsl
 {
 class AstNode;
@@ -11,6 +12,7 @@ class Declaration;
 class Statement;
 class Expression;
 class TypeSyntax;
+class TypeId;
 
 class AstWalker
 {
@@ -18,12 +20,12 @@ public:
     using DeclarationCallback = std::function<void(Declaration&)>;
     using StatementCallback = std::function<void(Statement&)>;
     using ExpressionCallback = std::function<void(Expression&)>;
-    using TypeSyntaxCallback = std::function<void(TypeSyntax&)>;
+    using TypeIdCallback = std::function<void(TypeId&)>;
 
     AstWalker& on(DeclarationCallback callback);
     AstWalker& on(StatementCallback callback);
     AstWalker& on(ExpressionCallback callback);
-    AstWalker& on(TypeSyntaxCallback callback);
+    AstWalker& on(TypeIdCallback callback);
 
     void walk(const Module& module);
     void walk(AstNode &node);
@@ -36,6 +38,6 @@ private:
     DeclarationCallback m_declarationCallback;
     StatementCallback   m_statementCallback;
     ExpressionCallback  m_expressionCallback;
-    TypeSyntaxCallback  m_typeSyntaxCallback;
+    TypeIdCallback  m_typeCallback;
 };
 }
