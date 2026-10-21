@@ -3,7 +3,6 @@
 #include <unordered_set>
 
 #include "constantEvaluator.h"
-#include "genericInstantiator.h"
 #include "globalScope.h"
 #include "semaContext.h"
 #include "../ast/declarations.h"
