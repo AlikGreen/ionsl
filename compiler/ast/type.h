@@ -84,6 +84,23 @@ struct MatrixType
     bool operator==(const MatrixType&) const = default;
 };
 
+struct GenericVectorType
+{
+    TypeId elementType;
+    uint32_t dimension;
+
+    bool operator==(const GenericVectorType&) const = default;
+};
+
+struct GenericMatrixType
+{
+    TypeId elementType;
+    uint32_t rows;
+    uint32_t columns;
+
+    bool operator==(const GenericMatrixType&) const = default;
+};
+
 struct StructType { DeclId declId{}; };
 struct InterfaceType { DeclId declId{}; };
 struct ResourceType { DeclId declId{}; TypeId containedType{}; };
@@ -103,6 +120,8 @@ using TypeKind = std::variant<
     EnumType,
     AutoType,
     GenericType,
+    GenericVectorType,
+    GenericMatrixType,
     ResourceType,
     ErrorType
 >;
@@ -182,6 +201,36 @@ struct std::hash<ionsl::MatrixType>
         return seed;
     }
 };
+
+template<>
+struct std::hash<ionsl::GenericVectorType>
+{
+    size_t operator()(const ionsl::GenericVectorType& value) const noexcept
+    {
+        size_t seed = 0;
+
+        ionsl::hashCombine(seed, value.elementType);
+        ionsl::hashCombine(seed, value.dimension);
+
+        return seed;
+    }
+};
+
+template<>
+struct std::hash<ionsl::GenericMatrixType>
+{
+    size_t operator()(const ionsl::GenericMatrixType& value) const noexcept
+    {
+        size_t seed = 0;
+
+        ionsl::hashCombine(seed, value.elementType);
+        ionsl::hashCombine(seed, value.rows);
+        ionsl::hashCombine(seed, value.columns);
+
+        return seed;
+    }
+};
+
 
 template<>
 struct std::hash<ionsl::TypeId>

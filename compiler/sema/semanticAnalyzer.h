@@ -10,24 +10,23 @@
 #include "../ast/module.h"
 #include "../ast/statements.h"
 #include "../ast/type.h"
+#include "../common/descriptions.h"
 
 
 namespace ionsl
 {
-    struct EntrypointSpecialization;
-
-    class SemanticAnalyzer
+class SemanticAnalyzer
 {
 public:
-    SemanticAnalyzer(Module& module, SymbolTable& symbolTable, TypeSystem& typeSystem, ScopeTable& scopeTable, DeclAllocator& declAllocator, const std::unordered_map<DeclId, EntrypointSpecialization>& specializations = {})
+    SemanticAnalyzer(Module& module, SymbolTable& symbolTable, TypeSystem& typeSystem, ScopeTable& scopeTable, DeclAllocator& declAllocator, const std::vector<EntrypointSpecialization>& specializations = {})
         :   m_module(module), m_symbols(symbolTable), m_typeSystem(typeSystem), m_scopeTable(scopeTable), m_declAllocator(declAllocator),
             m_declTable(module), m_evaluator(m_declTable, m_typeSystem),
-            m_globalScope(module), m_genericInstantiator(m_typeSystem, m_declAllocator, m_module), m_specializations(specializations)
+            m_globalScope(module), m_specializations(specializations)
     {
     }
 
     void analyze();
-    static void analyze(Module& module, SymbolTable& symbolTable, TypeSystem& typeSystem, ScopeTable& scopeTable, DeclAllocator& declAllocator, const std::unordered_map<DeclId, EntrypointSpecialization>& specializations);
+    static void analyze(Module& module, SymbolTable& symbolTable, TypeSystem& typeSystem, ScopeTable& scopeTable, DeclAllocator& declAllocator, const std::vector<EntrypointSpecialization>& specializations);
 private:
     friend class Module;
 
@@ -40,12 +39,12 @@ private:
     DeclTable m_declTable;
     ConstantEvaluator m_evaluator;
     GlobalScope m_globalScope;
-    GenericInstantiator m_genericInstantiator;
-    std::unordered_map<DeclId, EntrypointSpecialization> m_specializations{};
     bool m_speculative = false;
+    std::vector<EntrypointSpecialization> m_specializations{};
     std::array<uint32_t, 16> m_nextBindingIndices{};
     std::unordered_set<uint32_t> m_takenBindingIndices{};
     std::vector<Declaration*> m_pendingTopLevelDecls{};
+    std::unordered_map<size_t, FunctionDecl*> m_funcInstCache;
 
     TypeId checkExpression(Expression*& expression, const SemaContext& ctx);
     TypeId checkBinaryExpr(BinaryExpr& expression, const SemaContext& ctx);
@@ -54,6 +53,7 @@ private:
     TypeId checkIdentifierCall(CallExpr& expression, IdentifierExpr& identifier, const SemaContext& ctx);
     TypeId checkIdentifierExpr(IdentifierExpr& expression, const SemaContext& ctx);
     TypeId checkIndexExpr(IndexExpr& expression, const SemaContext& ctx);
+    TypeId checkConversionExpr(ConversionExpr& expression, const SemaContext& ctx);
     TypeId checkLiteralExpr(LiteralExpr& expression) const;
     TypeId checkFieldAccessExpr(Expression*&, FieldAccessExpr& expression, const SemaContext& ctx);
 
@@ -71,6 +71,7 @@ private:
     void checkInterfaceDecl(const InterfaceDecl& declaration, const SemaContext& ctx);
     void checkValueDecl(ValueDecl& declaration, const SemaContext& ctx);
     void checkEnumDecl(EnumDecl& declaration, const SemaContext& ctx);
+    void checkAliasDecl(AliasDecl& declaration, const SemaContext& ctx);
     void checkAttributeDecl(const AttributeDecl& declaration, const SemaContext& ctx);
 
     void checkDeclarationSignature(Declaration& declaration, const SemaContext& ctx);
@@ -94,10 +95,16 @@ private:
     std::optional<ResourceKind> getResourceKind(const ValueDecl& param);
     bool tryExtractResourceDecl(const ValueDecl& param, const FunctionDecl &function);
 
+    FunctionDecl* instantiateFunction(const FunctionDecl& genericFunction, const SemaContext& ctx, SymbolId newName = SymbolId::Invalid);
+
     std::vector<DeclId> findInScopeChain(SymbolId name, ScopeId scope) const;
     std::vector<DeclId> findUnqualified(SymbolId name, const SemaContext& ctx) const;
     std::vector<DeclId> find(const QualifiedName& name, const SemaContext& ctx) const;
     ScopeId memberScopeOf(const Declaration &decl) const;
+
+    void addGlobalDecl(Declaration& decl);
+
+    size_t hashFuncInst(DeclId genericId, const std::vector<TypeId> &typeArgs, SymbolId name) const;
 
     static PrimitiveKind toPrimitiveKind(const std::string &name);
 

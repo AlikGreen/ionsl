@@ -69,7 +69,7 @@ bool testShaderFile(const std::string& path, ionsl::Compiler& compiler)
 
     ionsl::LinkDescription desc{};
     desc.modules = { &module };
-    desc.specializations[*genericEP] = { { *type }, "vertexMain_f32" };
+    desc.specializations.emplace_back(ionsl::EntrypointSpecialization{*genericEP, { *type }, "vertexMain_f32" });
 
 
     ionsl::Module linked = compiler.link(desc);

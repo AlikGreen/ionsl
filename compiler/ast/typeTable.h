@@ -21,10 +21,15 @@ public:
     TypeId getEnumType(DeclId id);
 
     TypeId getGenericType(DeclId id);
+    TypeId getGenericVectorType(TypeId elementType, uint32_t dimension);
+    TypeId getGenericMatrixType(TypeId elementType, uint32_t rows, uint32_t columns);
 
     [[nodiscard]] TypeInfo getInfo(TypeId id) const;
     [[nodiscard]] bool isIntegral(TypeId id) const;
     [[nodiscard]] static bool isFloat(TypeId id);
+
+    bool containsGenericParam(TypeId id) const;
+
 private:
     TypeId addType(TypeInfo info);
 
@@ -41,6 +46,8 @@ private:
 
     std::unordered_map<VectorType, TypeId> m_vectorTypes;
     std::unordered_map<MatrixType, TypeId> m_matrixTypes;
+    std::unordered_map<GenericVectorType, TypeId> m_genericVectorTypes;
+    std::unordered_map<GenericMatrixType, TypeId> m_genericMatrixTypes;
     std::unordered_map<ArrayType, TypeId> m_arrayTypes;
     std::unordered_map<PrimitiveKind, TypeId> m_primitiveTypes;
     std::unordered_map<DeclId, TypeId> m_structTypes;

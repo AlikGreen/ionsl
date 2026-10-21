@@ -84,6 +84,27 @@ namespace ionsl
 
     void HlslGenerator::genMatrixType(MatrixType &type)
     {
+        if (type.scalarType == PrimitiveKind::Float32)
+        {
+            if (type.rows == 4 && type.columns == 4)
+            {
+                m_writer.write("float4x4");
+                return;
+            }
+
+            if (type.rows == 3 && type.columns == 3)
+            {
+                m_writer.write("float3x3");
+                return;
+            }
+
+            if (type.rows == 2 && type.columns == 2)
+            {
+                m_writer.write("float2x2");
+                return;
+            }
+        }
+
         m_writer.write("matrix<");
         genPrimitiveType(type.scalarType);
         m_writer.write(", {}, {}>", type.rows, type.columns);

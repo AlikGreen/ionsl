@@ -30,7 +30,7 @@ namespace ionsl
     Compiler::Compiler()
         : m_typeSystem(m_typeTable, m_symbolTable)
     {
-        m_stdlib = parse(*loadFile(R"(C:\Users\alikg\CLionProjects\ionsl\std\core.ionsl)"));
+        m_stdlib = parse(*loadFile("stdlib.ionsl"));
     }
 
     Module Compiler::parse(const std::string &source)

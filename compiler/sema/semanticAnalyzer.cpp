@@ -28,13 +28,21 @@ namespace ionsl
             m_pendingTopLevelDecls.clear();
         }
 
-        for(const auto decl : m_module.declarations())
+        for(auto it = m_module.declarations().begin(); it != m_module.declarations().end(); ++it)
         {
-            checkDeclaration(*decl, ctx);
+            checkDeclaration(*(*it), ctx);
+
+            for (auto* resource : m_pendingTopLevelDecls)
+            {
+                it = m_module.declarations().insert(it, resource);
+                ++it;
+            }
+
+            m_pendingTopLevelDecls.clear();
         }
     }
 
-    void SemanticAnalyzer::analyze(Module& module, SymbolTable& symbolTable, TypeSystem& typeSystem, ScopeTable& scopeTable, DeclAllocator& declAllocator, const std::unordered_map<DeclId, EntrypointSpecialization>& specializations)
+    void SemanticAnalyzer::analyze(Module& module, SymbolTable& symbolTable, TypeSystem& typeSystem, ScopeTable& scopeTable, DeclAllocator& declAllocator, const std::vector<EntrypointSpecialization>& specializations)
     {
         return SemanticAnalyzer(module, symbolTable, typeSystem, scopeTable, declAllocator, specializations).analyze();
     }
@@ -55,6 +63,8 @@ namespace ionsl
             return checkLiteralExpr(*literalExpr);
         if(auto* fieldAccessExpr = expression->as<FieldAccessExpr>())
             return checkFieldAccessExpr(expression, *fieldAccessExpr, ctx);
+        if(auto* conversionExpr = expression->as<ConversionExpr>())
+            return checkConversionExpr(*conversionExpr, ctx);
 
         return TypeId::Error;
     }
@@ -141,8 +151,6 @@ namespace ionsl
         }
 
         auto candidates = find(identifier.name, ctx);
-        if(candidates.empty())
-            candidates = m_globalScope.find(identifier.name.parts[0]);
 
         struct Candidate
         {
@@ -162,23 +170,7 @@ namespace ionsl
                 std::vector<TypeId> paramTypes;
                 for(const auto* param : funcDecl->params)
                 {
-                    auto info = m_typeSystem.types().getInfo(param->type->resolvedType);
-                    if (const auto* genericType = info.as<GenericType>())
-                    {
-                        // find the corresponding generic param and substitute it
-                        for (auto [genericParam, genericArg] : std::views::zip(funcDecl->genericParams, expression.genericArgs))
-                        {
-                            if (genericType->declId == genericParam->id)
-                            {
-                                paramTypes.push_back(genericArg->resolvedType);
-                                break;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        paramTypes.push_back(param->type->resolvedType);
-                    }
+                    paramTypes.push_back(resolveType(*param->type, ctx));
                 }
 
                 auto conversion = m_typeSystem.conversionCost(argumentTypes, paramTypes);
@@ -205,20 +197,13 @@ namespace ionsl
         {
             if (!funcDecl->genericParams.empty())
             {
-                std::vector<TypeId> genericArgs;
-                for(const auto* a : expression.genericArgs) genericArgs.push_back(a->resolvedType);
+                std::unordered_map<DeclId, TypeId> subs;
+                for(const auto [param, arg] : std::ranges::zip_view(funcDecl->genericParams, expression.genericArgs))
+                    subs[param->id] = arg->resolvedType;
 
-                FunctionDecl* target = nullptr;
-                for(const auto& inst : funcDecl->instances)
-                    if(inst.args == genericArgs) { target = inst.decl; break; }
+                SemaContext genericCtx = ctx.forGenericDecl(funcDecl->genericParams).withSubs(subs);
 
-                if(!target)
-                {
-                    target = m_genericInstantiator.instantiate(*funcDecl, expression.genericArgs);
-                    m_pendingTopLevelDecls.push_back(target);
-                    funcDecl->instances.push_back({genericArgs, target});
-                }
-                funcDecl = target;
+                funcDecl = instantiateFunction(*funcDecl, genericCtx);
             }
 
             for(const auto& [arg, param] : std::views::zip(expression.args, funcDecl->params))
@@ -250,7 +235,7 @@ namespace ionsl
             const auto decl = m_declTable.get(id);
             if(const auto value = decl->as<ValueDecl>())
             {
-                bestCandidateType = value->type->resolvedType;
+                bestCandidateType = resolveType(*value->type, ctx);
                 bestCandidateDecl = id;
             }
             if(const auto struc = decl->as<StructDecl>())
@@ -278,6 +263,7 @@ namespace ionsl
         // TODO diagnostics if no candidates
         if (bestCandidateDecl == DeclId::Error)
             error(expression.span, "cannot resolve name {}", expression.name.string(m_symbols));
+
 
         expression.decl = bestCandidateDecl;
         return expression.resultType = bestCandidateType;
@@ -308,6 +294,12 @@ namespace ionsl
 
         // TODO validation
         return TypeId::Error;
+    }
+
+    TypeId SemanticAnalyzer::checkConversionExpr(ConversionExpr &expression, const SemaContext &ctx)
+    {
+        // TODO check that operand type can go to target type
+        return expression.targetType;
     }
 
     TypeId SemanticAnalyzer::checkLiteralExpr(LiteralExpr &expression) const
@@ -475,41 +467,46 @@ namespace ionsl
 
         if(const auto funcDecl = declaration.as<FunctionDecl>())
             checkFunctionDecl(*funcDecl, ctx);
-        if(const auto interfaceDecl = declaration.as<InterfaceDecl>())
+        else if(const auto interfaceDecl = declaration.as<InterfaceDecl>())
             checkInterfaceDecl(*interfaceDecl, ctx);
-        if(const auto structDecl = declaration.as<StructDecl>())
+        else if(const auto structDecl = declaration.as<StructDecl>())
             checkStructDecl(*structDecl, ctx);
-        if(const auto valDecl = declaration.as<ValueDecl>())
+        else if(const auto valDecl = declaration.as<ValueDecl>())
             checkValueDecl(*valDecl, ctx);
-        if(const auto enumDecl = declaration.as<EnumDecl>())
+        else if(const auto enumDecl = declaration.as<EnumDecl>())
             checkEnumDecl(*enumDecl, ctx);
+        else if(const auto aliasDecl = declaration.as<AliasDecl>())
+            checkAliasDecl(*aliasDecl, ctx);
     }
 
     void SemanticAnalyzer::checkFunctionDecl(const FunctionDecl &declaration, const SemaContext& ctx)
     {
-        SemaContext newCtx = ctx;
-        std::unordered_map<DeclId, TypeId> subs;
-        if(!declaration.genericParams.empty())
-        {
-            if(const auto it = m_specializations.find(declaration.id); it != m_specializations.end())
-            {
-                for(const auto [param, typeId] : std::ranges::zip_view(declaration.genericParams, it->second.typeArgs))
-                    subs[param->id] = typeId;
+        if (!declaration.body)
+             return;
 
-                newCtx = ctx.forGenericDecl(declaration.genericParams, subs);
-            }
+        if (declaration.genericParams.empty())
+        {
+            checkBlockStmt(*declaration.body, ctx);
+            return;
         }
 
-        if(declaration.body)
-            checkBlockStmt(*declaration.body, newCtx);
+        // check the generic function for errors
+        checkBlockStmt(*declaration.body, ctx.forGenericDecl(declaration.genericParams));
 
-        if(!declaration.genericParams.empty())
+        for (const auto& specialization : m_specializations)
         {
-            if(const auto it = m_specializations.find(declaration.id); it != m_specializations.end())
-            {
-                SymbolId newName = m_symbols.intern(it->second.newName);
-                m_module.declarations().push_back(m_genericInstantiator.instantiate(declaration, it->second.typeArgs, newName));
-            }
+            if (specialization.entrypoint != declaration.id)
+                continue;
+
+            std::unordered_map<DeclId, TypeId> subs;
+            for(const auto [param, typeId] : std::ranges::zip_view(declaration.genericParams, specialization.typeArgs))
+                subs[param->id] = typeId;
+
+            SemaContext genericCtx = ctx.forGenericDecl(declaration.genericParams).withSubs(subs);
+
+            const SymbolId newName = specialization.newName.empty() ? declaration.name : m_symbols.intern(specialization.newName);
+
+            instantiateFunction(declaration, genericCtx, newName);
         }
     }
 
@@ -562,6 +559,11 @@ namespace ionsl
 
     }
 
+    void SemanticAnalyzer::checkAliasDecl(AliasDecl &declaration, const SemaContext &ctx)
+    {
+        resolveType(*declaration.targetType, ctx.forGenericDecl(declaration.genericParams));
+    }
+
     void SemanticAnalyzer::checkAttributeDecl(const AttributeDecl &declaration, const SemaContext &ctx)
     {
         for (const auto field : declaration.fields)
@@ -599,24 +601,27 @@ namespace ionsl
 
     void SemanticAnalyzer::checkFunctionDeclSignature(FunctionDecl &declaration, const SemaContext &ctx)
     {
-        const auto genericCtx = ctx.forGenericDecl(declaration.genericParams, {});
+        const auto genericCtx = ctx.forGenericDecl(declaration.genericParams);
 
         resolveType(*declaration.returnType, genericCtx);
 
-        for(auto it = declaration.params.begin(); it != declaration.params.end();)
-        {
-            const auto param = *it;
+        for(const auto param : declaration.params)
             checkDeclarationSignature(*param, genericCtx);
 
-            if (tryExtractResourceDecl(*param, declaration))
-            {
-                m_scopeTable.unregisterDecl(declaration.paramsScope, (*it)->name, (*it)->id);
-                it = declaration.params.erase(it);
-            }else
-            {
-                ++it;
-            }
-        }
+        // for(auto it = declaration.params.begin(); it != declaration.params.end();)
+        // {
+        //     const auto param = *it;
+        //     checkDeclarationSignature(*param, genericCtx);
+        //
+        //     if (tryExtractResourceDecl(*param, declaration))
+        //     {
+        //         m_scopeTable.unregisterDecl(declaration.paramsScope, (*it)->name, (*it)->id);
+        //         it = declaration.params.erase(it);
+        //     }else
+        //     {
+        //         ++it;
+        //     }
+        // }
     }
 
     void SemanticAnalyzer::checkStructDeclSignature(const StructDecl &declaration, const SemaContext &ctx)
@@ -723,6 +728,9 @@ namespace ionsl
 
     TypeId SemanticAnalyzer::resolveType(TypeSyntax& syntax, const SemaContext& ctx)
     {
+        if (syntax.resolvedType != TypeId::Error && !m_typeSystem.types().containsGenericParam(syntax.resolvedType))
+            return syntax.resolvedType;
+
         if(auto* namedSyntax = syntax.as<NamedTypeSyntax>())
         {
             if(namedSyntax->name.string(m_symbols) == "vector")
@@ -763,13 +771,6 @@ namespace ionsl
 
         auto* elementTypeSyntax = syntax.arguments.at(0)->as<TypeArgumentType>()->type;
         const TypeId elementType = resolveType(*elementTypeSyntax, ctx);
-        const auto primitiveElementType = m_typeSystem.types().getInfo(elementType).as<PrimitiveType>();
-
-        if (!primitiveElementType)
-        {
-            error(syntax.span, "vector element type must be a scalar type");
-            return TypeId::Error;
-        }
 
         const auto res = m_evaluator.evaluate(*syntax.arguments.at(1)->as<TypeArgumentValue>()->expression);
         if(!res || !std::holds_alternative<ConstantInt>(*res))
@@ -786,7 +787,17 @@ namespace ionsl
             return TypeId::Error;
         }
 
-        return syntax.resolvedType = m_typeSystem.types().getVectorType(primitiveElementType->kind, dimension);
+        if (const auto primitiveElementType = m_typeSystem.types().getInfo(elementType).as<PrimitiveType>())
+        {
+            return syntax.resolvedType = m_typeSystem.types().getVectorType(primitiveElementType->kind, dimension);
+        }
+        if (m_typeSystem.types().getInfo(elementType).is<GenericType>())
+        {
+            return syntax.resolvedType = m_typeSystem.types().getGenericVectorType(elementType, dimension);
+        }
+
+        error(syntax.span, "vector element type must be a scalar type");
+        return TypeId::Error;
     }
 
     TypeId SemanticAnalyzer::resolveMatrixType(NamedTypeSyntax &syntax, const SemaContext& ctx)
@@ -797,15 +808,6 @@ namespace ionsl
             return TypeId::Error;
         }
 
-        auto* elementTypeSyntax = syntax.arguments.at(0)->as<TypeArgumentType>()->type;
-        const TypeId elementType = resolveType(*elementTypeSyntax, ctx);
-        const auto primitiveElementType = m_typeSystem.types().getInfo(elementType).as<PrimitiveType>();
-
-        if (!primitiveElementType)
-        {
-            error(syntax.span, "matrix element type must be a scalar type");
-            return TypeId::Error;
-        }
 
         const auto rowsRes = m_evaluator.evaluate(*syntax.arguments.at(1)->as<TypeArgumentValue>()->expression);
 
@@ -838,26 +840,39 @@ namespace ionsl
             return TypeId::Error;
         }
 
-        return syntax.resolvedType = m_typeSystem.types().getMatrixType(primitiveElementType->kind, rows, columns);
+        auto* elementTypeSyntax = syntax.arguments.at(0)->as<TypeArgumentType>()->type;
+        const TypeId elementType = resolveType(*elementTypeSyntax, ctx);
+
+        if (const auto primitiveElementType = m_typeSystem.types().getInfo(elementType).as<PrimitiveType>())
+        {
+            return syntax.resolvedType = m_typeSystem.types().getMatrixType(primitiveElementType->kind, rows, columns);
+        }
+        if (m_typeSystem.types().getInfo(elementType).is<GenericType>())
+        {
+            return syntax.resolvedType = m_typeSystem.types().getGenericMatrixType(elementType, rows, columns);
+        }
+
+        error(syntax.span, "matrix element type must be a scalar type");
+        return TypeId::Error;
     }
 
     TypeId SemanticAnalyzer::resolveNamedType(NamedTypeSyntax &syntax, const SemaContext& ctx)
     {
-        for(const auto* param : ctx.visibleGenericParams)
+        const SymbolId name = syntax.name.parts[0];
+        for (const auto* param : ctx.visibleGenericParams)
         {
-            if(syntax.name.parts.size() != 1 || param->name != syntax.name.parts.back()) continue;
+            if (param->name != name) continue;
 
-            if(ctx.substitutions)
-                if(const auto it = ctx.substitutions->find(param->id); it != ctx.substitutions->end())
-                    return it->second;
-
-            return m_typeSystem.types().getGenericType(param->id);
+            if (ctx.substitutions)
+            {
+                const auto it = ctx.substitutions->find(param->id);
+                if (it != ctx.substitutions->end())
+                    return syntax.resolvedType = it->second;
+            }
+            return syntax.resolvedType = m_typeSystem.types().getGenericType(param->id);
         }
 
-        // FIXME make sure to match the whole type
-        auto decls = find(syntax.name, ctx);;
-        if(decls.empty())
-            decls = m_globalScope.find(syntax.name.parts[0]);
+        auto decls = find(syntax.name, ctx);
 
         for(const DeclId id : decls)
         {
@@ -918,7 +933,7 @@ namespace ionsl
             }
         }
 
-        resolveType(*alias.targetType, ctx.forGenericDecl(alias.genericParams, typeSubstitutions));
+        resolveType(*alias.targetType, ctx.withSubs(typeSubstitutions));
         return syntax.resolvedType = alias.targetType->resolvedType;
     }
 
@@ -1061,6 +1076,39 @@ namespace ionsl
         return true;
     }
 
+    FunctionDecl* SemanticAnalyzer::instantiateFunction(const FunctionDecl &genericFunction, const SemaContext& ctx, SymbolId newName)
+    {
+        std::vector<TypeId> typeArgs{};
+        for (const auto* param : genericFunction.genericParams)
+        {
+            if (auto it = ctx.substitutions->find(param->id); it != ctx.substitutions->end())
+                typeArgs.push_back(it->second);
+            else
+                return nullptr; // TODO error
+        }
+
+        newName = newName == SymbolId::Invalid ? genericFunction.name : newName;
+
+        const size_t key = hashFuncInst(genericFunction.id, typeArgs, newName);
+        if (const auto it = m_funcInstCache.find(key); it != m_funcInstCache.end())
+            return it->second;
+
+        FunctionDecl* concreteFunc = genericFunction.clone(m_module.arena());
+        concreteFunc->id = m_declAllocator.allocate();
+        concreteFunc->name = newName;
+
+        checkFunctionDeclSignature(*concreteFunc, ctx);
+        checkBlockStmt(*concreteFunc->body, ctx);
+
+        concreteFunc->genericParams.clear();
+
+        addGlobalDecl(*concreteFunc);
+
+        m_funcInstCache.emplace(key, concreteFunc);
+
+        return concreteFunc;
+    }
+
     std::vector<DeclId> SemanticAnalyzer::findInScopeChain(const SymbolId name, const ScopeId scope) const
     {
         for(ScopeId s = scope; s != ScopeId::None; s = m_scopeTable.getScope(s).parent)
@@ -1112,6 +1160,23 @@ namespace ionsl
     {
         // TODO return namespaces scope or struct scope for nested types
         return ScopeId::None;
+    }
+
+    void SemanticAnalyzer::addGlobalDecl(Declaration& decl)
+    {
+        m_pendingTopLevelDecls.push_back(&decl);
+        m_scopeTable.registerDecl(ScopeId::None, decl.name, decl.id);
+        m_globalScope.registerDecl(decl.name, decl.id);
+    }
+
+    size_t SemanticAnalyzer::hashFuncInst(const DeclId genericId, const std::vector<TypeId>& typeArgs, const SymbolId name) const
+    {
+        size_t h = std::hash<DeclId>{}(genericId);
+        for(const TypeId t : typeArgs)
+            hashCombine(h, t);
+
+        hashCombine(h, name.value());
+        return h;
     }
 
     PrimitiveKind SemanticAnalyzer::toPrimitiveKind(const std::string &name)

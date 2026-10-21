@@ -43,9 +43,6 @@ namespace ionsl
         for(const auto* param : params)
             decl->params.push_back(param->clone(arena));
 
-        for(const auto& instance : instances)
-            decl->instances.emplace_back(instance.args, instance.decl->clone(arena));
-
         if(body)
             decl->body = body->clone(arena);
 

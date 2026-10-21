@@ -1,5 +1,4 @@
 #pragma once
-#include <span>
 
 #include "ast/module.h"
 #include "ast/decl.h"
@@ -7,20 +6,15 @@
 #include "ast/symbolTable.h"
 #include "ast/typeSystem.h"
 #include "codegen/codeGenerator.h"
+#include "common/descriptions.h"
 #include "reflection/reflection.h"
 
 namespace ionsl
 {
-struct EntrypointSpecialization
-{
-    std::vector<TypeId> typeArgs;
-    std::string newName;
-};
-
 struct LinkDescription
 {
     std::vector<Module*> modules;
-    std::unordered_map<DeclId, EntrypointSpecialization> specializations;
+    std::vector<EntrypointSpecialization> specializations;
 };
 
 class Compiler

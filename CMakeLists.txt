@@ -19,6 +19,12 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(ionsl PRIVATE -Wall -Wextra -Wpedantic -Wno-unused-parameter -Werror)
 endif()
 
+configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/std/stdlib.ionsl"
+        "${CMAKE_CURRENT_BINARY_DIR}/stdlib.ionsl"
+        COPYONLY
+)
+
 file(GLOB_RECURSE
         TEST_FILES
         CONFIGURE_DEPENDS

@@ -30,17 +30,7 @@ namespace ionsl
     bool HlslGenerator::genFunctionDecl(const FunctionDecl &decl)
     {
         if(!decl.genericParams.empty() || (decl.attributes && decl.attributes->contains("hlsl", m_symbols)))
-        {
-            if (decl.instances.empty())
-                return false;
-
-            for (const auto& instance : decl.instances)
-            {
-                genFunctionDecl(*instance.decl);
-            }
-
-            return true;
-        }
+            return false;
 
         genType(decl.returnType->resolvedType);
         m_writer.space();

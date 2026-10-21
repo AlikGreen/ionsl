@@ -149,6 +149,28 @@ namespace ionsl
         return typeId;
     }
 
+    TypeId TypeTable::getGenericVectorType(const TypeId elementType, const uint32_t dimension)
+    {
+        auto type = GenericVectorType{ elementType, dimension };
+        if(const auto it = m_genericVectorTypes.find(type); it != m_genericVectorTypes.end())
+            return it->second;
+
+        const TypeId id = addType(type);
+        m_genericVectorTypes[type] = id;
+        return id;
+    }
+
+    TypeId TypeTable::getGenericMatrixType(const TypeId elementType, const uint32_t rows, const uint32_t columns)
+    {
+        auto type = GenericMatrixType{ elementType, rows, columns };
+        if(const auto it = m_genericMatrixTypes.find(type); it != m_genericMatrixTypes.end())
+            return it->second;
+
+        const TypeId id = addType(type);
+        m_genericMatrixTypes[type] = id;
+        return id;
+    }
+
     TypeInfo TypeTable::getInfo(const TypeId id) const
     {
         return m_types.at(id.value());
@@ -180,6 +202,44 @@ namespace ionsl
     bool TypeTable::isFloat(const TypeId id)
     {
         return id == TypeId::F16 || id == TypeId::F32 || id == TypeId::F64;
+    }
+
+    bool TypeTable::containsGenericParam(const TypeId id) const
+    {
+        thread_local std::vector<uint8_t> cache;
+        const uint32_t idx = id.value();
+        if (idx < cache.size())
+        {
+            if (cache[idx] != 0) return cache[idx] == 1;
+        }
+        else
+        {
+            cache.resize(m_types.size() < idx + 32 ? idx + 256 : m_types.size(), 0);
+        }
+
+        if (id == TypeId::Error) { cache[idx] = 2; return false; }
+
+        const TypeInfo info = m_types.at(idx);
+
+        bool result = false;
+
+        if (info.is<GenericType>())
+        {
+            result = true;
+        }
+        else if (const auto* array = info.as<ArrayType>())
+        {
+            result = containsGenericParam(array->elementType);
+        }
+        else if (const auto* resource = info.as<ResourceType>())
+        {
+            result = containsGenericParam(resource->containedType);
+        }
+
+        // TODO update when adding generic structs
+
+        cache[idx] = result ? 1 : 2;
+        return result;
     }
 
     TypeId TypeTable::addType(const TypeInfo info)
