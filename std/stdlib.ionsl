@@ -3,16 +3,20 @@
 // [[target(hlsl, "RWStructuredBuffer")]] type RWStructuredBuffer<T>;
 // [[target(hlsl, "SamplerState")]]     type SamplerState;
 
+attribute hlsl(function : string);
+
+// parameter builtin attributes
 attribute sv_position();
 attribute sv_vertexid();
 attribute sv_dispatchthreadid();
-attribute builtin(name : string);
+
+// could use this instead
+// attribute builtin(name : string);
 
 attribute constant();
 attribute storage();
-attribute numthreads(x : u32, y : u32 = 1, z : u32 = 1);
 
-attribute hlsl(function : string);
+attribute numthreads(x : u32, y : u32 = 1, z : u32 = 1);
 attribute shader(shaderType : string);
 
 attribute binding(index : u32, space : u32 = 0u);

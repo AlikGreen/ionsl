@@ -40,8 +40,6 @@ private:
     GlobalScope m_globalScope;
     bool m_speculative = false;
     std::vector<EntrypointSpecialization> m_specializations{};
-    std::array<uint32_t, 16> m_nextBindingIndices{};
-    std::unordered_set<uint32_t> m_takenBindingIndices{};
     std::vector<Declaration*> m_pendingTopLevelDecls{};
     std::unordered_map<size_t, FunctionDecl*> m_funcInstCache;
 
@@ -88,11 +86,6 @@ private:
     TypeId resolveNamedType(NamedTypeSyntax& syntax, const SemaContext& ctx);
     TypeId resolveAliasType(NamedTypeSyntax& syntax, const AliasDecl& alias, const SemaContext& ctx);
     TypeId resolveArrayType(ArrayTypeSyntax& syntax, const SemaContext& ctx);
-
-    uint32_t nextBindingIndex(uint32_t space);
-    ResourceDecl* findResourceDecl(const ValueDecl& param) const;
-    std::optional<ResourceKind> getResourceKind(const ValueDecl& param);
-    bool tryExtractResourceDecl(const ValueDecl& param, const FunctionDecl &function);
 
     FunctionDecl* instantiateFunction(const FunctionDecl& genericFunction, const SemaContext& ctx, SymbolId newName = SymbolId::Invalid);
 

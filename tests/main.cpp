@@ -44,7 +44,7 @@ bool testShaderFile(const std::string& path, ionsl::Compiler& compiler)
 {
     std::cout << "--- " << path << " ---" << std::endl;
 
-    const std::string startPath = R"(C:\Users\alikg\CLionProjects\ionsl\tests\)";
+    const std::string startPath = "../tests/";
 
     auto source = loadFile(startPath + path);
     if (!source)

@@ -55,7 +55,7 @@ namespace ionsl
 
     Module Compiler::extract(const Module &module, const std::vector<DeclId> &entryPoints)
     {
-        return Extractor(module, *this, m_typeTable, entryPoints).extract();
+        return Extractor(module, *this, entryPoints).extract();
     }
 
     ShaderReflection Compiler::reflect(const Module &module)

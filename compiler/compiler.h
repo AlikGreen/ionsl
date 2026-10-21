@@ -42,6 +42,7 @@ public:
 private:
     friend class Module;
     friend class Parser;
+    friend class Extractor;
 
     SymbolTable m_symbolTable;
     TypeTable m_typeTable;
