@@ -46,17 +46,12 @@ namespace ionsl
 
     std::vector<DeclId> ScopeTable::find(ScopeId scopeId, const SymbolId name) const
     {
-        while(scopeId != ScopeId::Error && scopeId != ScopeId::None)
-        {
-            const Scope& scope = m_scopes.at(scopeId);
+        const Scope& scope = m_scopes.at(scopeId);
 
-            auto it = scope.decls.find(name);
+        auto it = scope.decls.find(name);
 
-            if(it != scope.decls.end() && !it->second.empty())
-                return it->second;
-
-            scopeId = scope.parent;
-        }
+        if(it != scope.decls.end() && !it->second.empty())
+            return it->second;
 
         return {};
     }

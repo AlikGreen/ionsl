@@ -97,6 +97,7 @@ namespace ionsl
         decl->id = id;
         decl->attributes = attributes->clone(arena);
         decl->name = name;
+        decl->scope = scope;
 
         for(const auto* method : methods)
             decl->methods.push_back(method->clone(arena));
@@ -129,6 +130,22 @@ namespace ionsl
         return decl;
     }
 
+    EnumMember* EnumMember::clone(Arena &arena) const
+    {
+        auto* decl = arena.create<EnumMember>();
+        decl->span = span;
+        decl->name = name;
+        decl->id = id;
+        decl->parentId = parentId;
+        decl->attributes = attributes->clone(arena);
+
+        if (initializer)
+            decl->initializer = initializer->clone(arena);
+
+        decl->value = value;
+        return decl;
+    }
+
     EnumDecl* EnumDecl::clone(Arena &arena) const
     {
         auto* decl = arena.create<EnumDecl>();
@@ -140,12 +157,11 @@ namespace ionsl
         if (decl->underlyingType)
             decl->underlyingType = underlyingType->clone(arena);
 
-        decl->members = members;
-        for (auto& member : decl->members)
-        {
-            if (member.initializer)
-                member.initializer = member.initializer->clone(arena);
-        }
+        for (const auto member : members)
+            decl->members.push_back(member->clone(arena));
+
+        decl->membersScope = membersScope;
+
         return decl;
     }
 

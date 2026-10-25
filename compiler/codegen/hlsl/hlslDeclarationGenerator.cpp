@@ -147,7 +147,7 @@ namespace ionsl
 
         for (const auto member : decl.members)
         {
-            m_writer.writeLine("{} = {},", m_symbols.get(member.name), constantIntToString(member.value));
+            m_writer.writeLine("{} = {},", m_symbols.get(member->name), constantIntToString(member->value));
         }
 
         m_writer.endBlock();

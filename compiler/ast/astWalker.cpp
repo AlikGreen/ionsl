@@ -145,6 +145,12 @@ namespace ionsl
             if (m_typeCallback)
                 m_typeCallback(resource->type);
         }
+
+        if(const auto* enumDecl = declaration.as<EnumDecl>())
+        {
+            for(const auto member : enumDecl->members)
+                walk(*member);
+        }
     }
 
     void AstWalker::walkStatement(Statement& statement)

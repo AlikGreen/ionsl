@@ -16,11 +16,6 @@ struct VertexOutput
    float4 color;
 };
 
-float applyBias(float value, float bias)
-{
-   return value + bias;
-}
-
 VertexOutput vertexMain_f32(uint vertexId : SV_VertexID)
 {
    float3 p = positions[vertexId];

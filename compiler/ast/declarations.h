@@ -72,6 +72,7 @@ public:
 class StructDecl final : public Declaration
 {
 public:
+    ScopeId scope;
     std::vector<TypeId> resolvedInterfaces;
     std::vector<TypeSyntax*> interfaces;
 
@@ -92,18 +93,22 @@ public:
     AliasDecl* clone(Arena &arena) const override;
 };
 
-struct EnumMember
+class EnumMember : public Declaration
 {
-    SymbolId name;
+public:
     Expression* initializer{};
     ConstantInt value;
+    DeclId parentId;
+
+    EnumMember* clone(Arena &arena) const override;
 };
 
 class EnumDecl final : public Declaration
 {
 public:
     TypeSyntax* underlyingType;
-    std::vector<EnumMember> members;
+    std::vector<EnumMember*> members;
+    ScopeId membersScope = ScopeId::Error;
 
     EnumDecl* clone(Arena &arena) const override;
 };

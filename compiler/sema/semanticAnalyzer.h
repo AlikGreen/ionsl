@@ -42,6 +42,7 @@ private:
     std::vector<EntrypointSpecialization> m_specializations{};
     std::vector<Declaration*> m_pendingTopLevelDecls{};
     std::unordered_map<size_t, FunctionDecl*> m_funcInstCache;
+    std::unordered_map<size_t, TypeId> m_aliasInstCache;
 
     TypeId checkExpression(Expression*& expression, const SemaContext& ctx);
     TypeId checkBinaryExpr(BinaryExpr& expression, const SemaContext& ctx);
@@ -79,14 +80,13 @@ private:
     void checkAttribute(Attribute& attribute, const SemaContext &ctx);
 
     TypeId resolveType(TypeSyntax& syntax, const SemaContext& ctx);
-    TypeId checkType(TypeSyntax& syntax, const SemaContext& ctx);
-    TypeId checkTypeArg(const TypeArgument& arg, const SemaContext& ctx);
+    TypeId resolveTypeArg(TypeArgument& arg, const SemaContext& ctx);
 
-    TypeId checkVectorType(const NamedTypeSyntax& syntax, const SemaContext& ctx);
-    TypeId checkMatrixType(const NamedTypeSyntax& syntax, const SemaContext& ctx);
-    TypeId checkNamedType(const NamedTypeSyntax& syntax, const SemaContext& ctx);
-    TypeId checkAliasType(const NamedTypeSyntax& syntax, const AliasDecl& alias, const SemaContext& ctx);
-    TypeId checkArrayType(const ArrayTypeSyntax& syntax, const SemaContext& ctx);
+    TypeId resolveVectorType(NamedTypeSyntax& syntax, const SemaContext& ctx);
+    TypeId resolveMatrixType(NamedTypeSyntax& syntax, const SemaContext& ctx);
+    TypeId resolveNamedType(NamedTypeSyntax& syntax, const SemaContext& ctx);
+    TypeId resolveAliasType(NamedTypeSyntax& syntax, const AliasDecl& alias, const SemaContext& ctx);
+    TypeId resolveArrayType(ArrayTypeSyntax& syntax, const SemaContext& ctx);
 
     FunctionDecl* instantiateFunction(const FunctionDecl& genericFunction, const SemaContext& ctx, SymbolId newName = SymbolId::Invalid);
 
@@ -97,7 +97,7 @@ private:
 
     void addGlobalDecl(Declaration& decl);
 
-    size_t hashFuncInst(DeclId genericId, const std::vector<TypeId> &typeArgs, SymbolId name) const;
+    size_t hashGenericInst(DeclId genericId, const std::vector<TypeId> &typeArgs, SymbolId name = SymbolId::Invalid) const;
 
     static PrimitiveKind toPrimitiveKind(const std::string &name);
 

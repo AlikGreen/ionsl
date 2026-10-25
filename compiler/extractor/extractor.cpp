@@ -56,18 +56,7 @@ namespace ionsl
 
         walker.on([&](const Expression& expression)
         {
-            if (const auto identifierExpr = expression.as<IdentifierExpr>())
-            {
-                if (m_topLevelDecls.contains(identifierExpr->decl))
-                {
-                    auto* identifierDecl = m_decls.get(identifierExpr->decl);
-                    if (!identifierDecl)
-                        return;
-
-                    walker.walk(*identifierDecl);
-                    extractDecl(*identifierDecl, out);
-                }
-            }
+            extractType(expression.resultType, out);
         });
 
         walker.walk(decl);
@@ -88,7 +77,7 @@ namespace ionsl
         if (const auto* structure = decl.as<StructDecl>())
         {
             for (const auto* field : structure->fields)
-                extractDecl(*field, out);
+                extractType(field->type->resolvedType, out);
 
             // TODO extract methods
         }

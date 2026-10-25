@@ -93,6 +93,9 @@ namespace ionsl
         decl->name = m_symbolTable.intern(advance().text);
         m_scopeTable.registerDecl(m_currentScope, decl->name, decl->id);
 
+        ScopeId outerScope = m_currentScope;
+        m_currentScope = m_scopeTable.create(m_currentScope);
+
         if(match(TokenKind::Colon))
         {
             decl->interfaces.push_back(parseType());
@@ -110,15 +113,21 @@ namespace ionsl
         {
             if(check(TokenKind::KwFunction))
             {
-                decl->methods.push_back(parseFunctionDecl());
+                auto* funcDecl = parseFunctionDecl();
+                decl->methods.push_back(funcDecl);
+                m_scopeTable.registerDecl(m_currentScope, funcDecl->name, funcDecl->id);
             }else
             {
-                decl->fields.push_back(parseValueDecl());
+                auto* fieldDecl = parseValueDecl();
+                decl->fields.push_back(fieldDecl);
+                m_scopeTable.registerDecl(m_currentScope, fieldDecl->name, fieldDecl->id);
                 expect(TokenKind::Comma);
             }
         }
 
         decl->span = SourceSpan::between(start, previous().span);
+
+        m_currentScope = outerScope;
 
         return decl;
     }
@@ -208,6 +217,9 @@ namespace ionsl
         auto* decl = createDecl<EnumDecl>();
         decl->name = m_symbolTable.intern(consume(TokenKind::Identifier).text);
 
+        ScopeId membersScope = m_scopeTable.create(m_currentScope);
+        decl->membersScope = membersScope;
+
         if (match(TokenKind::Colon))
         {
             decl->underlyingType = parseType();
@@ -217,12 +229,14 @@ namespace ionsl
 
         while (!match(TokenKind::RBrace))
         {
-            EnumMember member{};
-            member.name = m_symbolTable.intern(consume(TokenKind::Identifier).text);
+            auto member = createDecl<EnumMember>();
+            member->name = m_symbolTable.intern(consume(TokenKind::Identifier).text);
+            member->parentId = decl->id;
 
             if (match(TokenKind::Equal))
-                member.initializer = parseExpression();
+                member->initializer = parseExpression();
 
+            m_scopeTable.registerDecl(membersScope, member->name, member->id);
             decl->members.push_back(member);
 
             expect(TokenKind::Comma);
