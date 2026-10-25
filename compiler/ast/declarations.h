@@ -87,6 +87,7 @@ class AliasDecl final : public Declaration
 public:
     std::vector<GenericParam*> genericParams;
     TypeSyntax* targetType = nullptr;
+    ScopeId scope = ScopeId::Error;
 
     AliasDecl* clone(Arena &arena) const override;
 };

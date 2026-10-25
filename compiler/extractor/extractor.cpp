@@ -39,7 +39,7 @@ namespace ionsl
 
     void Extractor::extractEntrypoint(FunctionDecl &decl, Module &out)
     {
-        extractResources(decl, out);
+        auto resourceMap = extractResources(decl, out);
 
         AstWalker walker{};
         walker.on([&](const TypeId& type)
@@ -72,7 +72,10 @@ namespace ionsl
 
         walker.walk(decl);
 
-        out.declarations().emplace_back(decl.clone(out.arena()));
+        auto* newFunc = decl.clone(out.arena());
+        remapIdentifiers(*newFunc->body, resourceMap);
+
+        out.declarations().push_back(newFunc);
     }
 
     void Extractor::extractDecl(const Declaration &decl, Module &out)
@@ -105,10 +108,10 @@ namespace ionsl
         else if (const auto rt = info.as<ResourceType>())     extractType(rt->containedType, out);
     }
 
-    void Extractor::extractResources(FunctionDecl &declaration, Module &out)
+    std::unordered_map<DeclId, DeclId> Extractor::extractResources(FunctionDecl &declaration, Module &out)
     {
         if (!declaration.genericParams.empty())
-            return;
+            return {};
 
         std::unordered_map<DeclId, DeclId> resourceMap{};
 
@@ -125,7 +128,7 @@ namespace ionsl
             }
         }
 
-        remapIdentifiers(*declaration.body, resourceMap);
+        return resourceMap;
     }
 
 
@@ -153,6 +156,7 @@ namespace ionsl
         else
         {
             const int64_t indexArg = static_cast<int64_t>(std::get<ConstantInt>(*bindingAttrib->getArg("index", m_symbols)->value).value);
+            space = std::get<ConstantInt>(*bindingAttrib->getArg("space", m_symbols)->value).value;
             if (indexArg == -1)
             {
                 index = nextBindingIndex(space);
@@ -163,7 +167,6 @@ namespace ionsl
                 m_takenBindingIndices.emplace(index);
             }
 
-            space = std::get<ConstantInt>(*bindingAttrib->getArg("space", m_symbols)->value).value;
         }
 
         auto access = ResourceAccess::ReadOnly;
@@ -175,22 +178,11 @@ namespace ionsl
                 access = ResourceAccess::ReadWrite;
         }
 
-        TypeId type = param.type->resolvedType;
-
-        // strip the array from the type
-        if (param.attributes->find("storage", m_symbols))
-        {
-            if (const auto arrayType = m_typeSystem.types().getInfo(param.type->resolvedType).as<ArrayType>())
-            {
-                type = arrayType->elementType;
-            }
-        }
-
-        auto* decl = m_module.arena().create<ResourceDecl>();
+        auto* decl = out.arena().create<ResourceDecl>();
         decl->span = param.span;
         decl->attributes = param.attributes->clone(m_module.arena());
         decl->name = param.name;
-        decl->type = type;
+        decl->type = getResourceType(param);
         decl->index = index;
         decl->space = space;
         decl->access = access;
@@ -206,16 +198,10 @@ namespace ionsl
 
     ResourceDecl* Extractor::findResourceDecl(const ValueDecl &param) const
     {
-        // TODO just use a cache
-        for(auto* decl : m_module.declarations())
-        {
-            if (auto* resourceDecl = dynamic_cast<ResourceDecl*>(decl))
-            {
-                // TODO check for storage and remove the array
-                if (resourceDecl->name == param.name && resourceDecl->type == param.type->resolvedType)
-                    return resourceDecl;
-            }
-        }
+        const TypeId resourceType = getResourceType(param);
+        const size_t key = hashResource(resourceType, param.name);
+        if (const auto it = m_resourceCache.find(key); it != m_resourceCache.end())
+            return it->second;
 
         return nullptr;
     }
@@ -236,7 +222,29 @@ namespace ionsl
         walker.walk(block);
     }
 
-    std::optional<ResourceKind> Extractor::getResourceKind(const ValueDecl &param)
+    TypeId Extractor::getResourceType(const ValueDecl &param) const
+    {
+        TypeId type = param.type->resolvedType;
+        if (param.attributes->find("storage", m_symbols))
+        {
+            if (const auto arrayType = m_typeSystem.types().getInfo(param.type->resolvedType).as<ArrayType>())
+            {
+                type = arrayType->elementType;
+            }
+        }
+
+        return type;
+    }
+
+    size_t Extractor::hashResource(const TypeId type, const SymbolId name)
+    {
+        size_t seed = 0;
+        hashCombine(seed, type);
+        hashCombine(seed, name);
+        return seed;
+    }
+
+    std::optional<ResourceKind> Extractor::getResourceKind(const ValueDecl &param) const
     {
         if (param.attributes->find("constant", m_symbols))
             return ResourceKind::ConstantBuffer;

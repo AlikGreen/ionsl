@@ -120,6 +120,7 @@ namespace ionsl
         decl->id = id;
         decl->attributes = attributes->clone(arena);
         decl->targetType = targetType->clone(arena);
+        decl->scope = scope;
 
         for(const auto param : genericParams)
             decl->genericParams.push_back(param->clone(arena));

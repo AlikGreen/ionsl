@@ -180,6 +180,7 @@ namespace ionsl
         auto* decl = createDecl<AliasDecl>();
 
         decl->name = m_symbolTable.intern(advance().text);
+        decl->scope = m_currentScope;
         m_scopeTable.registerDecl(m_currentScope, decl->name, decl->id);
 
 

@@ -167,6 +167,9 @@ namespace ionsl
 
             if(auto* funcDecl = decl->as<FunctionDecl>())
             {
+                if (funcDecl->attributes->contains("shader", m_symbols))
+                    continue;
+
                 std::vector<TypeId> paramTypes;
                 for(const auto* param : funcDecl->params)
                 {
@@ -726,7 +729,12 @@ namespace ionsl
         }
     }
 
-    TypeId SemanticAnalyzer::resolveType(TypeSyntax& syntax, const SemaContext& ctx)
+    TypeId SemanticAnalyzer::resolveType(TypeSyntax &syntax, const SemaContext &ctx)
+    {
+        return syntax.resolvedType = checkType(syntax, ctx);
+    }
+
+    TypeId SemanticAnalyzer::checkType(TypeSyntax& syntax, const SemaContext& ctx)
     {
         if (syntax.resolvedType != TypeId::Error && !m_typeSystem.types().containsGenericParam(syntax.resolvedType))
             return syntax.resolvedType;
@@ -734,33 +742,38 @@ namespace ionsl
         if(auto* namedSyntax = syntax.as<NamedTypeSyntax>())
         {
             if(namedSyntax->name.string(m_symbols) == "vector")
-                return resolveVectorType(*namedSyntax, ctx);
+                return checkVectorType(*namedSyntax, ctx);
             if(namedSyntax->name.string(m_symbols) == "matrix")
-                return resolveMatrixType(*namedSyntax, ctx);
+                return checkMatrixType(*namedSyntax, ctx);
 
             const PrimitiveKind primitiveKind = toPrimitiveKind(namedSyntax->name.string(m_symbols));
             if(primitiveKind != PrimitiveKind::Unknown)
-                return syntax.resolvedType = m_typeSystem.types().getPrimitiveType(primitiveKind);
+                return m_typeSystem.types().getPrimitiveType(primitiveKind);
 
 
-            return syntax.resolvedType = resolveNamedType(*namedSyntax, ctx);
+            return checkNamedType(*namedSyntax, ctx);
         }
 
         if(auto* arraySyntax = syntax.as<ArrayTypeSyntax>())
-            return syntax.resolvedType = resolveArrayType(*arraySyntax, ctx);
+        {
+            if (arraySyntax->size)
+                checkExpression(arraySyntax->size, ctx);
+
+            return checkArrayType(*arraySyntax, ctx);
+        }
 
         return TypeId::Error; // TODO diagnostics
     }
 
-    TypeId SemanticAnalyzer::resolveTypeArg(TypeArgument &arg, const SemaContext &ctx)
+    TypeId SemanticAnalyzer::checkTypeArg(const TypeArgument &arg, const SemaContext &ctx)
     {
         if(auto* typeArg = arg.as<TypeArgumentType>())
-            return typeArg->resolvedType = resolveType(*typeArg->type, ctx);
+            return checkType(*typeArg->type, ctx);
 
         return TypeId::Error;
     }
 
-    TypeId SemanticAnalyzer::resolveVectorType(NamedTypeSyntax &syntax, const SemaContext& ctx)
+    TypeId SemanticAnalyzer::checkVectorType(const NamedTypeSyntax &syntax, const SemaContext& ctx)
     {
         if(syntax.arguments.size() != 2)
         {
@@ -770,7 +783,7 @@ namespace ionsl
 
 
         auto* elementTypeSyntax = syntax.arguments.at(0)->as<TypeArgumentType>()->type;
-        const TypeId elementType = resolveType(*elementTypeSyntax, ctx);
+        const TypeId elementType = checkType(*elementTypeSyntax, ctx);
 
         const auto res = m_evaluator.evaluate(*syntax.arguments.at(1)->as<TypeArgumentValue>()->expression);
         if(!res || !std::holds_alternative<ConstantInt>(*res))
@@ -789,18 +802,18 @@ namespace ionsl
 
         if (const auto primitiveElementType = m_typeSystem.types().getInfo(elementType).as<PrimitiveType>())
         {
-            return syntax.resolvedType = m_typeSystem.types().getVectorType(primitiveElementType->kind, dimension);
+            return m_typeSystem.types().getVectorType(primitiveElementType->kind, dimension);
         }
         if (m_typeSystem.types().getInfo(elementType).is<GenericType>())
         {
-            return syntax.resolvedType = m_typeSystem.types().getGenericVectorType(elementType, dimension);
+            return m_typeSystem.types().getGenericVectorType(elementType, dimension);
         }
 
         error(syntax.span, "vector element type must be a scalar type");
         return TypeId::Error;
     }
 
-    TypeId SemanticAnalyzer::resolveMatrixType(NamedTypeSyntax &syntax, const SemaContext& ctx)
+    TypeId SemanticAnalyzer::checkMatrixType(const NamedTypeSyntax &syntax, const SemaContext& ctx)
     {
         if(syntax.arguments.size() != 3)
         {
@@ -841,22 +854,22 @@ namespace ionsl
         }
 
         auto* elementTypeSyntax = syntax.arguments.at(0)->as<TypeArgumentType>()->type;
-        const TypeId elementType = resolveType(*elementTypeSyntax, ctx);
+        const TypeId elementType = checkType(*elementTypeSyntax, ctx);
 
         if (const auto primitiveElementType = m_typeSystem.types().getInfo(elementType).as<PrimitiveType>())
         {
-            return syntax.resolvedType = m_typeSystem.types().getMatrixType(primitiveElementType->kind, rows, columns);
+            return m_typeSystem.types().getMatrixType(primitiveElementType->kind, rows, columns);
         }
         if (m_typeSystem.types().getInfo(elementType).is<GenericType>())
         {
-            return syntax.resolvedType = m_typeSystem.types().getGenericMatrixType(elementType, rows, columns);
+            return m_typeSystem.types().getGenericMatrixType(elementType, rows, columns);
         }
 
         error(syntax.span, "matrix element type must be a scalar type");
         return TypeId::Error;
     }
 
-    TypeId SemanticAnalyzer::resolveNamedType(NamedTypeSyntax &syntax, const SemaContext& ctx)
+    TypeId SemanticAnalyzer::checkNamedType(const NamedTypeSyntax &syntax, const SemaContext& ctx)
     {
         const SymbolId name = syntax.name.parts[0];
         for (const auto* param : ctx.visibleGenericParams)
@@ -867,9 +880,9 @@ namespace ionsl
             {
                 const auto it = ctx.substitutions->find(param->id);
                 if (it != ctx.substitutions->end())
-                    return syntax.resolvedType = it->second;
+                    return it->second;
             }
-            return syntax.resolvedType = m_typeSystem.types().getGenericType(param->id);
+            return m_typeSystem.types().getGenericType(param->id);
         }
 
         auto decls = find(syntax.name, ctx);
@@ -880,24 +893,24 @@ namespace ionsl
             Declaration* decl = m_declTable.get(id);
             if(decl->is<StructDecl>())
             {
-                return syntax.resolvedType = m_typeSystem.types().getStructType(decl->id);
+                return m_typeSystem.types().getStructType(decl->id);
             }
             if(decl->is<InterfaceDecl>())
             {
                 // TODO this probably needs to resolve it to a concrete type
-                return syntax.resolvedType = m_typeSystem.types().getInterfaceType(decl->id);
+                return m_typeSystem.types().getInterfaceType(decl->id);
             }
             if(decl->is<EnumDecl>())
             {
-                return syntax.resolvedType = m_typeSystem.types().getEnumType(decl->id);
+                return m_typeSystem.types().getEnumType(decl->id);
             }
             if(decl->is<TypeGenericParam>())
             {
-                return syntax.resolvedType = m_typeSystem.types().getGenericType(decl->id);
+                return m_typeSystem.types().getGenericType(decl->id);
             }
             if(const AliasDecl* alias = decl->as<AliasDecl>())
             {
-                return resolveAliasType(syntax, *alias, ctx);
+                return checkAliasType(syntax, *alias, ctx);
             }
         }
 
@@ -905,13 +918,12 @@ namespace ionsl
         return TypeId::Error;
     }
 
-    TypeId SemanticAnalyzer::resolveAliasType(NamedTypeSyntax& syntax, const AliasDecl& alias, const SemaContext& ctx)
+    TypeId SemanticAnalyzer::checkAliasType(const NamedTypeSyntax& syntax, const AliasDecl& alias, const SemaContext& ctx)
     {
         if(alias.genericParams.size() != syntax.arguments.size())
             return TypeId::Error; // TODO diagnostics
 
         std::unordered_map<DeclId, TypeId> typeSubstitutions{};
-
 
         for(size_t i = 0; i < alias.genericParams.size(); ++i)
         {
@@ -928,24 +940,23 @@ namespace ionsl
                     continue;
                 }
 
-                resolveType(*typeArg->type, ctx);
-                typeSubstitutions[typeParam->id] = typeArg->type->resolvedType;
+
+                typeSubstitutions[typeParam->id] = checkType(*typeArg->type, ctx);
             }
         }
 
-        resolveType(*alias.targetType, ctx.withSubs(typeSubstitutions));
-        return syntax.resolvedType = alias.targetType->resolvedType;
+        return checkType(*alias.targetType, ctx.withScope(alias.scope).withSubs(typeSubstitutions));;
     }
 
-    TypeId SemanticAnalyzer::resolveArrayType(ArrayTypeSyntax &syntax, const SemaContext& ctx)
+    TypeId SemanticAnalyzer::checkArrayType(const ArrayTypeSyntax &syntax, const SemaContext& ctx)
     {
-        resolveType(*syntax.elementType, ctx);
+        const TypeId elementType = checkType(*syntax.elementType, ctx);
 
         std::optional<uint32_t> size = std::nullopt;
 
         if(syntax.size)
         {
-            checkExpression(syntax.size, ctx);
+            // TODO assert that size has been checked
             const auto sizeRes = m_evaluator.evaluate(*syntax.size);
             if(!sizeRes || !std::holds_alternative<ConstantInt>(*sizeRes))
             {
@@ -960,7 +971,7 @@ namespace ionsl
             }
         }
 
-        return syntax.resolvedType = m_typeSystem.types().getArrayType(syntax.elementType->resolvedType, size);
+        return m_typeSystem.types().getArrayType(elementType, size);
     }
 
     FunctionDecl* SemanticAnalyzer::instantiateFunction(const FunctionDecl &genericFunction, const SemaContext& ctx, SymbolId newName)

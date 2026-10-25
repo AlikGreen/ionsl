@@ -79,13 +79,14 @@ private:
     void checkAttribute(Attribute& attribute, const SemaContext &ctx);
 
     TypeId resolveType(TypeSyntax& syntax, const SemaContext& ctx);
-    TypeId resolveTypeArg(TypeArgument& arg, const SemaContext& ctx);
+    TypeId checkType(TypeSyntax& syntax, const SemaContext& ctx);
+    TypeId checkTypeArg(const TypeArgument& arg, const SemaContext& ctx);
 
-    TypeId resolveVectorType(NamedTypeSyntax& syntax, const SemaContext& ctx);
-    TypeId resolveMatrixType(NamedTypeSyntax& syntax, const SemaContext& ctx);
-    TypeId resolveNamedType(NamedTypeSyntax& syntax, const SemaContext& ctx);
-    TypeId resolveAliasType(NamedTypeSyntax& syntax, const AliasDecl& alias, const SemaContext& ctx);
-    TypeId resolveArrayType(ArrayTypeSyntax& syntax, const SemaContext& ctx);
+    TypeId checkVectorType(const NamedTypeSyntax& syntax, const SemaContext& ctx);
+    TypeId checkMatrixType(const NamedTypeSyntax& syntax, const SemaContext& ctx);
+    TypeId checkNamedType(const NamedTypeSyntax& syntax, const SemaContext& ctx);
+    TypeId checkAliasType(const NamedTypeSyntax& syntax, const AliasDecl& alias, const SemaContext& ctx);
+    TypeId checkArrayType(const ArrayTypeSyntax& syntax, const SemaContext& ctx);
 
     FunctionDecl* instantiateFunction(const FunctionDecl& genericFunction, const SemaContext& ctx, SymbolId newName = SymbolId::Invalid);
 

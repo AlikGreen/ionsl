@@ -26,18 +26,24 @@ private:
     std::unordered_set<DeclId> m_extracted;
     std::unordered_set<DeclId> m_topLevelDecls;
     std::unordered_set<uint32_t> m_takenBindingIndices;
-    std::unordered_map<char, uint32_t> m_nextBindingIndices;
+    std::unordered_map<uint32_t, uint32_t> m_nextBindingIndices;
+
+    std::unordered_map<size_t, ResourceDecl*> m_resourceCache;
 
     void extractEntrypoint(FunctionDecl& decl, Module& out);
     void extractDecl(const Declaration& decl, Module& out);
     void extractType(TypeId id, Module& out);
 
-    void extractResources(FunctionDecl& declaration, Module& out);
+    std::unordered_map<DeclId, DeclId> extractResources(FunctionDecl& declaration, Module& out);
     ResourceDecl* extractResourceDecl(const ValueDecl& param, const FunctionDecl &function, Module& out);
     ResourceDecl* findResourceDecl(const ValueDecl& param) const;
     void remapIdentifiers(BlockStmt& block, std::unordered_map<DeclId, DeclId> resourceMap);
+    TypeId getResourceType(const ValueDecl& param) const;
 
-    std::optional<ResourceKind> getResourceKind(const ValueDecl& param);
+    static size_t hashResource(TypeId type, SymbolId name);
+
+    std::optional<ResourceKind> getResourceKind(const ValueDecl& param) const;
     uint32_t nextBindingIndex(uint32_t space);
 };
+
 }
