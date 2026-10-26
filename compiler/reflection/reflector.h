@@ -21,7 +21,7 @@ private:
 
     void reflectDeclaration(const Declaration& declaration, ShaderReflection& data);
     void reflectFunctionDecl(const FunctionDecl& declaration, ShaderReflection& data);
-    void reflectValueDecl(const ValueDecl& declaration, ReflectedEntryPoint& ep);
+    void reflectResourceDecl(const ResourceDecl& declaration, ShaderReflection &data);
 
     ReflectedType reflectType(TypeId id);
     ReflectedType reflectPrimitiveType(const PrimitiveType& type);
@@ -29,6 +29,7 @@ private:
     ReflectedType reflectArrayType(const ArrayType& type);
     ReflectedType reflectMatrixType(const MatrixType& type);
     ReflectedType reflectVectorType(const VectorType& type);
+    ReflectedType reflectEnumType(const EnumType& type);
 
     ReflectedAttributes reflectAttributes(const Attributes& attributes);
     ReflectedAttribute reflectAttribute(const Attribute& attribute);

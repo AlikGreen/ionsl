@@ -210,8 +210,7 @@ namespace
         result.timings.reflect = sw.lap();
 
         result.entryPoints = reflection.entryPoints.size();
-        for (const auto& reflected : reflection.entryPoints)
-            result.resources += reflected.resources.size();
+        result.resources = reflection.resources.size();
 
         if (result.entryPoints != test.entries.size())
         {

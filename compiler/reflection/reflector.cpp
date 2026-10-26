@@ -30,6 +30,8 @@ namespace ionsl
     {
         if(const auto funcDecl = declaration.as<FunctionDecl>())
             reflectFunctionDecl(*funcDecl, data);
+        else if(const auto resourceDecl = declaration.as<ResourceDecl>())
+            reflectResourceDecl(*resourceDecl, data);
     }
 
     void Reflector::reflectFunctionDecl(const FunctionDecl &declaration, ShaderReflection& data)
@@ -76,51 +78,18 @@ namespace ionsl
             ep.threadsZ = std::get<ConstantInt>(*threadsZArg).value;
         }
 
-        for (const auto* param : declaration.params)
-        {
-            reflectValueDecl(*param, ep);
-        }
-
         data.entryPoints.push_back(ep);
     }
 
-    void Reflector::reflectValueDecl(const ValueDecl& declaration, ReflectedEntryPoint &ep)
+    void Reflector::reflectResourceDecl(const ResourceDecl& declaration, ShaderReflection &data)
     {
-        if (declaration.attributes->attributes.empty())
-            return;
-
-        ResourceKind resourceKind;
-        if (declaration.attributes->contains("constant", m_symbols))
-            resourceKind = ResourceKind::ConstantBuffer;
-        else if (declaration.attributes->contains("storage", m_symbols))
-            resourceKind = ResourceKind::StorageBuffer;
-        else
-            return; // TODO texture and vertex inputs
-
         const std::string name = m_symbols.get(declaration.name);
+        const ReflectedType t = reflectType(declaration.type);
 
-        const ReflectedType t = reflectType(declaration.type->resolvedType);
+        const ReflectedAttributes attrs = reflectAttributes(*declaration.attributes);
 
-        ReflectedAttributes attrs = reflectAttributes(*declaration.attributes);
-
-        // TODO implement constant evaluation to enum
-        auto access = ResourceAccess::ReadOnly;
-        if (const auto attrib = attrs.find("access"))
-        {
-            const ConstantValue* attribArgVal = attrib->find("access");
-            if (attribArgVal && std::holds_alternative<std::string>(*attribArgVal))
-            {
-                const std::string accessString = std::get<std::string>(*attribArgVal);
-
-                if (accessString == "readonly")
-                    access = ResourceAccess::ReadOnly;
-                if (accessString == "read-write")
-                    access = ResourceAccess::ReadWrite;
-            }
-        }
-
-        ReflectedResource res{name, attrs, t, access, resourceKind};
-        ep.resources.push_back(res);
+        const ReflectedResource res{name, attrs, t, declaration.access, declaration.kind};
+        data.resources.push_back(res);
     }
 
     ReflectedType Reflector::reflectType(const TypeId id)
@@ -136,6 +105,8 @@ namespace ionsl
             return reflectMatrixType(*matrix);
         if (const auto vector = info.as<VectorType>())
             return reflectVectorType(*vector);
+        if (const auto enumeration = info.as<EnumType>())
+            return reflectEnumType(*enumeration);
 
         // TODO fix
         throw std::runtime_error("Unknown type reached during reflection");
@@ -197,6 +168,27 @@ namespace ionsl
         kind.dimension = type.dimension;
         const uint32_t size = primitiveSize(kind.type) * kind.dimension;
         return ReflectedType{ kind, size, size }; // TODO alignment
+    }
+
+    ReflectedType Reflector::reflectEnumType(const EnumType &type)
+    {
+        ReflectedEnumType kind{};
+        const EnumDecl* enumDecl = m_decls.get(type.declId)->as<EnumDecl>();
+
+        const TypeId underlyingType = enumDecl->underlyingType ? enumDecl->underlyingType->resolvedType : TypeId::I32;
+
+        kind.underlyingType = std::make_shared<ReflectedType>(reflectType(underlyingType));
+
+        for (const auto* member : enumDecl->members)
+        {
+            ReflectedEnumMember enumMember{};
+            enumMember.name = m_symbols.get(member->name);
+            enumMember.value = member->value;
+        }
+
+        uint32_t size = enumDecl->members.size() * kind.underlyingType->size();
+
+        return ReflectedType{ kind, size, size };
     }
 
     ReflectedAttributes Reflector::reflectAttributes(const Attributes &attributes)

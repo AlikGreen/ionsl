@@ -73,7 +73,19 @@ struct ReflectedArrayType
     std::optional<uint32_t> size;
 };
 
-using ReflectedTypeKind = std::variant<PrimitiveKind, ReflectedVectorType, ReflectedMatrixType, ReflectedStructType, ReflectedArrayType>;
+struct ReflectedEnumMember
+{
+    std::string name;
+    ConstantInt value;
+};
+
+struct ReflectedEnumType
+{
+    std::shared_ptr<ReflectedType> underlyingType;
+    std::vector<ReflectedEnumMember> members;
+};
+
+using ReflectedTypeKind = std::variant<PrimitiveKind, ReflectedVectorType, ReflectedMatrixType, ReflectedStructType, ReflectedArrayType, ReflectedEnumType>;
 
 class ReflectedType
 {
@@ -103,12 +115,12 @@ struct ReflectedEntryPoint
 {
     ReflectedAttributes attributes;
     ShaderStage stage;
-    uint32_t threadsX, threadsY, threadsZ;
-    std::vector<ReflectedResource> resources;
+    uint32_t threadsX{}, threadsY{}, threadsZ{};
 };
 
 struct ShaderReflection
 {
     std::vector<ReflectedEntryPoint> entryPoints;
+    std::vector<ReflectedResource> resources;
 };
 }
