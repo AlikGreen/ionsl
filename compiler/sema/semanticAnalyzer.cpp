@@ -13,7 +13,7 @@ namespace ionsl
 {
     void SemanticAnalyzer::analyze()
     {
-        constexpr SemaContext ctx{};
+        const SemaContext ctx{};
 
         for(auto it = m_module.declarations().begin(); it != m_module.declarations().end(); ++it)
         {
@@ -65,6 +65,8 @@ namespace ionsl
             return checkFieldAccessExpr(expression, *fieldAccessExpr, ctx);
         if(auto* conversionExpr = expression->as<ConversionExpr>())
             return checkConversionExpr(*conversionExpr, ctx);
+        if(auto* constructExpr = expression->as<ConstructExpr>())
+            return constructExpr->type->resolvedType;
 
         return TypeId::Error;
     }
@@ -77,7 +79,14 @@ namespace ionsl
         if(leftType == TypeId::Error || rightType == TypeId::Error) return TypeId::Error;
 
         const auto result = m_typeSystem.resolveBinaryTypes(expression.op, leftType, rightType);
-        if(!result) return TypeId::Error; // TODO diagnostics
+        if(!result)
+        {
+            error(expression.span, "operator '{}' cannot be applied to operands of type '{}' and '{}'",
+              opToString(expression.op),
+              getTypeName(leftType),
+              getTypeName(rightType));
+            return TypeId::Error;
+        }
 
         expression.left = makeConversion(expression.left, result->leftType);
         expression.right = makeConversion(expression.right, result->rightType);
@@ -94,7 +103,14 @@ namespace ionsl
         if(operandType == TypeId::Error) return TypeId::Error;
 
         const auto result = m_typeSystem.resolveUnaryType(expression.op, operandType);
-        if(!result) return TypeId::Error;
+        if(!result)
+        {
+            error(expression.span, "unary operator '{}' cannot be applied to type '{}'",
+                  opToString(expression.op),
+                  getTypeName(operandType));
+            return TypeId::Error;
+        }
+
 
         expression.operand = makeConversion(expression.operand, result->operandType);
 
@@ -138,19 +154,27 @@ namespace ionsl
 
     TypeId SemanticAnalyzer::checkIdentifierCall(CallExpr& expression, IdentifierExpr& identifier, const SemaContext& ctx)
     {
-        std::vector<TypeId> argumentTypes;
+        auto candidates = find(identifier.name, ctx);
+        if (candidates.empty())
+        {
+            error(expression.span, "no function named '{}' exists", identifier.name.string(m_symbols));
+            return TypeId::Error;
+        }
 
-        for(auto& argument : expression.args)
+        std::vector<TypeId> argumentTypes;
+        bool hasArgError = false;
+
+        for (auto& argument : expression.args)
         {
             TypeId type = checkExpression(argument, ctx);
-
-            if(type == TypeId::Error)
-                return TypeId::Error;
+            if (type == TypeId::Error)
+                hasArgError = true;
 
             argumentTypes.push_back(type);
         }
 
-        auto candidates = find(identifier.name, ctx);
+        if (hasArgError)
+            return TypeId::Error;
 
         struct Candidate
         {
@@ -283,11 +307,17 @@ namespace ionsl
 
     TypeId SemanticAnalyzer::checkIndexExpr(IndexExpr &expression, const SemaContext& ctx)
     {
-        checkExpression(expression.index, ctx);
+        const TypeId indexType = checkExpression(expression.index, ctx);
         const TypeId arrayTypeId = checkExpression(expression.array, ctx);
 
         if (arrayTypeId == TypeId::Error)
             return TypeId::Error;
+
+        if (!m_typeSystem.types().isIntegral(indexType))
+        {
+            error(expression.index->span, "array index must be an integer");
+            return TypeId::Error;
+        }
 
         TypeInfo type = m_typeSystem.types().getInfo(arrayTypeId);
 
@@ -304,7 +334,7 @@ namespace ionsl
             return expression.resultType = resourceDecl->type;
         }
 
-        // TODO validation
+        error(expression.array->span, "cannot index into non-array type");
         return TypeId::Error;
     }
 
@@ -361,10 +391,19 @@ namespace ionsl
         // TODO validation and interfaces
         if (const auto structType = objType.as<StructType>())
         {
-            const StructDecl& structDecl = *m_declTable.get(structType->declId)->as<StructDecl>();
+            const StructDecl* structDecl = m_declTable.get(structType->declId)->as<StructDecl>();
             // TODO methods
-            const ValueDecl& field = *structDecl.findField(expression.memberName);
-            expression.resultType = field.type->resolvedType;
+            const ValueDecl* field = structDecl->findField(expression.memberName);
+
+            if (!field)
+            {
+                error(expression.span, "struct '{}' has no field named '{}'",
+                      m_symbols.get(structDecl->name),
+                      m_symbols.get(expression.memberName));
+                return TypeId::Error;
+            }
+
+            expression.resultType = field->type->resolvedType;
             return expression.resultType;
         }
         if (const auto vectorType = objType.as<VectorType>())
@@ -376,8 +415,14 @@ namespace ionsl
             for (const char c : fieldName)
             {
                 const uint8_t index = componentIndex(c);
+
                 if (index >= vectorType->dimension)
+                {
+                    error(expression.span, "component '{}' is out of bounds for vector of dimension {}",
+                          c, vectorType->dimension);
                     return TypeId::Error;
+                }
+
                 swizzleIndices.push_back(index);
             }
 
@@ -393,6 +438,8 @@ namespace ionsl
             return m_typeSystem.types().getPrimitiveType(vectorType->scalarType);
         }
 
+        error(expression.span, "cannot access member '{}' on non-aggregate type",
+          m_symbols.get(expression.memberName));
         return TypeId::Error;
     }
 
@@ -462,7 +509,15 @@ namespace ionsl
         if(statement.expr)
             returnType = checkExpression(statement.expr, ctx);
 
-        // TODO check return type against function type
+        if(ctx.expectedReturnType != TypeId::Error)
+        {
+            if(!m_typeSystem.conversionCost(returnType, ctx.expectedReturnType))
+            {
+                error(statement.span, "cannot return value of type '{}' from function returning '{}'",
+                      getTypeName(returnType),
+                      getTypeName(ctx.expectedReturnType));
+            }
+        }
     }
 
     void SemanticAnalyzer::checkBreakContinueStmt()
@@ -496,14 +551,16 @@ namespace ionsl
         if (!declaration.body)
              return;
 
+        SemaContext bodyCtx = ctx.withExpectedReturnType(declaration.returnType->resolvedType);
+
         if (declaration.genericParams.empty())
         {
-            checkBlockStmt(*declaration.body, ctx);
+            checkBlockStmt(*declaration.body, bodyCtx);
             return;
         }
 
         // check the generic function for errors
-        checkBlockStmt(*declaration.body, ctx.forGenericDecl(declaration.genericParams));
+        checkBlockStmt(*declaration.body, bodyCtx.forGenericDecl(declaration.genericParams));
 
         for (const auto& specialization : m_specializations)
         {
@@ -514,7 +571,7 @@ namespace ionsl
             for(const auto [param, typeId] : std::ranges::zip_view(declaration.genericParams, specialization.typeArgs))
                 subs[param->id] = typeId;
 
-            SemaContext genericCtx = ctx.forGenericDecl(declaration.genericParams).withSubs(subs);
+            SemaContext genericCtx = bodyCtx.forGenericDecl(declaration.genericParams).withSubs(subs);
 
             const SymbolId newName = specialization.newName.empty() ? declaration.name : m_symbols.intern(specialization.newName);
 
@@ -920,8 +977,14 @@ namespace ionsl
 
     TypeId SemanticAnalyzer::resolveAliasType(NamedTypeSyntax& syntax, const AliasDecl& alias, const SemaContext& ctx)
     {
-        if(alias.genericParams.size() != syntax.arguments.size())
-            return TypeId::Error; // TODO diagnostics
+        if (alias.genericParams.size() != syntax.arguments.size())
+        {
+            error(syntax.span, "type alias '{}' expects {} arguments, but {} were provided",
+                  m_symbols.get(alias.name),
+                  alias.genericParams.size(),
+                  syntax.arguments.size());
+            return TypeId::Error;
+        }
 
         std::vector<TypeId> genericArgTypes{};
         std::unordered_map<DeclId, TypeId> typeSubstitutions{};
@@ -948,6 +1011,7 @@ namespace ionsl
                 // TODO
             }
         }
+
 
         size_t key = hashGenericInst(alias.id, genericArgTypes);
 
@@ -1011,7 +1075,7 @@ namespace ionsl
         concreteFunc->name = newName;
 
         checkFunctionDeclSignature(*concreteFunc, ctx);
-        checkBlockStmt(*concreteFunc->body, ctx);
+        checkBlockStmt(*concreteFunc->body, ctx.withExpectedReturnType(concreteFunc->returnType->resolvedType));
 
         concreteFunc->genericParams.clear();
 
@@ -1098,6 +1162,162 @@ namespace ionsl
 
         hashCombine(h, name.value());
         return h;
+    }
+
+    std::string SemanticAnalyzer::getTypeName(const TypeId id) const
+    {
+        if (id == TypeId::Error)
+            return "<error>";
+        if (id == TypeId::Void)
+            return "void";
+
+        const TypeInfo info = m_typeSystem.types().getInfo(id);
+
+        if (const auto* p = info.as<PrimitiveType>())
+        {
+            switch (p->kind)
+            {
+                case PrimitiveKind::Void:    return "void";
+                case PrimitiveKind::Bool:    return "bool";
+                case PrimitiveKind::Int8:    return "i8";
+                case PrimitiveKind::Int16:   return "i16";
+                case PrimitiveKind::Int32:   return "i32";
+                case PrimitiveKind::Int64:   return "i64";
+                case PrimitiveKind::UInt8:   return "u8";
+                case PrimitiveKind::UInt16:  return "u16";
+                case PrimitiveKind::UInt32:  return "u32";
+                case PrimitiveKind::UInt64:  return "u64";
+                case PrimitiveKind::Float16: return "f16";
+                case PrimitiveKind::Float32: return "f32";
+                case PrimitiveKind::Float64: return "f64";
+                case PrimitiveKind::String:  return "string";
+                default:                     return "unknown";
+            }
+        }
+
+        if (const auto* v = info.as<VectorType>())
+        {
+            std::string elem = getTypeName(m_typeSystem.types().getPrimitiveType(v->scalarType));
+            return std::format("vector<{}, {}>", elem, v->dimension);
+        }
+
+        if (const auto* m = info.as<MatrixType>())
+        {
+            std::string elem = getTypeName(m_typeSystem.types().getPrimitiveType(m->scalarType));
+            return std::format("matrix<{}, {}, {}>", elem, m->rows, m->columns);
+        }
+
+        if (const auto* gv = info.as<GenericVectorType>())
+        {
+            return std::format("vector<{}, {}>", getTypeName(gv->elementType), gv->dimension);
+        }
+
+        if (const auto* gm = info.as<GenericMatrixType>())
+        {
+            return std::format("matrix<{}, {}, {}>", getTypeName(gm->elementType), gm->rows, gm->columns);
+        }
+
+        if (const auto* a = info.as<ArrayType>())
+        {
+            if (a->size)
+                return std::format("{}[{}]", getTypeName(a->elementType), *a->size);
+            return std::format("{}[]", getTypeName(a->elementType));
+        }
+
+        if (const auto* s = info.as<StructType>())
+        {
+            if (const auto* decl = m_declTable.get(s->declId))
+                return m_symbols.get(decl->name);
+            return "<struct>";
+        }
+
+        if (const auto* e = info.as<EnumType>())
+        {
+            if (const auto* decl = m_declTable.get(e->declId))
+                return m_symbols.get(decl->name);
+            return "<enum>";
+        }
+
+        if (const auto* i = info.as<InterfaceType>())
+        {
+            if (const auto* decl = m_declTable.get(i->declId))
+                return m_symbols.get(decl->name);
+            return "<interface>";
+        }
+
+        if (const auto* g = info.as<GenericType>())
+        {
+            if (const auto* decl = m_declTable.get(g->declId))
+                return m_symbols.get(decl->name);
+            return "<generic>";
+        }
+
+        if (const auto* r = info.as<ResourceType>())
+        {
+            if (const auto* decl = m_declTable.get(r->declId))
+                return std::format("{}<{}>", m_symbols.get(decl->name), getTypeName(r->containedType));
+            return std::format("Resource<{}>", getTypeName(r->containedType));
+        }
+
+        return "<unknown>";
+    }
+
+    std::string_view SemanticAnalyzer::opToString(BinaryOp op)
+    {
+        switch (op)
+        {
+            case BinaryOp::Add:             return "+";
+            case BinaryOp::Subtract:        return "-";
+            case BinaryOp::Multiply:        return "*";
+            case BinaryOp::Divide:          return "/";
+            case BinaryOp::Modulo:          return "%";
+
+            case BinaryOp::Equal:           return "==";
+            case BinaryOp::NotEqual:        return "!=";
+            case BinaryOp::Less:            return "<";
+            case BinaryOp::LessEqual:       return "<=";
+            case BinaryOp::Greater:         return ">";
+            case BinaryOp::GreaterEqual:    return ">=";
+
+            case BinaryOp::LogicalAnd:      return "&&";
+            case BinaryOp::LogicalOr:       return "||";
+
+            case BinaryOp::BitwiseAnd:      return "&";
+            case BinaryOp::BitwiseOr:       return "|";
+            case BinaryOp::BitwiseXor:      return "^";
+            case BinaryOp::ShiftLeft:       return "<<";
+            case BinaryOp::ShiftRight:      return ">>";
+
+            case BinaryOp::Assign:          return "=";
+            case BinaryOp::ModuloAssign:    return "%=";
+            case BinaryOp::AddAssign:       return "+=";
+            case BinaryOp::SubAssign:       return "-=";
+            case BinaryOp::MulAssign:       return "*=";
+            case BinaryOp::DivAssign:       return "/=";
+            case BinaryOp::BitwiseAndAssign: return "&=";
+            case BinaryOp::BitwiseOrAssign:  return "|=";
+            case BinaryOp::BitwiseXorAssign: return "^=";
+            case BinaryOp::ShiftLeftAssign:  return "<<=";
+            case BinaryOp::ShiftRightAssign: return ">>=";
+        }
+
+        return "<invalid>";
+    }
+
+    std::string_view SemanticAnalyzer::opToString(UnaryOp op)
+    {
+        switch (op)
+        {
+            case UnaryOp::Negate:         return "-";
+            case UnaryOp::LogicalNot:     return "!";
+            case UnaryOp::BitwiseNot:     return "~";
+            case UnaryOp::PreIncrement:   return "++";
+            case UnaryOp::PreDecrement:   return "--";
+            case UnaryOp::PostIncrement:  return "++";
+            case UnaryOp::PostDecrement:  return "--";
+        }
+
+        return "<invalid>";
     }
 
     PrimitiveKind SemanticAnalyzer::toPrimitiveKind(const std::string &name)

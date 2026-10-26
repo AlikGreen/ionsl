@@ -47,10 +47,13 @@ fn dot(left : vec3f, right : vec3f) -> f32;
 fn max(left : f32, right : f32) -> f32;
 
 [[hlsl(function = "mul")]]
-fn mul(mat : mat4f, vec : vec4f) -> mat4f;
+fn mul(mat : mat4f, vec : vec4f) -> vec4f;
 
 [[hlsl(function = "pow")]]
 fn pow(base : f32, power : f32) -> f32;
+
+[[hlsl(function = "clamp")]]
+fn clamp(value : vec3f, min : vec3f, max : vec3f) -> vec3f;
 
 // [[hlsl(expr = "$lhs + $rhs")]]
 // operator +(lhs : f32, rhs : f32) -> f32;

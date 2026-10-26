@@ -96,7 +96,7 @@ fn applyTonemap(color : vec3f, mode : TonemapMode) -> vec3f
         var c : f32 = 2.43;
         var d : f32 = 0.59;
         var e : f32 = 0.14;
-        return clamp((color * (color * a + b)) / (color * (color * c + d) + e), 0.0, 1.0);
+        return clamp((color * (color * a + b)) / (color * (color * c + d) + e), vec3f(0.0), vec3f(1.0));
     }
     return color;
 }

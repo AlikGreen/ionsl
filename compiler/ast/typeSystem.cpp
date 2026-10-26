@@ -255,18 +255,97 @@ namespace ionsl
             case BinaryOp::Divide:
             case BinaryOp::Modulo:
             {
-                const auto commonType = findCommonType(left, right);
+                if (const auto commonType = findCommonType(left, right))
+                {
+                    return BinaryTypeResult{ *commonType, *commonType, *commonType };
+                }
 
-                if(!commonType)
-                    return std::nullopt;
+                const TypeInfo leftInfo  = m_types.getInfo(left);
+                const TypeInfo rightInfo = m_types.getInfo(right);
 
-                return BinaryTypeResult{
-                    *commonType,
-                    *commonType,
-                    *commonType
-                };
+                const auto* leftVec  = leftInfo.as<VectorType>();
+                const auto* rightVec = rightInfo.as<VectorType>();
+
+                if (leftVec && rightVec && leftVec->dimension == rightVec->dimension)
+                {
+                    const TypeId leftScalar  = m_types.getPrimitiveType(leftVec->scalarType);
+                    const TypeId rightScalar = m_types.getPrimitiveType(rightVec->scalarType);
+
+                    if (const auto commonScalar = findCommonType(leftScalar, rightScalar))
+                    {
+                        const auto scalarKind = m_types.getInfo(*commonScalar).as<PrimitiveType>()->kind;
+                        const TypeId resVec   = m_types.getVectorType(scalarKind, leftVec->dimension);
+                        return BinaryTypeResult{ resVec, resVec, resVec };
+                    }
+                }
+
+                if (leftVec && rightInfo.is<PrimitiveType>())
+                {
+                    const TypeId leftScalar = m_types.getPrimitiveType(leftVec->scalarType);
+                    if (const auto commonScalar = findCommonType(leftScalar, right))
+                    {
+                        const auto scalarKind = m_types.getInfo(*commonScalar).as<PrimitiveType>()->kind;
+                        const TypeId resVec   = m_types.getVectorType(scalarKind, leftVec->dimension);
+                        // In HLSL, vector * scalar is native; both sides keep their types
+                        return BinaryTypeResult{ resVec, *commonScalar, resVec };
+                    }
+                }
+
+                if (leftInfo.is<PrimitiveType>() && rightVec)
+                {
+                    const TypeId rightScalar = m_types.getPrimitiveType(rightVec->scalarType);
+                    if (const auto commonScalar = findCommonType(left, rightScalar))
+                    {
+                        const auto scalarKind = m_types.getInfo(*commonScalar).as<PrimitiveType>()->kind;
+                        const TypeId resVec   = m_types.getVectorType(scalarKind, rightVec->dimension);
+                        return BinaryTypeResult{ *commonScalar, resVec, resVec };
+                    }
+                }
+
+                const auto* leftMat  = leftInfo.as<MatrixType>();
+                const auto* rightMat = rightInfo.as<MatrixType>();
+
+                if (leftMat && rightMat &&
+                    leftMat->rows == rightMat->rows &&
+                    leftMat->columns == rightMat->columns)
+                {
+                    const TypeId leftScalar  = m_types.getPrimitiveType(leftMat->scalarType);
+                    const TypeId rightScalar = m_types.getPrimitiveType(rightMat->scalarType);
+
+                    if (const auto commonScalar = findCommonType(leftScalar, rightScalar))
+                    {
+                        const auto scalarKind = m_types.getInfo(*commonScalar).as<PrimitiveType>()->kind;
+                        const TypeId resMat   = m_types.getMatrixType(scalarKind, leftMat->rows, leftMat->columns);
+                        return BinaryTypeResult{ resMat, resMat, resMat };
+                    }
+                }
+
+                if (leftMat && rightInfo.is<PrimitiveType>())
+                {
+                    const TypeId leftScalar = m_types.getPrimitiveType(leftMat->scalarType);
+                    if (const auto commonScalar = findCommonType(leftScalar, right))
+                    {
+                        const auto scalarKind = m_types.getInfo(*commonScalar).as<PrimitiveType>()->kind;
+                        const TypeId resMat   = m_types.getMatrixType(scalarKind, leftMat->rows, leftMat->columns);
+                        return BinaryTypeResult{ resMat, *commonScalar, resMat };
+                    }
+                }
+
+                if (leftInfo.is<PrimitiveType>() && rightMat)
+                {
+                    const TypeId rightScalar = m_types.getPrimitiveType(rightMat->scalarType);
+                    if (const auto commonScalar = findCommonType(left, rightScalar))
+                    {
+                        const auto scalarKind = m_types.getInfo(*commonScalar).as<PrimitiveType>()->kind;
+                        const TypeId resMat   = m_types.getMatrixType(scalarKind, rightMat->rows, rightMat->columns);
+                        return BinaryTypeResult{ *commonScalar, resMat, resMat };
+                    }
+                }
+
+                return std::nullopt;
             }
             case BinaryOp::Assign:
+            // TODO check left and right are numbers
             case BinaryOp::AddAssign:
             case BinaryOp::SubAssign:
             case BinaryOp::MulAssign:
@@ -318,6 +397,11 @@ namespace ionsl
             case BinaryOp::BitwiseAnd:
             case BinaryOp::BitwiseOr:
             case BinaryOp::BitwiseXor:
+            case BinaryOp::BitwiseAndAssign:
+            case BinaryOp::BitwiseOrAssign:
+            case BinaryOp::BitwiseXorAssign:
+            case BinaryOp::ShiftLeftAssign:
+            case BinaryOp::ShiftRightAssign:
             {
                 const auto commonType = findCommonType(left, right);
 

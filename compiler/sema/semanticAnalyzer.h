@@ -99,6 +99,12 @@ private:
 
     size_t hashGenericInst(DeclId genericId, const std::vector<TypeId> &typeArgs, SymbolId name = SymbolId::Invalid) const;
 
+    std::string getTypeName(TypeId id) const;
+
+    std::string_view opToString(BinaryOp op);
+
+    std::string_view opToString(UnaryOp op);
+
     static PrimitiveKind toPrimitiveKind(const std::string &name);
 
     Expression* makeConversion(Expression* operand, TypeId type) const;

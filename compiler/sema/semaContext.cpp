@@ -21,4 +21,11 @@ namespace ionsl
         c.visibleGenericParams = params;
         return c;
     }
+
+    SemaContext SemaContext::withExpectedReturnType(TypeId returnType) const
+    {
+        auto c = *this;
+        c.expectedReturnType = returnType;
+        return c;
+    }
 }
