@@ -113,6 +113,7 @@ struct ReflectedResource
 
 struct ReflectedEntryPoint
 {
+    std::string name;
     ReflectedAttributes attributes;
     ShaderStage stage;
     uint32_t threadsX{}, threadsY{}, threadsZ{};

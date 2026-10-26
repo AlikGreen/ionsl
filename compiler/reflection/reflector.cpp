@@ -51,6 +51,7 @@ namespace ionsl
             return;
 
         ReflectedEntryPoint ep;
+        ep.name = m_symbols.get(declaration.name);
         ep.attributes = attribs;
         ep.stage = convertStage(std::get<std::string>(*shaderTypeArg));
 
