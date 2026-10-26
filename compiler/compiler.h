@@ -24,7 +24,7 @@ public:
 
     Module parse(const std::string &source);
     Module link(const LinkDescription& desc);
-    Module extract(const Module& module, const std::vector<DeclId> &entryPoints);
+    Module extract(const Module& module, const std::vector<DeclId> &entryPoints = {});
     ShaderReflection reflect(const Module& module);
 
     template<typename T>

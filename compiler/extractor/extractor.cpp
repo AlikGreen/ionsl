@@ -26,11 +26,14 @@ namespace ionsl
         {
             if (auto* funcDecl = decl->as<FunctionDecl>())
             {
-                for (const auto ep : m_entrypoints)
-                {
-                    if (ep == decl->id)
-                        extractEntrypoint(*funcDecl, newModule);
-                }
+                if (m_entrypoints.empty())
+                    extractEntrypoint(*funcDecl, newModule);
+                else
+                    for (const auto ep : m_entrypoints)
+                    {
+                        if (ep == decl->id)
+                            extractEntrypoint(*funcDecl, newModule);
+                    }
             }
         }
 
