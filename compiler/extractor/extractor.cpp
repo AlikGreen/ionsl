@@ -75,7 +75,6 @@ namespace ionsl
         if (m_extracted.contains(decl.id) || !m_topLevelDecls.contains(decl.id)) return;
 
         m_extracted.emplace(decl.id);
-        out.declarations().emplace_back(decl.clone(out.arena()));
 
         if (const auto* structure = decl.as<StructDecl>())
         {
@@ -88,6 +87,8 @@ namespace ionsl
         {
             extractType(resource->type, out);
         }
+
+        out.declarations().emplace_back(decl.clone(out.arena()));
     }
 
     void Extractor::extractType(const TypeId id, Module& out)
@@ -242,6 +243,8 @@ namespace ionsl
             return ResourceKind::ConstantBuffer;
         if (param.attributes->find("storage", m_symbols))
             return ResourceKind::StorageBuffer;
+        if (param.attributes->find("push_constant", m_symbols))
+            return ResourceKind::PushConstant;
 
         // TODO textures
         return std::nullopt;

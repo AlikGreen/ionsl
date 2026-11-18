@@ -27,6 +27,7 @@ namespace ionsl
                 default:
                 {
                     advance();
+                    m_ast.diagnostics().error(previous().span, "cannot use {}", tokenKindDisplayName(previous().kind));
                     return create<ErrorDecl>();
                 }
             }

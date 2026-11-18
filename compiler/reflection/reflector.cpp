@@ -14,32 +14,32 @@ namespace ionsl
     {
     }
 
-    ShaderReflection Reflector::reflect()
+    refl::ReflectionData Reflector::reflect()
     {
-        ShaderReflection refl{};
+        refl::ReflectionData refl{};
 
         for (const auto* decl : m_module.declarations())
         {
-            reflectDeclaration(*decl, refl);
+            if(const auto funcDecl = decl->as<FunctionDecl>())
+                reflectFunctionDecl(*funcDecl, refl);
+        }
+
+        for (const auto* decl : m_module.declarations())
+        {
+            if(const auto resourceDecl = decl->as<ResourceDecl>())
+                reflectResourceDecl(*resourceDecl, refl);
         }
 
         return refl;
     }
 
-    void Reflector::reflectDeclaration(const Declaration &declaration, ShaderReflection& data)
-    {
-        if(const auto funcDecl = declaration.as<FunctionDecl>())
-            reflectFunctionDecl(*funcDecl, data);
-        else if(const auto resourceDecl = declaration.as<ResourceDecl>())
-            reflectResourceDecl(*resourceDecl, data);
-    }
 
-    void Reflector::reflectFunctionDecl(const FunctionDecl &declaration, ShaderReflection& data)
+    void Reflector::reflectFunctionDecl(const FunctionDecl &declaration, refl::ReflectionData& data)
     {
         if (!declaration.genericParams.empty())
             return;
 
-        ReflectedAttributes attribs = reflectAttributes(*declaration.attributes);
+        refl::Attributes attribs = reflectAttributes(*declaration.attributes);
 
         const auto shaderAttrib = attribs.find("shader");
         if (!shaderAttrib)
@@ -50,10 +50,12 @@ namespace ionsl
         if (!shaderTypeArg || !std::holds_alternative<std::string>(*shaderTypeArg))
             return;
 
-        ReflectedEntryPoint ep;
+        refl::EntryPoint ep;
         ep.name = m_symbols.get(declaration.name);
         ep.attributes = attribs;
         ep.stage = convertStage(std::get<std::string>(*shaderTypeArg));
+
+        m_stageMap.emplace(declaration.id, ep.stage);
 
         if (ep.stage == ShaderStage::Compute)
         {
@@ -79,27 +81,70 @@ namespace ionsl
             ep.threadsZ = std::get<ConstantInt>(*threadsZArg).value;
         }
 
+        if (ep.stage == ShaderStage::Vertex)
+        {
+            // TODO skip params with builtin attributes
+            uint32_t location = 0;
+            uint32_t bufferSlot = 0;
+            for (const auto param : declaration.params)
+            {
+                refl::VertexInput input;
+                input.name = m_symbols.get(param->name);
+                input.bufferSlot = bufferSlot++;
+                input.inputRate = refl::InputRate::PerVertex; // TODO check attribute for per instance
+                input.type = reflectType(param->type->resolvedType, &location);
+
+                if (!input.type->isStruct())
+                    input.location = location++;
+
+                ep.vertexInputs.push_back(input);
+            }
+        }
+
         data.entryPoints.push_back(ep);
     }
 
-    void Reflector::reflectResourceDecl(const ResourceDecl& declaration, ShaderReflection &data)
+    void Reflector::reflectResourceDecl(const ResourceDecl& declaration, refl::ReflectionData& data)
     {
         const std::string name = m_symbols.get(declaration.name);
-        const ReflectedType t = reflectType(declaration.type);
+        const refl::TypeRef t = reflectType(declaration.type);
 
-        const ReflectedAttributes attrs = reflectAttributes(*declaration.attributes);
+        const refl::Attributes attrs = reflectAttributes(*declaration.attributes);
 
-        const ReflectedResource res{name, attrs, t, declaration.access, declaration.kind};
-        data.resources.push_back(res);
+        std::vector<ShaderStage> usedByStages;
+
+        for (const auto& id : declaration.usedBy)
+        {
+            if (auto it = m_stageMap.find(id); it != m_stageMap.end())
+                usedByStages.push_back(it->second);
+        }
+
+        if (declaration.kind == ResourceKind::Texture)
+        {
+            refl::TextureResource texKind{};
+            texKind.arraySize = 1; // TODO texture arrays
+            texKind.dimension = refl::TextureDimension::Tex2D; // TODO reflect correct texture kind
+            texKind.access = declaration.access;
+
+            data.resources.push_back(refl::Resource{name, attrs, usedByStages, declaration.index, declaration.space, texKind});
+            return;
+        }
+
+        refl::BufferResource bufKind{};
+        bufKind.elementType = reflectType(declaration.type);
+        bufKind.access = declaration.access;
+        bufKind.kind = convertBufferKind(declaration.kind);
+
+        data.resources.push_back(refl::Resource{name, attrs, usedByStages, declaration.index, declaration.space, bufKind});
     }
 
-    ReflectedType Reflector::reflectType(const TypeId id)
+    refl::TypeRef Reflector::reflectType(const TypeId id, uint32_t* location)
     {
         TypeInfo info = m_types.getInfo(id);
         if (const auto primitive = info.as<PrimitiveType>())
             return reflectPrimitiveType(*primitive);
         if (const auto structure = info.as<StructType>())
-            return reflectStructType(*structure);
+            return reflectStructType(*structure, location);
         if (const auto array = info.as<ArrayType>())
             return reflectArrayType(*array);
         if (const auto matrix = info.as<MatrixType>())
@@ -113,88 +158,99 @@ namespace ionsl
         throw std::runtime_error("Unknown type reached during reflection");
     }
 
-    ReflectedType Reflector::reflectPrimitiveType(const PrimitiveType &type)
+    refl::TypeRef Reflector::reflectPrimitiveType(const PrimitiveType &type)
     {
-        const uint32_t size = primitiveSize(type.kind);
-        return ReflectedType{type.kind, size, size}; // TODO get alignment
+        const uint64_t size = primitiveSize(type.kind);
+        refl::Type{refl::PrimitiveType{type.kind}, size, size};
+        return std::make_shared<refl::Type>(refl::Type(refl::PrimitiveType{type.kind}, size, size)); // TODO get alignment
     }
 
-    ReflectedType Reflector::reflectStructType(const StructType &type)
+    refl::TypeRef Reflector::reflectStructType(const StructType &type, uint32_t* location)
     {
         uint32_t size = 0;
 
         const auto* decl = m_decls.get(type.declId)->as<StructDecl>();
         // TODO ensure decl
 
-        std::vector<ReflectedField> fields;
+        std::vector<refl::Field> fields;
 
         for (const auto* field : decl->fields)
         {
-            ReflectedField f{};
-            f.type = std::make_shared<ReflectedType>(reflectType(field->type->resolvedType));
+            refl::Field f{};
+            f.type = reflectType(field->type->resolvedType);
             f.offset = size;
+            f.name = m_symbols.get(field->name);
+
+            if (location)
+                f.location = (*location)++;
 
             fields.push_back(f);
 
             size += f.type->size(); // TODO field alignment
         }
 
-        ReflectedStructType kind{ m_symbols.get(decl->name),  fields };
-        return ReflectedType{ kind, size, size }; // TODO alignment
+        const auto attributes = reflectAttributes(*decl->attributes);
+
+        // TODO attributes
+        refl::StructType kind{ m_symbols.get(decl->name),  attributes, fields };
+        return std::make_shared<refl::Type>(refl::Type(kind, size, size)); // TODO alignment
     }
 
-    ReflectedType Reflector::reflectArrayType(const ArrayType& type)
+    refl::TypeRef Reflector::reflectArrayType(const ArrayType& type)
     {
-        ReflectedArrayType kind{};
+        refl::ArrayType kind{};
         kind.size = type.size;
-        kind.elementType = std::make_shared<ReflectedType>(reflectType(type.elementType));
+        kind.elementType = reflectType(type.elementType);
         const uint32_t size = kind.size ? *kind.size * kind.elementType->size() : kind.elementType->size();
-        return ReflectedType{ kind, size, size }; // TODO alignment
+        return std::make_shared<refl::Type>(refl::Type(kind, size, size)); // TODO alignment
     }
 
-    ReflectedType Reflector::reflectMatrixType(const MatrixType &type)
+    refl::TypeRef Reflector::reflectMatrixType(const MatrixType &type)
     {
-        ReflectedMatrixType kind{};
-        kind.type = type.scalarType;
+        refl::MatrixType kind{};
+        kind.elementType = type.scalarType;
         kind.columns = type.columns;
         kind.rows = type.rows;
-        const uint32_t size = primitiveSize(kind.type) * kind.rows * kind.columns;
-        return ReflectedType{ kind, size, size }; // TODO alignment
+        const uint32_t size = primitiveSize(kind.elementType) * kind.rows * kind.columns;
+        return std::make_shared<refl::Type>(refl::Type(kind, size, size)); // TODO alignment
     }
 
-    ReflectedType Reflector::reflectVectorType(const VectorType &type)
+    refl::TypeRef Reflector::reflectVectorType(const VectorType &type)
     {
-        ReflectedVectorType kind{};
-        kind.type = type.scalarType;
+        refl::VectorType kind{};
+        kind.elementType = type.scalarType;
         kind.dimension = type.dimension;
-        const uint32_t size = primitiveSize(kind.type) * kind.dimension;
-        return ReflectedType{ kind, size, size }; // TODO alignment
+        const uint32_t size = primitiveSize(kind.elementType) * kind.dimension;
+        return std::make_shared<refl::Type>(refl::Type(kind, size, size)); // TODO alignment
     }
 
-    ReflectedType Reflector::reflectEnumType(const EnumType &type)
+    refl::TypeRef Reflector::reflectEnumType(const EnumType &type)
     {
-        ReflectedEnumType kind{};
+        refl::EnumType kind{};
         const EnumDecl* enumDecl = m_decls.get(type.declId)->as<EnumDecl>();
 
-        const TypeId underlyingType = enumDecl->underlyingType ? enumDecl->underlyingType->resolvedType : TypeId::I32;
+        // const TypeId underlyingType = enumDecl->underlyingType ? enumDecl->underlyingType->resolvedType : TypeId::I32;
 
-        kind.underlyingType = std::make_shared<ReflectedType>(reflectType(underlyingType));
+        // TODO underlying type but probably not a general type (restricted to ints)
+        // kind.underlyingType = reflectType(underlyingType);
 
         for (const auto* member : enumDecl->members)
         {
-            ReflectedEnumMember enumMember{};
+            refl::EnumMember enumMember{};
             enumMember.name = m_symbols.get(member->name);
             enumMember.value = member->value;
         }
 
-        uint32_t size = enumDecl->members.size() * kind.underlyingType->size();
+        // TODO use underlying type size instead of assuming 4 bytes
+        uint32_t size = enumDecl->members.size() * 4; // kind.underlyingType->size();
+        kind.name = m_symbols.get(enumDecl->name);
 
-        return ReflectedType{ kind, size, size };
+        return std::make_shared<refl::Type>(refl::Type(kind, size, size));
     }
 
-    ReflectedAttributes Reflector::reflectAttributes(const Attributes &attributes)
+    refl::Attributes Reflector::reflectAttributes(const Attributes &attributes)
     {
-        ReflectedAttributes reflectedAttrs{};
+        refl::Attributes reflectedAttrs{};
 
         for (const auto* attrib : attributes.attributes)
         {
@@ -204,9 +260,9 @@ namespace ionsl
         return reflectedAttrs;
     }
 
-    ReflectedAttribute Reflector::reflectAttribute(const Attribute &attribute)
+    refl::Attribute Reflector::reflectAttribute(const Attribute &attribute)
     {
-        ReflectedAttribute attr{};
+        refl::Attribute attr{};
         attr.name = attribute.name.string(m_symbols);
 
         for (const auto& arg : attribute.args)
@@ -235,6 +291,21 @@ namespace ionsl
             return ShaderStage::Compute;
 
         return ShaderStage::Unknown;
+    }
+
+    refl::BufferKind Reflector::convertBufferKind(const ResourceKind kind)
+    {
+        switch (kind)
+        {
+            case ResourceKind::ConstantBuffer:
+                return refl::BufferKind::Constant;
+            case ResourceKind::StorageBuffer:
+                return refl::BufferKind::Storage;
+            case ResourceKind::PushConstant:
+                return refl::BufferKind::PushConstants;
+            default:
+                return refl::BufferKind::ByteAddress; // TODO add unknown and more
+        }
     }
 
     uint32_t Reflector::primitiveSize(const PrimitiveKind kind)

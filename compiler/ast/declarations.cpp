@@ -187,7 +187,6 @@ namespace ionsl
         decl->id = id;
         decl->name = name;
         decl->span = span;
-        decl->attributes = attributes->clone(arena);
         return decl;
     }
 

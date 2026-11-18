@@ -651,6 +651,7 @@ namespace ionsl
 
     void SemanticAnalyzer::checkDeclarationSignature(Declaration &declaration, const SemaContext &ctx)
     {
+        // TODO assert decl is not Error
         for (const auto attrib : declaration.attributes->attributes)
         {
             checkAttribute(*attrib, ctx);

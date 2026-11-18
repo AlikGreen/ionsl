@@ -27,10 +27,20 @@ namespace ionsl
             m_writer.newline();
     }
 
+
     bool HlslGenerator::genFunctionDecl(const FunctionDecl &decl)
     {
         if(!decl.genericParams.empty() || (decl.attributes && decl.attributes->contains("hlsl", m_symbols)))
             return false;
+
+        if (auto threadCount = decl.attributes->find("numthreads", m_symbols))
+        {
+            uint64_t threadsX = std::get_if<ConstantInt>(&threadCount->getArg("x", m_symbols)->value.value())->value;
+            uint64_t threadsY = std::get_if<ConstantInt>(&threadCount->getArg("y", m_symbols)->value.value())->value;
+            uint64_t threadsZ = std::get_if<ConstantInt>(&threadCount->getArg("z", m_symbols)->value.value())->value;
+
+            m_writer.write("[numthreads({}, {}, {})]\n", threadsX, threadsY, threadsZ);
+        }
 
         genType(decl.returnType->resolvedType);
         m_writer.space();
@@ -155,7 +165,7 @@ namespace ionsl
 
     void HlslGenerator::genResourceDecl(const ResourceDecl& decl)
     {
-        if (decl.kind == ResourceKind::ConstantBuffer)
+        if (decl.kind == ResourceKind::ConstantBuffer || decl.kind == ResourceKind::PushConstant)
         {
             m_writer.write("ConstantBuffer<");
             genType(decl.type);
@@ -169,17 +179,24 @@ namespace ionsl
             char bindingPrefix = 't';
             std::string resourceTypePrefix;
 
-            // TODO if the type is byte array then use ByteAddressBuffer
             if (decl.access == ResourceAccess::ReadWrite)
             {
                 resourceTypePrefix = "RW";
                 bindingPrefix = 'u';
             }
 
+            const auto primitiveType = m_typeTable.getInfo(decl.type).as<PrimitiveType>();
+            if (primitiveType && primitiveType->kind == PrimitiveKind::UInt8)
+            {
+                m_writer.write("{}ByteAddressBuffer ", resourceTypePrefix);
+            }
+            else
+            {
+                m_writer.write("{}StructuredBuffer<", resourceTypePrefix);
+                genType(decl.type);
+                m_writer.write("> ");
+            }
 
-            m_writer.write("{}StructuredBuffer<", resourceTypePrefix);
-            genType(decl.type);
-            m_writer.write("> ");
             m_writer.writeSymbol(decl.name);
             m_writer.write(" : register({}{}, space{});", bindingPrefix, decl.index, decl.space);
         }

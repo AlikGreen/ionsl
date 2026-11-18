@@ -30,7 +30,13 @@ namespace ionsl
     Compiler::Compiler()
         : m_typeSystem(m_typeTable, m_symbolTable)
     {
-        m_stdlib = parse(*loadFile("stdlib.ionsl"));
+        const auto stdLibSource = loadFile("stdlib.ionsl");
+        if (!stdLibSource)
+        {
+            // TODO print error
+            return;
+        }
+        m_stdlib = parse(*stdLibSource);
     }
 
     Module Compiler::parse(const std::string &source)
@@ -58,7 +64,7 @@ namespace ionsl
         return Extractor(module, *this, entryPoints).extract();
     }
 
-    ShaderReflection Compiler::reflect(const Module &module)
+    refl::ReflectionData Compiler::reflect(const Module &module)
     {
         return Reflector(m_symbolTable, m_typeTable, module).reflect();
     }

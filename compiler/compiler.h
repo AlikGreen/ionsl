@@ -25,7 +25,7 @@ public:
     Module parse(const std::string &source);
     Module link(const LinkDescription& desc);
     Module extract(const Module& module, const std::vector<DeclId> &entryPoints = {});
-    ShaderReflection reflect(const Module& module);
+    refl::ReflectionData reflect(const Module& module);
 
     template<typename T>
     requires std::is_base_of_v<CodeGenerator, T> && std::is_constructible_v<T, const Module&, const SymbolTable&, const TypeTable&>

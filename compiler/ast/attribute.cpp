@@ -49,7 +49,7 @@ namespace ionsl
         return std::ranges::any_of(attributes, [&name, &symbols](const Attribute* attr) { return attr->name.string(symbols) == name; });
     }
 
-    const Attribute * Attributes::find(const std::string &name, const SymbolTable &symbols) const
+    const Attribute* Attributes::find(const std::string &name, const SymbolTable &symbols) const
     {
         for(const auto& attr : attributes)
         {
